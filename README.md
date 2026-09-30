@@ -163,3 +163,7 @@ python -m indicator_lab run --stage test     # 最终测试集（在测试前判
 - **指数/行业择时无效**（次要研究）：同一批指标用于宽基与 31 个行业择时，408 项 0 项显著，择时夏普多数不如买入持有——技术指标的信息是横截面的，不是时间序列的。
 - **样本外跟踪**：I1（做多低成交额 10%）、I2（回避 20 日内涨停）和候选 I3（剔除最热 10%）已冻结在 [docs/indicators_rules.md](docs/indicators_rules.md)，
   拿到 2026-09-30 以后的数据后运行 `python -m indicator_lab track`，报告在 `results/indicators_oos/样本外跟踪.md`（满 250 个交易日后判定）。
+- **第二轮：因子去冗余**（[results/indicators_pruning/第二轮_因子去冗余.md](results/indicators_pruning/第二轮_因子去冗余.md)，协议 [docs/indicators_pruning.md](docs/indicators_pruning.md)）：
+  74 个指标互相控制后，仍有约 10 类**独立**的预测信息——涨停/跌停、低成交额、隔夜跳空（正向）、下影线、量价相关、短期反转/超买、放量、波动率、
+  经典买点事件（负向）；**中长期均线、均线排列、MACD 快慢线、20/60 日涨幅被完全解释（排除）**。
+  把入选因子合成后预测力更强（20 日 IC 约 0.12，测试集复现），20 日持有扣成本年化超额 6%~7%，但**不如单独做多低成交额**（10%~12%）。
