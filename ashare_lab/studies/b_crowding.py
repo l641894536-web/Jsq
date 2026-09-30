@@ -165,6 +165,20 @@ def run(P: Panels) -> StudyResult:
     ev_rel = restrict_dates(concat_events(frames, ["date", "key", "阈值"]), P.study_start, P.study_end)
     fam_rel = _study_family(P, ev_rel, fwd_rel, horizons)
     if not fam_rel.empty:
+        # 补充对照：同样强势（20日超额处于自身历史前20%）但成交占比低于最低分位阈值的日子
+        exc20_rel = R.excess(R.past_return(rel_units_close, 20), R.past_return(P.data.market_close, 20))
+        strong_rel = R.rolling_percentile_frame(exc20_rel, cc["pct_window"], cc["pct_min_periods"]) >= 0.8
+        snc_rel = strong_rel & (share_pct < min(c["rel_pct_thresholds"]))
+        cd, cp_ = [], []
+        for _, row in fam_rel.iterrows():
+            ev = ev_rel[ev_rel["阈值"] == row["阈值"]][["date", "key"]].reset_index(drop=True)
+            h = row["期限"]
+            t = event_study(ev, {"x": fwd_rel[h][f"未来{h}日超额"]}, snc_rel, P.split, cc["n_perm"], cc["n_boot"], P.rng,
+                            period=P.period).iloc[0]
+            cd.append(t["差值"])
+            cp_.append(t["p值"])
+        fam_rel["对强势不拥挤差值"] = cd
+        fam_rel["对强势不拥挤p值"] = cp_
         fam_rel = fam_rel.rename(columns={"阈值": "分位阈值"})
 
     # ---- 3. 个股成交集中度（可选）----
@@ -188,8 +202,9 @@ def run(P: Panels) -> StudyResult:
             "逐个列出每次触发——样本少的时候，看明细比看均值更诚实。")
     if not fam_rel.empty:
         show_rel = ["分位阈值", "期限", "n", "独立簇", "均值", "中位数", "胜率", "基准均值", "差值", "均值90%CI低", "均值90%CI高",
-                    "p值", "q值", "两段同向", "证据", "收益均值", "最大回撤均值"]
-        res.add("相对阈值：占比创自身历史高分位后（组合+单行业合并）", fam_rel[show_rel])
+                    "p值", "q值", "两段同向", "证据", "对强势不拥挤差值", "对强势不拥挤p值", "收益均值", "最大回撤均值"]
+        res.add("相对阈值：占比创自身历史高分位后（组合+单行业合并）", fam_rel[show_rel],
+                "“对强势不拥挤”= 与同样强势但占比没到高分位的日子比（补充对照，不进检验族）。")
     if conc_tbl is not None and not conc_tbl.empty:
         res.add("成交集中度阈值：穿越后全市场未来收益", conc_tbl)
 

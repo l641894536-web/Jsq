@@ -6,6 +6,14 @@
 对 2015—2026 年的 A 股做六项预注册的验证研究。每个结论都附带样本量、置信区间、对照组、
 多重检验校正和前后两段一致性检查，最后给出 A/B/C/D 证据等级。
 
+## 真实数据结论（截至 2026-09-29）
+
+**→ [results/real_2026-09-29/结论与判断.md](results/real_2026-09-29/结论与判断.md)**（一页结论 + 逐项判断 + 稳健性 + 数据局限）
+
+简要：
+- **能写进规律库的**：强势板块大跌后，次日续跌时“趋势结束”的概率约为次日收涨时的 1.7 倍（A 级）；板块成交占比创自身 3 年 99% 分位后 1~3 个月平均跑输（A 级）；**拥挤不是卖点**（拥挤后中位还有 120 日、+25% 超额，但拿到退潮底部平均 −14%）；主线阶段不能按天数判断。
+- **没被数据支持的**：“成交占比到 40/45/50% 就见顶”；“行业内垃圾股补涨＝后期”（方向相反）；风格切换的领先信号；实时分环境换策略。
+
 ## 六项研究
 
 | | 问题 | 核心做法 | 需要的数据 |
@@ -48,6 +56,21 @@ pytest
 数据下载依赖 akshare，需要能访问 `swsresearch.com`（申万指数）和 `eastmoney.com`（指数、个股、国债、财报）。
 也可以用 Wind/Choice/Tushare 等数据：整理成 `ashare_lab/data/market.py` 顶部说明的标准 CSV 格式放进 `data/` 即可。
 
+**只能访问 GitHub/PyPI 时**（本仓库真实数据结论就是这样跑出来的）：
+
+```bash
+wget https://github.com/chenditc/investment_data/releases/latest/download/qlib_bin.tar.gz
+mkdir -p ~/qlib_cn && tar -zxf qlib_bin.tar.gz -C ~/qlib_cn --strip-components=1
+python -m ashare_lab --config config/qlib.toml import-qlib ~/qlib_cn        # 行业分类自动从 PyPI 包数据生成
+python -m ashare_lab --config config/qlib.toml check
+python -m ashare_lab --config config/qlib.toml run all --out results/<日期>
+# 稳健性：等权行业指数
+python -m ashare_lab --config config/qlib.toml import-qlib ~/qlib_cn --data-dir data/qlib_eq --weighting equal
+python -m ashare_lab --config config/qlib.toml run all --data-dir data/qlib_eq --out results/<日期>/robust/equal_weight
+```
+
+这条路径没有市值、财报、国债数据，替代做法和局限见 `ashare_lab/data/from_qlib.py` 与结论报告的“数据”一节。
+
 ## 怎么读报告
 
 - **证据等级**：A=独立簇≥20、FDR 校正后 q<0.05、前后两段同向；B=独立簇≥10、q<0.10、同向；C=不显著或前后不一致；D=独立簇<5，不下结论。
@@ -69,11 +92,15 @@ pytest
 
 ```
 config/default.toml        预注册参数（改参数必须在 docs/protocol.md 记录）
+config/qlib.toml           qlib 数据源的映射（继承 default.toml，不改研究参数）
+results/real_2026-09-29/   真实数据报告、稳健性版本（robust/）与结论
 docs/protocol.md           研究协议：定义、假设、检验、通过标准、陷阱
 ashare_lab/
   core/                    收益与分位数、zigzag、事件去簇、统计检验、环境划分、回测
   data/market.py           标准数据格式与加载
   data/fetch_akshare.py    akshare 下载与清洗
+  data/from_qlib.py        qlib 格式数据 → 标准数据目录（含成交额校验、行业指数合成、按时点市值分层）
+  data/industry_static.py  个股 → 申万一级 静态映射（东财行业 2024 + 申万 2014 补充）
   data/synthetic.py        合成数据（埋入/不埋入规律，用于检验方法）
   studies/a_… f_…          六项研究
   report.py                Markdown 报告

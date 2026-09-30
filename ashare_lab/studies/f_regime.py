@@ -34,8 +34,8 @@ def build_strategies(P: Panels) -> dict[str, pd.Series]:
     lag, cost = P.lag, c["cost_bps"]
     dates = P.data.dates
     sec_ret = P.ret
-    mkt = P.data.market_close
-    mret = P.mret.to_frame("全A")
+    mkt = market_series(P)
+    mret = mkt.pct_change(fill_method=None).to_frame("全A")
     out = {}
     mom = P.data.sector_close / P.data.sector_close.shift(20) - 1
     w = B.hold_every(B.top_k_weights(mom, c["momentum_top"], largest=True), c["rebalance_days"])
@@ -67,9 +67,23 @@ def build_strategies(P: Panels) -> dict[str, pd.Series]:
     return out
 
 
+def market_series(P: Panels) -> pd.Series:
+    """研究F的市场指数：优先用 regime.market_index（如官方中证全指），否则用数据的市场基准。"""
+    code = P.cfg["regime"].get("market_index")
+    ic = P.data.index_close
+    if code and code in ic:
+        s = ic[code]
+        first = s.first_valid_index()
+        miss = s.loc[first:].isna().mean() if first is not None else 1.0
+        if miss <= 0.01:
+            return s.ffill()
+        P.data.notes.append(f"研究F：{code} 缺失 {miss:.0%} 的交易日，改用数据的市场基准")
+    return P.data.market_close
+
+
 def regime_labels(P: Panels) -> dict[str, pd.Series]:
     c = P.cfg["regime"]
-    mkt = P.data.market_close
+    mkt = market_series(P)
     n = int(c.get("min_persist", 1))
     return {
         "均线法": G.persist(G.regime_ma(mkt, c["ma_window"], c["ma_slope_window"]), n),

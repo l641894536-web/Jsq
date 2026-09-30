@@ -39,8 +39,20 @@ class StockPanel:
         dates = P.data.dates
         st = st.drop_duplicates(["date", "code"], keep="last").set_index(["date", "code"])
         self.close = st["close"].unstack().reindex(dates).astype("float32")
-        amount = st["amount"].unstack().reindex(index=dates, columns=self.close.columns).astype("float32")
-        turnover = st["turnover"].unstack().reindex(index=dates, columns=self.close.columns).astype("float32")
+        self.close.columns = self.close.columns.astype(str)
+        amount = st["amount"].unstack().reindex(dates).astype("float32")
+        amount.columns = amount.columns.astype(str)
+        amount = amount.reindex(columns=self.close.columns)
+        # 分层来源：优先用数据自带的按时点分层（如中证指数成分），否则用 成交额/换手率 估算流通市值
+        self.tier_given = None
+        if "tier" in st.columns:
+            t = st["tier"].astype(str).unstack().reindex(dates)
+            t.columns = t.columns.astype(str)
+            self.tier_given = t.reindex(columns=self.close.columns)
+        turnover = (st["turnover"].unstack().reindex(dates).astype("float32") if "turnover" in st.columns
+                    else pd.DataFrame(np.nan, index=dates, columns=self.close.columns, dtype="float32"))
+        turnover.columns = turnover.columns.astype(str)
+        turnover = turnover.reindex(columns=self.close.columns)
         ret = self.close.pct_change(fill_method=None)
         # 新股上市前 5 个交易日（常无涨跌幅限制）和明显的数据错误不参与
         age = self.close.notna().cumsum()
@@ -78,18 +90,27 @@ class StockPanel:
             sector = self.sector_asof(d)
             if sector.empty:
                 continue
-            mc = self.mcap.iloc[s]
-            ok = mc.notna() & (self.age.iloc[s] >= 60)
-            codes = mc.index[ok].intersection(sector.index)
-            if len(codes) == 0:
-                continue
-            df = pd.DataFrame({"sector": sector.reindex(codes), "mcap": mc.reindex(codes)})
-            loss = self.loss_asof(d).reindex(codes, fill_value=False).astype(bool)
-            df["loss"] = loss
-            df["pct"] = df.groupby("sector")["mcap"].rank(pct=True)
-            tier = np.where((df["pct"] > leader_pct) & ~df["loss"], "龙头",
-                            np.where((df["pct"] > second_pct) & ~df["loss"], "二线", "尾部"))
-            df["tier"] = tier
+            if self.tier_given is not None:
+                tg = self.tier_given.iloc[s]
+                ok = tg.notna() & (tg != "nan") & (self.age.iloc[s] >= 60)
+                codes = tg.index[ok].intersection(sector.index)
+                if len(codes) == 0:
+                    continue
+                df = pd.DataFrame({"sector": sector.reindex(codes), "tier": tg.reindex(codes)})
+                loss = self.loss_asof(d).reindex(codes, fill_value=False).astype(bool)
+                df.loc[loss.to_numpy(), "tier"] = "尾部"
+            else:
+                mc = self.mcap.iloc[s]
+                ok = mc.notna() & (self.age.iloc[s] >= 60)
+                codes = mc.index[ok].intersection(sector.index)
+                if len(codes) == 0:
+                    continue
+                df = pd.DataFrame({"sector": sector.reindex(codes), "mcap": mc.reindex(codes)})
+                loss = self.loss_asof(d).reindex(codes, fill_value=False).astype(bool)
+                df["loss"] = loss
+                df["pct"] = df.groupby("sector")["mcap"].rank(pct=True)
+                df["tier"] = np.where((df["pct"] > leader_pct) & ~df["loss"], "龙头",
+                                      np.where((df["pct"] > second_pct) & ~df["loss"], "二线", "尾部"))
             period = self.ret.iloc[s + 1:e + 1][codes]
             if period.empty:
                 continue
@@ -107,15 +128,24 @@ class StockPanel:
         for i, s in enumerate(starts):
             d = dates[s]
             e = starts[i + 1] if i + 1 < len(starts) else len(dates) - 1
-            mc = self.mcap.iloc[s]
-            ok = mc.notna() & (self.age.iloc[s] >= 60)
-            mc = mc[ok]
-            if len(mc) < 50:
-                continue
-            loss = self.loss_asof(d).reindex(mc.index, fill_value=False).astype(bool)
-            p = mc.rank(pct=True)
-            j_codes = mc.index[(p <= 0.2) | loss]
-            q_codes = mc.index[(p > 0.7) & ~loss]
+            if self.tier_given is not None:
+                tg = self.tier_given.iloc[s]
+                tg = tg[tg.notna() & (tg != "nan") & (self.age.iloc[s] >= 60)]
+                if len(tg) < 50:
+                    continue
+                loss = self.loss_asof(d).reindex(tg.index, fill_value=False).astype(bool)
+                j_codes = tg.index[(tg == "尾部") | loss]
+                q_codes = tg.index[(tg == "龙头") & ~loss]
+            else:
+                mc = self.mcap.iloc[s]
+                ok = mc.notna() & (self.age.iloc[s] >= 60)
+                mc = mc[ok]
+                if len(mc) < 50:
+                    continue
+                loss = self.loss_asof(d).reindex(mc.index, fill_value=False).astype(bool)
+                p = mc.rank(pct=True)
+                j_codes = mc.index[(p <= 0.2) | loss]
+                q_codes = mc.index[(p > 0.7) & ~loss]
             period = self.ret.iloc[s + 1:e + 1]
             junk.append(period[j_codes].mean(axis=1))
             quality.append(period[q_codes].mean(axis=1))
@@ -189,10 +219,14 @@ def _market_test(P: Panels, rel_daily: pd.Series, label: str) -> tuple[dict, pd.
 def run(P: Panels) -> StudyResult:
     c = P.cfg["diffusion"]
     res = StudyResult("E", "补涨扩散", "龙头→二线→垃圾股扩散，是否真的意味着行情进入后段？", meta=P.meta())
+    tier_src = "tier" in P.data.stocks.columns if P.data.stocks is not None else False
     res.definitions = [
-        f"分层（每 {c['reform_days']} 个交易日重建，只用当时可得信息）：龙头=行业内流通市值前 {1 - c['leader_pct']:.0%} 且最近已公告财报盈利；"
-        f"二线=市值 {c['second_pct']:.0%}~{c['leader_pct']:.0%} 分位且盈利；尾部=市值后 {c['second_pct']:.0%} 或亏损",
-        "流通市值估算 = 成交额 / 换手率（20 日中位数平滑）；亏损 = 按公告日生效的最近一期财报净利润 < 0",
+        ("分层（按时点）：数据自带的市值分层——龙头=沪深300成分，二线=中证500/中证1000成分，尾部=以外的小微盘/ST/次新"
+         "（有财报时亏损股一律归尾部）；全市场“垃圾股”=尾部，“优质大票”=龙头" if tier_src else
+         f"分层（每 {c['reform_days']} 个交易日重建，只用当时可得信息）：龙头=行业内流通市值前 {1 - c['leader_pct']:.0%} 且最近已公告财报盈利；"
+        f"二线=市值 {c['second_pct']:.0%}~{c['leader_pct']:.0%} 分位且盈利；尾部=市值后 {c['second_pct']:.0%} 或亏损"),
+        ("亏损 = 按公告日生效的最近一期财报净利润 < 0（无财报数据时不使用）" if tier_src else
+         "流通市值估算 = 成交额 / 换手率（20 日中位数平滑）；亏损 = 按公告日生效的最近一期财报净利润 < 0"),
         "主线波段来自研究A；早/中/后段 = 谷底→相对顶部的时间三等分",
         f"扩散信号 = 尾部 − 龙头 的 {c['signal_window']} 日收益差，处于自身历史 {c['signal_pct']:.0%} 分位以上（仅在强势行业上）",
         f"市场顶部 = 中证全指 zigzag({c['market_swing']:.0%}) 的已确认峰；预警后 {c['alarm_window']} 日内见顶算命中",
@@ -265,6 +299,10 @@ def run(P: Panels) -> StudyResult:
                 if r.notna().sum() < 0.6 * len(r):
                     valid = False
                 row[f"{ph}{t}"] = float(np.prod(1 + r.fillna(0)) - 1)
+        for i, ph in enumerate(("早段", "中段", "后段")):
+            mkt_t = j.iloc[cuts[i] + 1:cuts[i + 1] + 1].fillna(0)
+            mkt_l = q.iloc[cuts[i] + 1:cuts[i + 1] + 1].fillna(0)
+            row[f"{ph}全市场尾部−龙头"] = float(np.prod(1 + mkt_t) - np.prod(1 + mkt_l))
         if tb is not None and tb > tp:
             for t in TIERS:
                 r = tiers[t][code].iloc[tp + 1:tb + 1]
@@ -324,6 +362,24 @@ def run(P: Panels) -> StudyResult:
             for _, r in tt.iterrows():
                 res.findings.append(f"{r['假设']}：{int(r['n'])} 轮主线中成立比例 {pct(r['成立比例'], 0)}，均值差 {pct(r['均值差'])}，"
                                     f"p={r['p值']:.3f}（{r['证据']}）。")
+        # 探索性：剔除全市场大小盘风格后的行业内扩散
+        adj_rows = []
+        for ph in ("早段", "中段", "后段"):
+            g = (ep_tbl[f"{ph}尾部"] - ep_tbl[f"{ph}龙头"]) - ep_tbl[f"{ph}全市场尾部−龙头"]
+            adj_rows.append({"阶段": ph, "波段数": int(g.notna().sum()), "行业内尾部−龙头": (ep_tbl[f"{ph}尾部"] - ep_tbl[f"{ph}龙头"]).mean(),
+                             "同期全市场尾部−龙头": ep_tbl[f"{ph}全市场尾部−龙头"].mean(), "剔除后均值": g.mean(),
+                             "剔除后中位": g.median(), "剔除后为正比例": (g > 0).mean()})
+        adj = pd.DataFrame(adj_rows)
+        d_adj = ((ep_tbl["后段尾部"] - ep_tbl["后段龙头"] - ep_tbl["后段全市场尾部−龙头"])
+                 - (ep_tbl["早段尾部"] - ep_tbl["早段龙头"] - ep_tbl["早段全市场尾部−龙头"])).dropna()
+        if len(d_adj) >= 5:
+            w_adj = sps.wilcoxon(d_adj, alternative="two-sided")
+            adj_note = (f"探索性（非预注册）：剔除同期全市场“尾部−龙头”后，后段相对早段的扩散变化均值 {d_adj.mean() * 100:.1f}%，"
+                        f"成立比例 {(d_adj > 0).mean():.0%}，双侧 Wilcoxon p={w_adj.pvalue:.3f}。")
+        else:
+            adj_note = "探索性：样本不足。"
+        res.add("剔除全市场大小盘风格后的行业内扩散（探索性）", adj, adj_note)
+        res.findings.append(adj_note)
         res.add("主线波段分层收益明细", ep_tbl, pct_cols=[c_ for c_ in ep_tbl.columns if c_ not in ("行业", "谷底", "相对顶部")])
 
     # ---------- 实时扩散信号 ----------

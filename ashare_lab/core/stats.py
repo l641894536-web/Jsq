@@ -93,9 +93,10 @@ def random_date_test(values: pd.DataFrame, events: pd.DataFrame, eligible: pd.Da
 
 
 def date_clusters(dates, gap: int = 20, calendar: pd.DatetimeIndex | None = None) -> np.ndarray:
-    """把时间上挨得近的事件归为一簇（相邻事件间隔 ≤ gap 个交易日即同簇），不区分标的。
+    """把时间上挨得近的事件归为一簇（不区分标的）：从簇内第一个事件起 gap 个交易日内的事件同簇。
 
     同一轮行情里多个行业/多次触发的事件高度相关，统计推断应以“簇”为独立单位。
+    簇的跨度封顶为 gap 日——否则事件密集时（几十个行业、几百个事件）会一路串成跨越数年的一个簇。
     返回与输入同顺序的簇编号。
     """
     d = pd.DatetimeIndex(dates)
@@ -104,8 +105,13 @@ def date_clusters(dates, gap: int = 20, calendar: pd.DatetimeIndex | None = None
     pos = calendar.get_indexer(d) if calendar is not None else np.asarray((d - d.min()).days * 5 // 7)
     order = np.argsort(pos, kind="stable")
     sp = pos[order]
-    new = np.r_[True, np.diff(sp) > gap]
-    cl_sorted = np.cumsum(new) - 1
+    cl_sorted = np.empty(len(sp), dtype=int)
+    cid, start = -1, None
+    for i, p in enumerate(sp):
+        if start is None or p - start > gap:
+            cid += 1
+            start = p
+        cl_sorted[i] = cid
     out = np.empty(len(d), dtype=int)
     out[order] = cl_sorted
     return out

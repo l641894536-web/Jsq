@@ -234,6 +234,20 @@ def run(P: Panels) -> StudyResult:
     k2 = int(((main["次日涨跌"] < 0) & (main["结果"] == END)).sum())
     n2 = int(((main["次日涨跌"] < 0) & main["结果"].isin([OPP, END, NEUTRAL])).sum())
     nd_p = nd_cb["p"]
+    firsth = (main_known["date"] <= P.split).to_numpy()
+    gaps = []
+    for m_ in (firsth, ~firsth):
+        sub = main_known[m_]
+        down, up = sub[sub["次日涨跌"] < 0], sub[sub["次日涨跌"] >= 0]
+        gaps.append(float((down["结果"] == END).mean() - (up["结果"] == END).mean()) if len(down) and len(up) else np.nan)
+    nd_ncl = int(len(np.unique(stats.date_clusters(main_known["date"], 10, P.data.dates)))) if len(main_known) else 0
+    nd_cons = bool(np.isfinite(gaps[0]) and np.isfinite(gaps[1]) and gaps[0] * gaps[1] > 0)
+    nd_test = pd.DataFrame([{
+        "检验": "次日续跌 − 次日收涨 的趋势结束比例差", "差值": nd_cb["diff"],
+        "90%CI低": nd_cb["lo"], "90%CI高": nd_cb["hi"], "p值": nd_p, "独立簇": nd_ncl,
+        "前段差": gaps[0], "后段差": gaps[1], "两段同向": nd_cons,
+        "证据": stats.GRADE_TEXT[stats.evidence_grade(nd_ncl, nd_p, nd_cons, P.grade_rule)] if np.isfinite(nd_p) else "",
+    }])
 
     # ---- 表格 ----
     res.add("大跌后 vs 强势不跌的随机日（L0：大跌当日收盘买入）",
@@ -249,6 +263,8 @@ def run(P: Panels) -> StudyResult:
                 "前段差/后段差 = 高组−低组的趋势结束比例（分前后两段计算）。",
                 pct_cols=[c_ for c_ in splits.columns if ("比例" in c_ and "CI" not in c_) or "超额" in c_ or c_ in ("前段差", "后段差")])
     res.add("次日确认：大跌次日收涨 vs 续跌（t+1 才知道）", nd)
+    res.add("次日确认的检验（按日期簇自助法；单项检验，不做多重校正）", nd_test,
+            pct_cols=["差值", "90%CI低", "90%CI高", "前段差", "后段差"])
     detail_cols = ["口径", "date", "行业", "当日跌幅", "市场当日涨跌", "前60日超额", "放量倍数", "成交占比分位", "距RS高点天数",
                    "前60日大跌次数", "次日涨跌", "L0_20日超额", "L0_60日超额", f"{c['recover_days']}日内收复", "结果"]
     res.add("事件明细", ev[detail_cols].rename(columns={"date": "日期"}).sort_values(["口径", "日期"]), max_rows=300)
@@ -290,7 +306,8 @@ def run(P: Panels) -> StudyResult:
                 )
     if n1 and n2:
         res.findings.append(
-            f"次日确认：大跌次日收涨的趋势结束比例 {pct(k1 / n1, 0)}（n={n1}），次日续跌 {pct(k2 / n2, 0)}（n={n2}），按簇自助法 p={nd_p:.3f}。"
+            f"次日确认：大跌次日收涨的趋势结束比例 {pct(k1 / n1, 0)}（n={n1}），次日续跌 {pct(k2 / n2, 0)}（n={n2}），"
+            f"按簇自助法 p={nd_p:.3f}，前段差 {pct(gaps[0], 0)}/后段差 {pct(gaps[1], 0)}（{nd_test.iloc[0]['证据']}）。"
         )
     res.caveats = [
         "申万一级行业单日 −7%/−10% 极少见（主要集中在 2015—2016 股灾、2024 年初微盘股踩踏），样本量决定了这里大部分结论只能是 C/D 级。"

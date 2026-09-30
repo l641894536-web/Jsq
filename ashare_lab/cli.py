@@ -101,6 +101,19 @@ def cmd_fetch(args) -> int:
     return 0
 
 
+def cmd_import_qlib(args) -> int:
+    from .data.from_qlib import build_standard_dir
+    from .data.industry_static import build_static_industry
+    cfg = load_config(args.config)
+    out = Path(args.data_dir or cfg["data"]["dir"])
+    ind = Path(args.industry) if args.industry else out / "stock_industry_static.csv"
+    if not ind.exists():
+        build_static_industry(ind, out / "_src")
+    build_standard_dir(args.qlib_dir, ind, out, start=args.start, weighting=args.weighting)
+    print(f"完成：{out}。下一步：python -m ashare_lab --config {args.config or 'config/qlib.toml'} check")
+    return 0
+
+
 def cmd_check(args) -> int:
     cfg = load_config(args.config)
     data = load_data(args, cfg)
@@ -132,6 +145,12 @@ def cmd_check(args) -> int:
     if extreme.any():
         print("\n单日涨跌超过15%的行业日（可能是数据错误）：")
         print(extreme[extreme > 0].to_string())
+    print("\n指数缺失率（首个有效日之后）：")
+    for code in data.index_close.columns:
+        s = data.index_close[code]
+        f0 = s.first_valid_index()
+        if f0 is not None:
+            print(f"  {code:<7}{data.name(code):<8} 起始 {f0.date()}  缺失 {s.loc[f0:].isna().mean():.1%}")
     miss_idx = [c for c in (cfg["data"]["market_index"], cfg["style"]["growth"], cfg["style"]["value"],
                             cfg["diffusion"]["small_index"], cfg["regime"]["dividend_index"]) if c not in data.index_close]
     if miss_idx:
@@ -160,6 +179,14 @@ def main(argv=None) -> int:
     f.add_argument("--start", default="2010-01-01")
     f.add_argument("--stocks", action="store_true", help="同时下载个股（研究E、成交集中度需要；耗时较长）")
     f.set_defaults(func=cmd_fetch)
+
+    q = sub.add_parser("import-qlib", help="把 qlib 格式A股日线（如 chenditc/investment_data）转换为标准数据目录")
+    q.add_argument("qlib_dir")
+    q.add_argument("--data-dir", default=None)
+    q.add_argument("--industry", default=None, help="个股→申万一级映射 CSV；缺省时从 PyPI 包数据自动生成")
+    q.add_argument("--start", default="2010-01-01")
+    q.add_argument("--weighting", default="liquidity", choices=["liquidity", "equal"], help="行业指数加权方式")
+    q.set_defaults(func=cmd_import_qlib)
 
     c = sub.add_parser("check", help="检查数据质量")
     c.add_argument("--data-dir", default=None)
