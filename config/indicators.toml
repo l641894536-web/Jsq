@@ -84,3 +84,11 @@ macross = ["macross_5_20", "macross_10_60", "macross_20_120"]
 instruments = ["000300", "000905", "000852", "ALLA"]
 include_sectors = true
 horizons = [5, 20, 60]
+# —— 以下细节于 2026-09-30 补充（在计算任何“指标 vs 指数/行业未来收益”之前）——
+# 涨跌停类与成交额水平类不适用于指数（指数无涨跌停；成交额水平随时间趋势增长）
+exclude_signals = ["limit_up_20", "limit_down_20", "ev_limit_up", "ev_limit_down", "log_amount_20", "amihud_20"]
+direction_period = ["2012-01-01", "2017-12-31"]   # 定方向
+eval_period = ["2018-01-01", "2026-12-31"]        # 评估（时间序列样本少，验证集与测试集合并）
+n_perm = 1000              # 循环平移次数
+timing_lookback = 250      # 择时：信号高于自身过去 250 日中位数 = 看多
+timing_cost = 0.001        # 择时：单边成本 0.1%（ETF 口径）
