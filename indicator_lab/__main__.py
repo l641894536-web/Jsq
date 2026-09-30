@@ -187,6 +187,34 @@ def cmd_track(a) -> None:
     print(sm.round(4).to_string())
 
 
+def cmd_prune(a) -> None:
+    from .prune import run_pruning
+    cfg = R.load_cfg(a.config)
+    log = _log(None)
+    if a.synthetic is not None:
+        from .synthetic import synthetic_panel
+        out = Path(a.out) / "calibration"
+        P = synthetic_panel(n_stocks=1000, seed=a.synthetic, plant=a.plant)
+        res = run_pruning(P, cfg, ["discovery", "validation"], log=log)
+        suffix = f"_模拟_种子{a.synthetic}_埋入{a.plant}"
+    else:
+        from .panel import load_panel
+        out = Path(a.out)
+        d = cfg["data"]
+        P = load_panel(d["qlib_dir"], d["start"], d["industry_csv"], log=log)
+        res = run_pruning(P, cfg, ["discovery", "validation", "test"], log=log)
+        suffix = ""
+    (out / "csv").mkdir(parents=True, exist_ok=True)
+    res["corr"].to_csv(out / "csv" / f"corr{suffix}.csv", float_format="%.3f", encoding="utf-8-sig")
+    for h, per in res["horizons"].items():
+        for k in ("steps", "table", "excluded", "composite"):
+            if k in per and len(per[k]):
+                per[k].to_csv(out / "csv" / f"{k}_h{h}{suffix}.csv", index=False, encoding="utf-8-sig")
+    RP.write_pruning(out, res, suffix)
+    for h, per in res["horizons"].items():
+        print(h, per["S"])
+
+
 def main(argv=None) -> None:
     p = argparse.ArgumentParser(prog="indicator_lab")
     p.add_argument("--config", default="config/indicators.toml")
@@ -205,10 +233,14 @@ def main(argv=None) -> None:
     t = sub.add_parser("timing")
     t.add_argument("--synthetic", type=int, default=None, help="零假设模拟面板的随机种子（误报率自检）")
     t.add_argument("--out", default=DEFAULT_OUT)
+    pr = sub.add_parser("prune")
+    pr.add_argument("--synthetic", type=int, default=None)
+    pr.add_argument("--plant", type=float, default=0.0)
+    pr.add_argument("--out", default="results/indicators_pruning")
     k = sub.add_parser("track")
     k.add_argument("--out", default="results/indicators_oos")
     a = p.parse_args(argv)
-    {"calibrate": cmd_calibrate, "run": cmd_run, "timing": cmd_timing, "track": cmd_track}[a.cmd](a)
+    {"calibrate": cmd_calibrate, "run": cmd_run, "timing": cmd_timing, "track": cmd_track, "prune": cmd_prune}[a.cmd](a)
 
 
 if __name__ == "__main__":

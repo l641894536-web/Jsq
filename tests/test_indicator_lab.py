@@ -151,3 +151,35 @@ def test_oos_verdict_rules():
                  {"规则": k, "区间": "样本外", "交易日": n, "年化超额(净)": m, "90%CI下限": lo, "90%CI上限": hi}]
     v = verdict(pd.DataFrame(rows)).set_index("规则")["判定"]
     assert v["I1"] == "维持" and v["I2"] == "失效" and v["I3"].startswith("样本外 100")
+
+
+def test_prune_incremental_matches_full_regression():
+    from indicator_lab.prune import DayData
+    rng = np.random.default_rng(4)
+    n_days, m, K = 3, 400, 5
+    U = rng.uniform(-0.5, 0.5, (n_days, m, K)).astype(np.float16)
+    uy = (0.3 * U[:, :, 0] - 0.2 * U[:, :, 2] + rng.normal(0, 0.3, (n_days, m))).astype(np.float64)
+    E = np.ones((n_days, m), bool)
+    tier = rng.integers(0, 4, (n_days, m)).astype(np.int8)
+    sec = rng.integers(0, 6, m)
+    dd = DayData(U, uy, E, tier, sec, np.arange(n_days))
+    inc = dd.incremental([0], K)
+    t, C, y, B = dd.days[1]
+    X = np.hstack([B, C[:, [0, 2]]]).astype(np.float64)
+    b, *_ = np.linalg.lstsq(X, y, rcond=None)
+    assert np.isclose(inc[1, 2], b[-1], atol=1e-6) and np.isnan(inc[1, 0])
+    assert np.allclose(dd.joint([0, 2])[1], b[-2:], atol=1e-6)
+
+
+def test_prune_stepwise_state_matches_direct():
+    from indicator_lab.prune import DayData
+    rng = np.random.default_rng(5)
+    n_days, m, K = 4, 300, 6
+    U = rng.uniform(-0.5, 0.5, (n_days, m, K)).astype(np.float16)
+    uy = (0.3 * U[:, :, 1] + rng.normal(0, 0.3, (n_days, m))).astype(np.float64)
+    dd = DayData(U, uy, np.ones((n_days, m), bool), rng.integers(0, 4, (n_days, m)).astype(np.int8),
+                 rng.integers(0, 5, m), np.arange(n_days))
+    dd.start()
+    dd.add(1)
+    dd.add(3)
+    assert np.allclose(dd.step_betas([1, 3], K), dd.incremental([1, 3], K), equal_nan=True, atol=1e-8)

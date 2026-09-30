@@ -237,3 +237,33 @@ def write_timing(out: Path, res: dict, cfg: dict, synthetic: bool = False) -> No
             secs.append((f"{g}：|IC| 最大的 20 项（不论是否显著）", tbl(d).head(20), "", pct))
     title = "指标实验室｜次要研究：指数与行业择时" + ("（零假设模拟）" if synthetic else "")
     save(out / ("06_次要研究_指数与行业择时.md" if not synthetic else "零假设自检.md"), md_doc(title, intro, secs))
+
+
+def write_pruning(out: Path, res: dict, title_suffix: str = "") -> None:
+    intro = ["> 协议：docs/indicators_pruning.md（先于计算提交）。逐步选择只用发现集（2012—2017）；验证集（2018—2022）确认与排除；"
+             "测试集（2023—2026）在主研究中已按单个指标打开过，这里只作一致性检查。"]
+    secs = []
+    fam = res["families"].copy()
+    fam["类别"] = ""
+    groups = fam.groupby("家族")["指标"].apply(lambda x: "、".join(x)).reset_index()
+    groups["个数"] = groups["指标"].str.count("、") + 1
+    groups = groups.sort_values("个数", ascending=False)
+    secs.append(("指标家族（发现集平均横截面相关 |ρ| ≥ 0.7 聚为一类）", groups[["个数", "指标"]],
+                 f"74 个指标聚成 {len(groups)} 个家族。", []))
+    for h, per in res["horizons"].items():
+        secs.append((f"持有期 {h} 日：逐步选择过程（发现集）", per["steps"], "每步加入“控制已选因子后增量 t 值”最大的指标；最大 |t| ≤ 3 时停止。", []))
+        if len(per["table"]):
+            secs.append((f"持有期 {h} 日：入选因子的联合回归", per["table"],
+                         "系数单位：标签秩分位 / 指标秩分位。确认 = 验证集 |t|>2 且与发现集同号。", []))
+        ex = per["excluded"]
+        if "判定" in ex:
+            cnt = ex["判定"].value_counts().to_dict()
+            keep = ex[ex["判定"].isin(["仍有独立信息", "边缘"])]
+            secs.append((f"持有期 {h} 日：未入选指标（验证集，控制全部入选因子后）",
+                         "；".join(f"{k} {v} 个" for k, v in cnt.items()) + "。" +
+                         ("\n\n仍有独立信息 / 边缘的：\n\n" + df_to_markdown(keep, pct_cols=[]) if len(keep) else ""), ""))
+        if "composite" in per:
+            secs.append((f"持有期 {h} 日：合成分数做多前 10%", per["composite"],
+                         "合成分数 = Σ 发现集联合回归系数 × 指标秩分位；口径与主研究相同（t+1 开盘买、涨跌停处理、相对股票池等权）。",
+                         ["年化超额(毛)", "年化超额(净0.3%)", "90%CI下限", "90%CI上限", "年化超额(净0.5%)", "换手/期"]))
+    save(out / f"第二轮_因子去冗余{title_suffix}.md", md_doc(f"指标实验室｜第二轮：因子去冗余{title_suffix}", intro, secs))
