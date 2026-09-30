@@ -31,6 +31,7 @@ STUDIES = {
     "F": ("f_regime", "市场环境与策略"),
     "G": ("g_exit", "退出规则"),
     "H": ("h_decompose", "拆解研究"),
+    "I": ("i_portfolio", "规律组合"),
 }
 
 
@@ -73,6 +74,8 @@ def cmd_run(args) -> int:
         mod = importlib.import_module(f".studies.{STUDIES[sid][0]}", __package__)
         t0 = time.time()
         print(f"[{sid}] {STUDIES[sid][1]} ...", end=" ", flush=True)
+        # 每个研究用独立的随机数流（由全局种子和研究编号决定），结果不受其他研究是否运行、运行顺序的影响
+        P.rng = np.random.default_rng([int(cfg["common"]["seed"]), ord(sid)])
         res = mod.run(P)
         path = res.save(out)
         print(f"{time.time() - t0:.1f}s → {path}")
@@ -94,6 +97,37 @@ def write_overview(results, out: Path, data: MarketData, cfg: dict, args) -> Non
         lines += [f"- {f}" for f in r.findings] or ["- （无结论）"]
         lines += ["", f"详见 [{r.study_id}_{r.title}.md]({r.study_id}_{r.title}.md)", ""]
     (out / "00_总览.md").write_text("\n".join(lines), encoding="utf-8")
+
+
+def cmd_monitor(args) -> int:
+    from .monitor import append_log, snapshot
+    from .studies.common import Panels
+    cfg = load_config(args.config, _parse_set(args.set))
+    data = load_data(args, cfg)
+    out = Path(args.out)
+    res, log = snapshot(Panels(data, cfg))
+    out.mkdir(parents=True, exist_ok=True)
+    md = res.to_markdown()
+    (out / f"snapshot_{data.dates[-1].date()}.md").write_text(md, encoding="utf-8")
+    (out / "latest.md").write_text(md, encoding="utf-8")
+    k = append_log(log, out / "signals_log.csv")
+    print("\n".join(res.findings))
+    print(f"快照：{out / 'latest.md'}；新增样本外信号 {k} 条 → {out / 'signals_log.csv'}")
+    return 0
+
+
+def cmd_scoreboard(args) -> int:
+    from .monitor import scoreboard
+    from .studies.common import Panels
+    cfg = load_config(args.config, _parse_set(args.set))
+    data = load_data(args, cfg)
+    out = Path(args.out)
+    res = scoreboard(Panels(data, cfg), out / "signals_log.csv")
+    out.mkdir(parents=True, exist_ok=True)
+    (out / "scoreboard.md").write_text(res.to_markdown(), encoding="utf-8")
+    print("\n".join(res.findings))
+    print(f"计分板：{out / 'scoreboard.md'}")
+    return 0
 
 
 def cmd_fetch(args) -> int:
@@ -191,6 +225,17 @@ def main(argv=None) -> int:
     q.add_argument("--weighting", default="liquidity", choices=["liquidity", "equal"], help="行业指数加权方式")
     q.add_argument("--scheme", default="sw1", choices=["sw1", "em"], help="行业口径：申万一级 / 东财86细分行业")
     q.set_defaults(func=cmd_import_qlib)
+
+    for name, func, hlp in (("monitor", cmd_monitor, "样本外跟踪：生成当日信号快照并记录新信号"),
+                            ("scoreboard", cmd_scoreboard, "样本外跟踪：统计已到期信号的实际表现")):
+        mp = sub.add_parser(name, help=hlp)
+        mp.add_argument("--data-dir", default=None)
+        mp.add_argument("--out", default="results/monitor")
+        mp.add_argument("--synthetic", action="store_true")
+        mp.add_argument("--seed", type=int, default=7)
+        mp.add_argument("--no-stocks", action="store_true")
+        mp.add_argument("--set", action="append")
+        mp.set_defaults(func=func)
 
     c = sub.add_parser("check", help="检查数据质量")
     c.add_argument("--data-dir", default=None)

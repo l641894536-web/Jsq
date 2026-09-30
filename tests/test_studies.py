@@ -11,11 +11,11 @@ import pytest
 from ashare_lab.config import load_config
 from ashare_lab.data.market import load_csv_dir
 from ashare_lab.data.synthetic import make_synthetic
-from ashare_lab.studies import a_lifecycle, b_crowding, c_crash, d_style, e_diffusion, f_regime, g_exit, h_decompose
+from ashare_lab.studies import a_lifecycle, b_crowding, c_crash, d_style, e_diffusion, f_regime, g_exit, h_decompose, i_portfolio
 from ashare_lab.studies.common import Panels
 
 FAST = {"common.n_perm": 400, "common.n_boot": 400}
-MODULES = [a_lifecycle, b_crowding, c_crash, d_style, e_diffusion, f_regime, g_exit, h_decompose]
+MODULES = [a_lifecycle, b_crowding, c_crash, d_style, e_diffusion, f_regime, g_exit, h_decompose, i_portfolio]
 
 
 @pytest.fixture(scope="module")
@@ -153,3 +153,28 @@ def test_h2_and_h3_tables(results):
     assert {"配对差", "未配对差", "证据"} <= set(t2.columns)
     t3 = res.table("H3 次日确认规律的异质性（各分组内：次日续跌 − 次日收涨 的趋势结束比例差）")
     assert set(t3["拆分"]) >= {"跌幅档", "时期"}
+
+
+def test_portfolio_weights_and_blacklists(planted):
+    P, _ = planted
+    ev1, black1 = i_portfolio.r1_blacklist(P)
+    # 回避名单 = 事件后 60 个交易日内（含当日）
+    code = ev1.sum().idxmax()
+    first = ev1.index[ev1[code].to_numpy()][0]
+    i = P.data.dates.get_loc(first)
+    assert black1[code].iloc[i] and black1[code].iloc[i + 59] and not black1[code].iloc[i - 1]
+    w = i_portfolio.eq_weights(pd.DataFrame({"a": [True, True], "b": [True, False]}))
+    assert w.iloc[0].tolist() == [0.5, 0.5] and w.iloc[1].tolist() == [1.0, 0.0]
+
+
+def test_monitor_and_scoreboard(tmp_path):
+    from ashare_lab.monitor import append_log, scoreboard, snapshot
+    data, _ = make_synthetic(seed=5, with_stocks=False)
+    P = Panels(data, load_config(overrides={**FAST, "oos.start": "2020-01-01"}))
+    res, log = snapshot(P)
+    assert res.findings and not log.empty and log["signal_id"].is_unique
+    path = tmp_path / "signals_log.csv"
+    assert append_log(log, path) == len(log)
+    assert append_log(log, path) == 0          # 同一信号只记一次
+    sb = scoreboard(P, path)
+    assert any(f.startswith("R1") for f in sb.findings)

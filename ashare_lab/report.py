@@ -76,6 +76,8 @@ class StudyResult:
         out = Path(out_dir)
         csv_dir = out / "csv"
         csv_dir.mkdir(parents=True, exist_ok=True)
+        for old in csv_dir.glob(f"{self.study_id}_*.csv"):
+            old.unlink()   # 清掉本研究上一次的表格（表格编号可能已变）
         path = out / f"{self.study_id}_{self.title}.md"
         path.write_text(self.to_markdown(), encoding="utf-8")
         for i, t in enumerate(self.tables, 1):

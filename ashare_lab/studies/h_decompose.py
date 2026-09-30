@@ -152,20 +152,20 @@ def h2_matched(P: Panels, res: StudyResult) -> None:
 
 
 # ---------------------------------------------------------------- H3
-def h3_nextday(P: Panels, res: StudyResult) -> None:
+def h3_nextday(P: Panels, res: StudyResult, col: str = "结果", suffix: str = "") -> None:
     c = P.cfg["decompose"]
     cc = P.cfg["common"]
     ev = build_events(P)
     if ev.empty:
         return
     base = f"跌幅≥{min(P.cfg['crash']['drop_thresholds']):.0%}"
-    e = ev[(ev["口径"] == base) & ev["结果"].isin([OPP, END, NEUTRAL]) & ev["次日涨跌"].notna()].reset_index(drop=True)
+    e = ev[(ev["口径"] == base) & ev[col].isin([OPP, END, NEUTRAL]) & ev["次日涨跌"].notna()].reset_index(drop=True)
     if len(e) < 10:
         return
     from .f_regime import regime_labels
     lab = regime_labels(P)["均线法"].shift(1)
     e["环境"] = [lab.get(d, np.nan) for d in e["date"]]
-    e["end"] = (e["结果"] == END).astype(float)
+    e["end"] = (e[col] == END).astype(float)
     e["down"] = e["次日涨跌"] < 0
     cl_all = stats.date_clusters(e["date"], 10, P.data.dates)
     end_a = e["end"].to_numpy(dtype=float)
@@ -216,20 +216,20 @@ def h3_nextday(P: Panels, res: StudyResult) -> None:
     if not it.empty:
         it["q值"] = stats.bh_adjust(it["p值"].to_numpy())
     pc = ["次日续跌→结束比例", "次日收涨→结束比例", "差值", "90%CI低", "90%CI高"]
-    res.add("H3 次日确认规律的异质性（各分组内：次日续跌 − 次日收涨 的趋势结束比例差）", t,
+    res.add("H3 次日确认规律的异质性（各分组内：次日续跌 − 次日收涨 的趋势结束比例差）" + suffix, t,
             f"样本：{base} 的强势板块大跌；按日期簇自助法；q 值为全表 BH 校正（探索性）。", pct_cols=pc)
     if not it.empty:
-        res.add("H3 组间差异（交互作用）", it, "差值之差 ≠ 0 表示该条件会改变次日确认的效果。",
+        res.add("H3 组间差异（交互作用）" + suffix, it, "差值之差 ≠ 0 表示该条件会改变次日确认的效果。",
                 pct_cols=["差值之差", "90%CI低", "90%CI高"])
     held = t[(t["差值"] > 0) & (t["90%CI低"] > 0)]
     res.findings.append(
-        f"H3 次日确认：在 {len(t)} 个分组中，差值为正且 90%CI 不含 0 的有 {len(held)} 个；差值为负的分组 {int((t['差值'] < 0).sum())} 个。"
+        f"H3{suffix} 次日确认：在 {len(t)} 个分组中，差值为正且 90%CI 不含 0 的有 {len(held)} 个；差值为负的分组 {int((t['差值'] < 0).sum())} 个。"
         + ("最强的分组：" + "；".join(f"{r['拆分']}·{r['分组']} {pct(r['差值'], 0)}（n={int(r['事件数'])}）"
                                    for _, r in t.nlargest(3, "差值").iterrows()) if len(t) else "")
     )
     if not it.empty:
         sig = it[it["p值"] < 0.10]
-        res.findings.append("H3 交互作用：" + ("；".join(f"{r['拆分']}（{r['比较']} = {pct(r['差值之差'], 0)}，p={r['p值']:.3f}，q={r['q值']:.3f}）"
+        res.findings.append(f"H3{suffix} 交互作用：" + ("；".join(f"{r['拆分']}（{r['比较']} = {pct(r['差值之差'], 0)}，p={r['p值']:.3f}，q={r['q值']:.3f}）"
                                                   for _, r in sig.iterrows()) if len(sig) else "没有任何条件在 p<0.10 水平上改变次日确认的效果——规律在各条件下大体一致。"))
 
 
@@ -245,6 +245,7 @@ def run(P: Panels) -> StudyResult:
     h1_by_type(P, res)
     h2_matched(P, res)
     h3_nextday(P, res)
+    h3_nextday(P, res, "结果(次日后)", "（修正口径：结果从次日之后计，第三轮）")
     res.caveats = [
         "H1、H3 为探索性拆分（分组多、样本少），只看方向与置信区间，不据此单独立规律。",
         "H2 的五分位分界用研究区间内全部日子计算，是评估用的对照组，不是交易信号。",

@@ -99,11 +99,46 @@ def add_features_outcomes(P: Panels, ev: pd.DataFrame) -> pd.DataFrame:
     unknown = out[f"{ed}日内RS新高"].isna() | pd.isna(exc_e)
     label[unknown.to_numpy()] = "未知(数据不足)"
     out["结果"] = label
+    # 修正口径（第三轮）：结果从次日收盘之后开始计，不含次日本身的涨跌。
+    # 用于“次日确认”类检验——否则次日续跌会机械地拉低之后的超额、让“趋势结束”更容易成立。
+    rec1 = (R.fwd_max(close, rd, 1) >= prev_close).astype(float).where(R.fwd_max(close, rd, 1).notna())
+    nh1 = (R.fwd_max(rs, ed, 1) > rs_prior_high).astype(float).where(R.fwd_max(rs, ed, 1).notna())
+    rec1_v, nh1_v = lookup(rec1, out), lookup(nh1, out)
+    exc_r1, exc_e1 = out[f"L1_{rd}日超额"].to_numpy(), out[f"L1_{ed}日超额"].to_numpy()
+    label1 = np.full(len(out), NEUTRAL, dtype=object)
+    opp1 = (rec1_v == 1) & (exc_r1 > 0)
+    end1 = (nh1_v == 0) & (exc_e1 < 0)
+    label1[opp1] = OPP
+    label1[end1 & ~opp1] = END
+    label1[np.isnan(nh1_v) | np.isnan(exc_e1)] = "未知(数据不足)"
+    out["结果(次日后)"] = label1
     # 次日确认（t+1 日才知道）
     nxt = ret.shift(-1)
     out["次日涨跌"] = lookup(nxt, out)
     out["行业"] = [P.data.name(k) for k in out["key"]]
     return out
+
+
+def _nextday_row(main: pd.DataFrame, col: str, name: str, P: Panels, cc: dict) -> dict | None:
+    known = main[main[col].isin([OPP, END, NEUTRAL]) & main["次日涨跌"].notna()].reset_index(drop=True)
+    if len(known) < 10:
+        return None
+    y = (known[col] == END).to_numpy(dtype=float)
+    dn = (known["次日涨跌"] < 0).to_numpy()
+    cl = stats.date_clusters(known["date"], 10, P.data.dates)
+
+    def gap(ix):
+        a, b = y[ix][dn[ix]], y[ix][~dn[ix]]
+        return float(a.mean() - b.mean()) if len(a) >= 2 and len(b) >= 2 else np.nan
+
+    cb = stats.cluster_bootstrap(gap, cl, n_boot=cc["n_boot"], rng=P.rng)
+    first = (known["date"] <= P.split).to_numpy()
+    g1, g2 = gap(np.flatnonzero(first)), gap(np.flatnonzero(~first))
+    cons = bool(np.isfinite(g1) and np.isfinite(g2) and g1 * g2 > 0)
+    k = cb["clusters"]
+    return {"检验": name, "差值": cb["stat"], "90%CI低": cb["lo"], "90%CI高": cb["hi"], "p值": cb["p"], "独立簇": k,
+            "前段差": g1, "后段差": g2, "两段同向": cons,
+            "证据": stats.GRADE_TEXT[stats.evidence_grade(k, cb["p"], cons, P.grade_rule)] if np.isfinite(cb["p"]) else ""}
 
 
 def feature_splits(ev: pd.DataFrame, features: list[str], rule, split, calendar, n_boot: int = 2000, rng=None) -> pd.DataFrame:
@@ -229,6 +264,7 @@ def run(P: Panels) -> StudyResult:
     nd_cb = stats.cluster_bootstrap_diff((main_known["结果"] == END).astype(float).to_numpy(),
                                          (main_known["次日涨跌"] < 0).to_numpy(),
                                          stats.date_clusters(main_known["date"], 10, P.data.dates), n_boot=cc["n_boot"], rng=P.rng)
+    fixed_row = _nextday_row(main, "结果(次日后)", "修正口径：结果从次日收盘之后计（第三轮）", P, cc)
     k1 = int(((main["次日涨跌"] >= 0) & (main["结果"] == END)).sum())
     n1 = int(((main["次日涨跌"] >= 0) & main["结果"].isin([OPP, END, NEUTRAL])).sum())
     k2 = int(((main["次日涨跌"] < 0) & (main["结果"] == END)).sum())
@@ -248,6 +284,8 @@ def run(P: Panels) -> StudyResult:
         "前段差": gaps[0], "后段差": gaps[1], "两段同向": nd_cons,
         "证据": stats.GRADE_TEXT[stats.evidence_grade(nd_ncl, nd_p, nd_cons, P.grade_rule)] if np.isfinite(nd_p) else "",
     }])
+    if fixed_row is not None:
+        nd_test = pd.concat([nd_test, pd.DataFrame([fixed_row])], ignore_index=True)
 
     # ---- 表格 ----
     res.add("大跌后 vs 强势不跌的随机日（L0：大跌当日收盘买入）",
@@ -308,6 +346,11 @@ def run(P: Panels) -> StudyResult:
         res.findings.append(
             f"次日确认：大跌次日收涨的趋势结束比例 {pct(k1 / n1, 0)}（n={n1}），次日续跌 {pct(k2 / n2, 0)}（n={n2}），"
             f"按簇自助法 p={nd_p:.3f}，前段差 {pct(gaps[0], 0)}/后段差 {pct(gaps[1], 0)}（{nd_test.iloc[0]['证据']}）。"
+        )
+    if fixed_row is not None:
+        res.findings.append(
+            f"次日确认（修正口径，结果从次日收盘之后计，排除次日本身的机械影响）：差值 {pct(fixed_row['差值'], 0)}"
+            f"（90%CI {pct(fixed_row['90%CI低'], 0)}~{pct(fixed_row['90%CI高'], 0)}，{fixed_row['证据']}）。"
         )
     res.caveats = [
         "申万一级行业单日 −7%/−10% 极少见（主要集中在 2015—2016 股灾、2024 年初微盘股踩踏），样本量决定了这里大部分结论只能是 C/D 级。"
