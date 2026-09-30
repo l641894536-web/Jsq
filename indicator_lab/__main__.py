@@ -165,6 +165,28 @@ def cmd_timing(a) -> None:
     print(t.groupby(["group", "h"])["sig"].sum().to_string())
 
 
+def cmd_track(a) -> None:
+    from . import oos
+    from .panel import load_panel
+    cfg = R.load_cfg(a.config)
+    out = Path(a.out)
+    (out / "csv").mkdir(parents=True, exist_ok=True)
+    d = cfg["data"]
+    P = load_panel(d["qlib_dir"], d["start"], d["industry_csv"], log=_log(None))
+    df = oos.rule_series(P, cfg)
+    df.to_csv(out / "csv" / "rule_daily.csv.gz", float_format="%.6f")
+    sm = oos.summarize(df, cfg)
+    sm.to_csv(out / "csv" / "rule_summary.csv", index=False, encoding="utf-8-sig")
+    vd = oos.verdict(sm)
+    intro = [f"- 规则与判定标准：docs/indicators_rules.md（2026-09-30 冻结）。数据截止 {P.dates[-1]:%Y-%m-%d}。",
+             "- I3 是看过测试集之后提出的候选规则：它在 2012—2026 的历史数字**不算证据**，只看“样本外”一行。"]
+    RP.save(out / "样本外跟踪.md", RP.md_doc("指标实验室｜冻结规则的样本外跟踪", intro,
+            [("判定", vd, "", []), ("各区间表现（持有 20 日，扣 0.3% 成本，相对股票池等权）", sm, "",
+              ["年化超额(净)", "90%CI下限", "90%CI上限", "换手/期"])]))
+    print(vd.to_string())
+    print(sm.round(4).to_string())
+
+
 def main(argv=None) -> None:
     p = argparse.ArgumentParser(prog="indicator_lab")
     p.add_argument("--config", default="config/indicators.toml")
@@ -183,8 +205,10 @@ def main(argv=None) -> None:
     t = sub.add_parser("timing")
     t.add_argument("--synthetic", type=int, default=None, help="零假设模拟面板的随机种子（误报率自检）")
     t.add_argument("--out", default=DEFAULT_OUT)
+    k = sub.add_parser("track")
+    k.add_argument("--out", default="results/indicators_oos")
     a = p.parse_args(argv)
-    {"calibrate": cmd_calibrate, "run": cmd_run, "timing": cmd_timing}[a.cmd](a)
+    {"calibrate": cmd_calibrate, "run": cmd_run, "timing": cmd_timing, "track": cmd_track}[a.cmd](a)
 
 
 if __name__ == "__main__":

@@ -140,3 +140,14 @@ def test_top_selection_discrete_signal():
     R[:, :3] = 0.05
     bt = backtest_rows(sd, False, E, E, np.zeros((n, m), bool), R, np.zeros((n, m), bool), h=1, top_q=0.1)
     assert np.allclose(bt["n_hold"], 3) and np.allclose(bt["port"], 0.05)
+
+
+def test_oos_verdict_rules():
+    from indicator_lab.oos import verdict
+    rows = []
+    for k, (n, m, lo, hi) in {"I1": (300, 0.05, -0.01, 0.1), "I2": (300, -0.05, -0.08, -0.01), "I3": (100, 0.1, 0, 0.2)}.items():
+        rows += [{"规则": k, "区间": "验证集", "交易日": 1000, "年化超额(净)": 0.02},
+                 {"规则": k, "区间": "测试集", "交易日": 800, "年化超额(净)": 0.02},
+                 {"规则": k, "区间": "样本外", "交易日": n, "年化超额(净)": m, "90%CI下限": lo, "90%CI上限": hi}]
+    v = verdict(pd.DataFrame(rows)).set_index("规则")["判定"]
+    assert v["I1"] == "维持" and v["I2"] == "失效" and v["I3"].startswith("样本外 100")
