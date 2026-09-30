@@ -142,6 +142,29 @@ def cmd_run(a) -> None:
         log("完成：最终测试集")
 
 
+def cmd_timing(a) -> None:
+    from .timing import run_timing
+    cfg = R.load_cfg(a.config)
+    out = Path(a.out) / ("timing_null" if a.synthetic is not None else "timing")
+    (out / "csv").mkdir(parents=True, exist_ok=True)
+    log = _log(None)
+    if a.synthetic is not None:
+        from .synthetic import synthetic_panel
+        P = synthetic_panel(n_stocks=1500, seed=a.synthetic)
+        res = run_timing(P, cfg, real=False, log=log)
+    else:
+        from .panel import load_panel
+        d = cfg["data"]
+        P = load_panel(d["qlib_dir"], d["start"], d["industry_csv"], log=log)
+        res = run_timing(P, cfg, real=True, log=log)
+    res["tests"].to_csv(out / "csv" / "timing_tests.csv", index=False, encoding="utf-8-sig")
+    if len(res["timing"]):
+        res["timing"].to_csv(out / "csv" / "timing_backtest.csv.gz", index=False, encoding="utf-8-sig", float_format="%.5f")
+    RP.write_timing(out, res, cfg, synthetic=a.synthetic is not None)
+    t = res["tests"]
+    print(t.groupby(["group", "h"])["sig"].sum().to_string())
+
+
 def main(argv=None) -> None:
     p = argparse.ArgumentParser(prog="indicator_lab")
     p.add_argument("--config", default="config/indicators.toml")
@@ -157,8 +180,11 @@ def main(argv=None) -> None:
     r.add_argument("--max-stocks", type=int, default=None)
     r.add_argument("--out", default=DEFAULT_OUT)
     r.add_argument("--cache", default="data/indicator_cache/daily_dv.pkl")
+    t = sub.add_parser("timing")
+    t.add_argument("--synthetic", type=int, default=None, help="零假设模拟面板的随机种子（误报率自检）")
+    t.add_argument("--out", default=DEFAULT_OUT)
     a = p.parse_args(argv)
-    {"calibrate": cmd_calibrate, "run": cmd_run}[a.cmd](a)
+    {"calibrate": cmd_calibrate, "run": cmd_run, "timing": cmd_timing}[a.cmd](a)
 
 
 if __name__ == "__main__":

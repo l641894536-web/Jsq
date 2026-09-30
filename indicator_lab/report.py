@@ -199,3 +199,41 @@ def write_test(out: Path, f: pd.DataFrame, meta: dict) -> None:
     secs = [("验证集显著信号在最终测试集上的表现", tbl, "测试集：2023-01 ~ 2026-09，只打开一次。方向沿用发现集。", pct),
             ("参考：验证集不显著、但测试集 |t|>3 的（不改变判定，只作记录）", rev_tbl, "", [])]
     save(out / "05_最终测试集.md", md_doc("指标实验室｜第6步 最终测试集", intro, secs))
+
+
+def write_timing(out: Path, res: dict, cfg: dict, synthetic: bool = False) -> None:
+    t = res["tests"].copy()
+    tim = res["timing"]
+    sc = cfg["secondary"]
+    intro = ["> 次要研究（协议第 6 节），**只作参考，不参与主研究判定**。" + ("**零假设模拟数据**，用于检查误报率。" if synthetic else ""),
+             f"- 方向：{sc['direction_period'][0]} ~ {sc['direction_period'][1]} 的平均时间序列 IC 符号；评估：{sc['eval_period'][0]} ~ 2026-09。",
+             f"- 标的：宽基 {len(res['groups']['宽基'])} 个（{'、'.join(res['groups']['宽基'])}），行业 {len(res['groups']['行业'])} 个（申万一级等权合成）。",
+             f"- 显著 = BH q<0.05（共 {len(t)} 项）且与定方向期同号；p 值取“同一平移量的循环平移检验”与“按 N/h 个独立样本的 t 检验”中较大者。"]
+    cnt = t.groupby(["group", "h"])["sig"].agg(["sum", "count"]).reset_index()
+    cnt.columns = ["组", "持有期(日)", "显著个数", "检验数"]
+    secs = [("显著个数", cnt, "", [])]
+    sig = t[t["sig"]].copy()
+    if len(tim):
+        agg = tim.groupby(["signal", "h", "group"]).agg(
+            择时夏普=("择时夏普", "mean"), 持有夏普=("持有夏普", "mean"), 择时年化=("择时年化", "mean"), 持有年化=("持有年化", "mean"),
+            择时最大回撤=("择时最大回撤", "mean"), 持有最大回撤=("持有最大回撤", "mean"), 平均仓位=("平均仓位", "mean"), 年换手=("年换手", "mean"),
+            夏普更高占比=("择时夏普", lambda x: np.nan)).reset_index()
+        win = tim.assign(w=tim["择时夏普"] > tim["持有夏普"]).groupby(["signal", "h", "group"])["w"].mean().reset_index()
+        agg["夏普更高占比"] = win["w"].to_numpy()
+        t = t.merge(agg, on=["signal", "h", "group"], how="left")
+        sig = t[t["sig"]].copy()
+    def tbl(d):
+        d = d.reindex(d["ic"].abs().sort_values(ascending=False).index)
+        cols = {"signal": "指标", "group": "组", "h": "持有期(日)", "dir_ic": "定方向期 IC", "ic": "评估期 IC", "same_sign_frac": "同号标的占比",
+                "p": "p值", "q": "q值"}
+        extra = [c for c in ("择时夏普", "持有夏普", "夏普更高占比", "择时年化", "持有年化", "择时最大回撤", "持有最大回撤", "平均仓位", "年换手") if c in d]
+        return d[list(cols) + extra].rename(columns=cols)
+    pct = ["同号标的占比", "夏普更高占比", "择时年化", "持有年化", "择时最大回撤", "持有最大回撤", "平均仓位"]
+    secs.append(("显著的 指标×持有期×组", tbl(sig) if len(sig) else "（无）",
+                 "IC 为组内各标的时间序列 IC 的平均；择时指标为组内各标的的平均（评估期）。", pct))
+    for g in ("宽基", "行业"):
+        d = t[t.group == g]
+        if len(d):
+            secs.append((f"{g}：|IC| 最大的 20 项（不论是否显著）", tbl(d).head(20), "", pct))
+    title = "指标实验室｜次要研究：指数与行业择时" + ("（零假设模拟）" if synthetic else "")
+    save(out / ("06_次要研究_指数与行业择时.md" if not synthetic else "零假设自检.md"), md_doc(title, intro, secs))
