@@ -57,6 +57,7 @@ class MarketData:
     stock_profit: pd.DataFrame | None = None     # code, report_date, ann_date, net_profit
     source: str = "csv"
     notes: list[str] = field(default_factory=list)
+    sector_parent: dict[str, str] = field(default_factory=dict)  # 细分行业 → 申万一级（细口径数据才有）
 
     @property
     def dates(self) -> pd.DatetimeIndex:
@@ -221,12 +222,20 @@ def load_csv_dir(data_dir: str | Path, cfg: dict) -> MarketData:
             prof[c] = pd.to_datetime(prof[c])
 
     groups = {g: [str(c) for c in m] for g, m in cfg.get("groups", {}).items()}
+    parent = {}
+    if (data_dir / "groups.json").exists():
+        import json
+        groups = json.loads((data_dir / "groups.json").read_text(encoding="utf-8"))
+        notes.append("主题组合按数据目录中的 groups.json（细分行业口径）")
+    if (data_dir / "sector_parent.json").exists():
+        import json
+        parent = json.loads((data_dir / "sector_parent.json").read_text(encoding="utf-8"))
     return MarketData(
         sector_close=sector_close, sector_amount=sector_amount, sector_names=names,
         market_close=market_close, total_amount=total_amount,
         index_close=index_close, index_amount=index_amount, groups=groups,
         macro=macro, stocks=stocks, stock_industry=ind, stock_profit=prof,
-        source=f"csv:{data_dir}", notes=notes,
+        source=f"csv:{data_dir}", notes=notes, sector_parent=parent,
     )
 
 
@@ -248,5 +257,5 @@ def restrict(data: MarketData, start=None, end=None) -> MarketData:
         index_amount=data.index_amount.loc[sl], groups=data.groups,
         macro=data.macro.loc[sl] if data.macro is not None else None,
         stocks=stocks, stock_industry=data.stock_industry, stock_profit=data.stock_profit,
-        source=data.source, notes=list(data.notes),
+        source=data.source, notes=list(data.notes), sector_parent=dict(data.sector_parent),
     )

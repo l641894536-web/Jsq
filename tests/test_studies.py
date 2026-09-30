@@ -11,11 +11,11 @@ import pytest
 from ashare_lab.config import load_config
 from ashare_lab.data.market import load_csv_dir
 from ashare_lab.data.synthetic import make_synthetic
-from ashare_lab.studies import a_lifecycle, b_crowding, c_crash, d_style, e_diffusion, f_regime
+from ashare_lab.studies import a_lifecycle, b_crowding, c_crash, d_style, e_diffusion, f_regime, g_exit, h_decompose
 from ashare_lab.studies.common import Panels
 
 FAST = {"common.n_perm": 400, "common.n_boot": 400}
-MODULES = [a_lifecycle, b_crowding, c_crash, d_style, e_diffusion, f_regime]
+MODULES = [a_lifecycle, b_crowding, c_crash, d_style, e_diffusion, f_regime, g_exit, h_decompose]
 
 
 @pytest.fixture(scope="module")
@@ -106,7 +106,7 @@ def test_null_data_has_few_false_discoveries():
     data, _ = make_synthetic(seed=11, null=True, stocks_per_sector=6)
     P = Panels(data, load_config(overrides=FAST))
     total = strong = 0
-    for m in (b_crowding, c_crash, d_style, e_diffusion):
+    for m in (b_crowding, c_crash, d_style, e_diffusion, g_exit, h_decompose):
         for t in m.run(P).tables:
             if "证据" in t.df.columns:
                 g = t.df["证据"].astype(str)
@@ -128,3 +128,28 @@ def test_csv_roundtrip_loader(tmp_path):
     loaded.groups = data.groups
     res = a_lifecycle.run(Panels(loaded, cfg))
     assert res.findings
+
+
+def test_exit_rules_trailing_stop_and_fixed_hold():
+    from types import SimpleNamespace
+    dates = pd.bdate_range("2020-01-01", periods=400)
+    path = np.r_[np.linspace(1.0, 1.5, 101), np.linspace(1.5, 1.2, 100)[1:], np.full(200, 1.2)]
+    rs = pd.DataFrame({"x": path}, index=dates)
+    P = SimpleNamespace(rs=rs, share_pct=pd.DataFrame({"x": 0.5}, index=dates),
+                        data=SimpleNamespace(dates=dates), cfg={"exit": {"entry_crowd_pct": 0.95}})
+    rules = {"固定持有50日": 50, "回撤10%": ("trail", 0.10)}
+    out = g_exit.simulate(P, "x", 0, rules, lag=1, window=250)
+    t0 = 1
+    assert out["固定持有50日"] == pytest.approx(path[t0 + 50] / path[t0] - 1)
+    # 高点 1.5 在第 100 日，回撤到 1.35 以下的第一天确认，次日退出
+    hit = int(np.flatnonzero(path[101:] <= 1.35)[0]) + 101
+    assert out["回撤10%#天数"] == hit + 1 - t0
+    assert out["回撤10%"] == pytest.approx(path[hit + 1] / path[t0] - 1)
+
+
+def test_h2_and_h3_tables(results):
+    res = results["h_decompose"]
+    t2 = res.table("H2 占比创 99% 分位后的跑输：控制动量后还剩多少（H-B5）")
+    assert {"配对差", "未配对差", "证据"} <= set(t2.columns)
+    t3 = res.table("H3 次日确认规律的异质性（各分组内：次日续跌 − 次日收涨 的趋势结束比例差）")
+    assert set(t3["拆分"]) >= {"跌幅档", "时期"}

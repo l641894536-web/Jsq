@@ -165,6 +165,30 @@ def cluster_bootstrap_diff(y, group, clusters, n_boot: int = 2000, alpha: float 
     return out
 
 
+def cluster_bootstrap(fn, clusters, n_boot: int = 2000, alpha: float = 0.10, rng=None) -> dict:
+    """通用的按簇自助法：fn(行下标数组) → 统计量。返回统计量、置信区间、双侧 p 值（相对 0）。"""
+    clusters = np.asarray(clusters)
+    uniq, inv = np.unique(clusters, return_inverse=True)
+    groups = [np.flatnonzero(inv == k) for k in range(len(uniq))]
+    stat = fn(np.arange(len(clusters)))
+    out = {"stat": float(stat) if np.isfinite(stat) else np.nan, "lo": np.nan, "hi": np.nan, "p": np.nan, "clusters": len(uniq)}
+    if len(uniq) < 4 or not np.isfinite(stat):
+        return out
+    rng = rng if rng is not None else np.random.default_rng(0)
+    draws = []
+    for _ in range(n_boot):
+        pick = rng.integers(0, len(uniq), size=len(uniq))
+        v = fn(np.concatenate([groups[k] for k in pick]))
+        if np.isfinite(v):
+            draws.append(v)
+    if len(draws) < 50:
+        return out
+    d = np.asarray(draws)
+    out["lo"], out["hi"] = (float(v) for v in np.quantile(d, [alpha / 2, 1 - alpha / 2]))
+    out["p"] = float(min(1.0, 2 * min(np.mean(d <= 0), np.mean(d >= 0)) + 1 / len(d)))
+    return out
+
+
 def shift_test(values: pd.DataFrame, events: pd.DataFrame, eligible: pd.DataFrame | None = None,
                n_perm: int = 2000, rng=None, min_shift: int = 60) -> dict:
     """整体时间平移置换检验（比逐个随机抽日更保守）。

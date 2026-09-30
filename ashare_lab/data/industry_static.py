@@ -125,8 +125,8 @@ def build_static_industry(out_csv: str | Path, work_dir: str | Path, log=print) 
     ab["sector"] = ab["sw2014"].map(SW2014_TO_SW1)
     ab = ab[~ab["code"].isin(em["code"])].drop_duplicates("code")
     both = pd.concat([
-        em.assign(source="hikyuu_em_2024")[["code", "sector", "source"]],
-        ab.assign(source="abupy_sw2014_2017")[["code", "sector", "source"]],
+        em.assign(source="hikyuu_em_2024")[["code", "sector", "source", "em_industry"]],
+        ab.assign(source="abupy_sw2014_2017", em_industry=None)[["code", "sector", "source", "em_industry"]],
     ], ignore_index=True)
     both["start_date"] = "2000-01-01"
     Path(out_csv).parent.mkdir(parents=True, exist_ok=True)

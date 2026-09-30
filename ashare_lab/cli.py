@@ -29,6 +29,8 @@ STUDIES = {
     "D": ("d_style", "风格切换"),
     "E": ("e_diffusion", "补涨扩散"),
     "F": ("f_regime", "市场环境与策略"),
+    "G": ("g_exit", "退出规则"),
+    "H": ("h_decompose", "拆解研究"),
 }
 
 
@@ -109,7 +111,8 @@ def cmd_import_qlib(args) -> int:
     ind = Path(args.industry) if args.industry else out / "stock_industry_static.csv"
     if not ind.exists():
         build_static_industry(ind, out / "_src")
-    build_standard_dir(args.qlib_dir, ind, out, start=args.start, weighting=args.weighting)
+    build_standard_dir(args.qlib_dir, ind, out, start=args.start, weighting=args.weighting,
+                       scheme=args.scheme, groups_sw1=cfg.get("groups", {}))
     print(f"完成：{out}。下一步：python -m ashare_lab --config {args.config or 'config/qlib.toml'} check")
     return 0
 
@@ -186,6 +189,7 @@ def main(argv=None) -> int:
     q.add_argument("--industry", default=None, help="个股→申万一级映射 CSV；缺省时从 PyPI 包数据自动生成")
     q.add_argument("--start", default="2010-01-01")
     q.add_argument("--weighting", default="liquidity", choices=["liquidity", "equal"], help="行业指数加权方式")
+    q.add_argument("--scheme", default="sw1", choices=["sw1", "em"], help="行业口径：申万一级 / 东财86细分行业")
     q.set_defaults(func=cmd_import_qlib)
 
     c = sub.add_parser("check", help="检查数据质量")

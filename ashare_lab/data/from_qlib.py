@@ -81,8 +81,13 @@ def weighted_index(ret: np.ndarray, w: np.ndarray, cols: np.ndarray) -> np.ndarr
 
 def build_standard_dir(qdir: str | Path, industry_csv: str | Path, out_dir: str | Path,
                        start: str = "2010-01-01", stock_start: str = "2012-01-01", weighting: str = "liquidity",
+                       scheme: str = "sw1", groups_sw1: dict | None = None, min_members: int = 10,
                        log=print) -> Path:
-    """weighting: "liquidity"（过去250日平均成交额加权，默认）或 "equal"（等权，用于稳健性检验）。"""
+    """weighting: "liquidity"（过去250日平均成交额加权，默认）或 "equal"（等权，用于稳健性检验）。
+
+    scheme: "sw1"（申万一级 31 个行业）或 "em"（东方财富 86 个细分行业，成分股少于 min_members 的不参与）。
+    em 口径下会另写 groups.json（主题组合→细分行业代码）和 sector_parent.json（细分行业→申万一级）。
+    """
     qdir, out = Path(qdir), Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
     cal_full = read_calendar(qdir)
@@ -138,7 +143,30 @@ def build_standard_dir(qdir: str | Path, industry_csv: str | Path, out_dir: str 
     ind = pd.read_csv(industry_csv, dtype={"code": str, "sector": str})
     ind["code"] = ind["code"].str.zfill(6)
     sec_of = ind.drop_duplicates("code", keep="last").set_index("code")["sector"]
-    sector = np.array([sec_of.get(c, "") for c in codes], dtype=object)
+    sw1 = np.array([sec_of.get(c, "") for c in codes], dtype=object)
+    from .market import SW1_NAMES
+    sector_names = dict(SW1_NAMES)
+    sector = sw1
+    if scheme == "em":
+        import json
+
+        from .industry_static import EM_TO_SW1
+        if "em_industry" not in ind:
+            raise ValueError("em 口径需要行业映射里有 em_industry 列（重新生成 stock_industry_static.csv）")
+        em_of = ind.dropna(subset=["em_industry"]).drop_duplicates("code", keep="last").set_index("code")["em_industry"]
+        em_name = np.array([em_of.get(c, "") for c in codes], dtype=object)
+        all_names = sorted(set(em_name) - {""})
+        code_of = {nm: f"EM{i + 1:02d}" for i, nm in enumerate(all_names)}
+        kept = [nm for nm in all_names if (em_name == nm).sum() >= min_members]
+        dropped = sorted(set(all_names) - set(kept))
+        if dropped:
+            log(f"  成分股少于 {min_members} 只、不参与的细分行业：{dropped}")
+        sector = np.array([code_of[nm] if nm in kept else "" for nm in em_name], dtype=object)
+        sector_names = {code_of[nm]: nm for nm in kept}
+        parent = {code_of[nm]: EM_TO_SW1[nm] for nm in kept if nm in EM_TO_SW1}
+        groups_out = {g: sorted(c for c, p in parent.items() if p in set(members)) for g, members in (groups_sw1 or {}).items()}
+        (out / "groups.json").write_text(json.dumps(groups_out, ensure_ascii=False, indent=1), encoding="utf-8")
+        (out / "sector_parent.json").write_text(json.dumps(parent, ensure_ascii=False, indent=1), encoding="utf-8")
     sectors = sorted(s for s in set(sector) if s)
     tot_amt = np.nansum(amount, axis=1)
     mapped_amt = np.nansum(np.where(sector != "", amount, np.nan), axis=1)
@@ -146,19 +174,18 @@ def build_standard_dir(qdir: str | Path, industry_csv: str | Path, out_dir: str 
     log("  已分类个股成交额覆盖率（按年均值）：" + "，".join(f"{y}:{v:.0%}" for y, v in cov.groupby(cov.index.year).mean().items()))
 
     # ---- 行业日线 ----
-    from .market import SW1_NAMES
     sec_rows = []
     for sc in sectors:
         cols = np.flatnonzero(sector == sc)
         r = weighted_index(ret, liq, cols)
         lvl = 1000 * np.cumprod(1 + np.nan_to_num(r, nan=0.0))
         amt = np.nansum(amount[:, cols], axis=1)
-        sec_rows.append(pd.DataFrame({"date": cal, "code": sc, "name": SW1_NAMES.get(sc, sc), "close": lvl, "amount": amt}))
+        sec_rows.append(pd.DataFrame({"date": cal, "code": sc, "name": sector_names.get(sc, sc), "close": lvl, "amount": amt}))
     sec_df = pd.concat(sec_rows, ignore_index=True)
     sec_df.to_csv(out / "sector_daily.csv", index=False)
     pd.DataFrame({"date": cal, "amount": tot_amt}).to_csv(out / "market_amount.csv", index=False)
     cov.rename("coverage").rename_axis("date").reset_index().to_csv(out / "industry_coverage.csv", index=False)
-    log(f"  写入 sector_daily.csv：{len(sectors)} 个行业")
+    log(f"  写入 sector_daily.csv：{len(sectors)} 个行业（口径 {scheme}）")
 
     # ---- 指数 ----
     idx_rows = []
@@ -169,7 +196,7 @@ def build_standard_dir(qdir: str | Path, industry_csv: str | Path, out_dir: str 
         c = read_bin(d / "close.day.bin", n_full)[keep]
         a = read_bin(d / "amount.day.bin", n_full)[keep] * 1000.0
         idx_rows.append(pd.DataFrame({"date": cal, "code": code, "close": c, "amount": a}))
-    mapped = np.flatnonzero(sector != "")
+    mapped = np.flatnonzero(sw1 != "")
 
     def add(code, cols, weights=liq):
         r = weighted_index(ret, weights, cols)
@@ -178,8 +205,8 @@ def build_standard_dir(qdir: str | Path, industry_csv: str | Path, out_dir: str 
                                       "amount": np.nansum(amount[:, cols], axis=1)}))
 
     add("ALLA", mapped)
-    add("GROWTH", np.flatnonzero(np.isin(sector, GROWTH_SECTORS)))
-    add("VALUE", np.flatnonzero(np.isin(sector, VALUE_SECTORS)))
+    add("GROWTH", np.flatnonzero(np.isin(sw1, GROWTH_SECTORS)))
+    add("VALUE", np.flatnonzero(np.isin(sw1, VALUE_SECTORS)))
     in300 = read_membership(qdir, "csi300", cal, codes)
     in500 = read_membership(qdir, "csi500", cal, codes)
     in1000 = read_membership(qdir, "csi1000", cal, codes)
