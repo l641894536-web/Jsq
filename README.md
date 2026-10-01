@@ -27,6 +27,8 @@ python -m jsq discover --save
 
 # 2. 下载数据（K线 + 溢价指数K线 + 资金费率历史），可重复运行做增量更新
 python -m jsq fetch --start 2023-01-01
+#    --source vision：用币安历史数据站（按月 zip，不受地区限制，数据截至上个完整月）
+#    默认 auto：连得上币安 API 就用 API，否则自动改用历史数据站
 
 # 3. 回测所有策略 × 标的，生成报告 results/<时间>/report.html
 python -m jsq backtest

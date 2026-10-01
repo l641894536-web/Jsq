@@ -19,26 +19,62 @@ def _client(a):
     return BinanceClient(proxy=a.proxy)
 
 
+def _source(a) -> str:
+    """auto：能连上币安 API 就用 API，否则用历史数据站。"""
+    src = getattr(a, "source", "auto")
+    if src != "auto":
+        return src
+    import requests
+    proxies = {"http": a.proxy, "https": a.proxy} if a.proxy else None
+    try:
+        r = requests.get("https://fapi.binance.com/fapi/v1/time", timeout=8, proxies=proxies)
+        r.raise_for_status()
+        return "api"
+    except Exception as e:  # noqa: BLE001
+        log.info("币安 API 不可用（%s），改用历史数据站 data.binance.vision（数据截至上个完整月）", str(e)[:80])
+        return "vision"
+
+
 def cmd_discover(a):
-    from .binance import classify_symbol
-    df = _client(a).perpetual_symbols()
-    df["category"] = [classify_symbol(b, u) for b, u in zip(df["base"], df["underlying_type"])]
-    df = df[(df["status"] == "TRADING")]
-    tradfi = df[df["category"] != ""].sort_values(["category", "symbol"])
-    pd.set_option("display.width", 200)
-    print(f"共 {len(df)} 个 USDT 永续在交易，其中非加密/TradFi 相关 {len(tradfi)} 个：\n")
-    print(tradfi[["symbol", "category", "underlying_type", "underlying_sub_type", "onboard"]].to_string(index=False))
+    if _source(a) == "vision":
+        from .vision import make_session, probe_symbols
+        df = probe_symbols(make_session(a.proxy))
+        ok = df[df["available"]]
+        print(f"历史数据站 {df['month'].iloc[0]} 有数据的合约（共探测 {len(df)} 个候选）：\n")
+        print(ok[["symbol", "category"]].to_string(index=False))
+        keep = ok["symbol"].tolist()
+    else:
+        from .binance import classify_symbol
+        df = _client(a).perpetual_symbols()
+        df["category"] = [classify_symbol(b, u) for b, u in zip(df["base"], df["underlying_type"])]
+        df = df[(df["status"] == "TRADING")]
+        tradfi = df[df["category"] != ""].sort_values(["category", "symbol"])
+        pd.set_option("display.width", 200)
+        print(f"共 {len(df)} 个 USDT 永续在交易，其中非加密/TradFi 相关 {len(tradfi)} 个：\n")
+        print(tradfi[["symbol", "category", "underlying_type", "underlying_sub_type", "onboard"]].to_string(index=False))
+        keep = [s for s in dict.fromkeys(["BTCUSDT", "ETHUSDT"] + tradfi["symbol"].tolist()) if s in set(df["symbol"])]
     if a.save:
-        keep = ["BTCUSDT", "ETHUSDT"] + tradfi["symbol"].tolist()
-        keep = [s for s in dict.fromkeys(keep) if s in set(df["symbol"])]
         SYMBOLS_FILE.write_text("\n".join(keep) + "\n")
         print(f"\n已写入 {SYMBOLS_FILE}（{len(keep)} 个），可手动编辑。之后命令默认使用该列表。")
 
 
 def cmd_fetch(a):
+    symbols = load_symbols(a.symbols)
+    if _source(a) == "vision":
+        from .vision import make_session, update_symbol_vision
+        sess = make_session(a.proxy)
+        for s in symbols:
+            try:
+                n = update_symbol_vision(sess, s, a.interval, a.start, Path(a.data_dir))
+                if not n["klines"]:
+                    log.warning("%s: 历史数据站没有该合约（代码不对或上线不足一个月）", s)
+                else:
+                    log.info("%s: K线 %d 根, 溢价 %d 根, 资金费 %d 条", s, n["klines"], n["premium"], n["funding"])
+            except Exception as e:  # noqa: BLE001
+                log.error("%s 下载失败: %s", s, e)
+        return
     from .data import update_symbol
     client = _client(a)
-    symbols = load_symbols(a.symbols)
     try:
         listed = set(client.perpetual_symbols()["symbol"])
         missing = [s for s in symbols if s not in listed]
@@ -167,6 +203,8 @@ def main(argv=None):
         if net:
             sp.add_argument("--proxy", help="HTTP 代理，如 http://127.0.0.1:7890（也可设 HTTPS_PROXY 环境变量）")
             sp.add_argument("--start", default=DEFAULT_START, help="下载起始日期")
+            sp.add_argument("--source", choices=["auto", "api", "vision"], default="auto",
+                            help="数据源：api=币安实时接口，vision=币安历史数据站(按月,不受地区限制)，auto=自动")
         if bt:
             sp.add_argument("--strategies", help="只测这些策略，逗号分隔（list 查看）")
             sp.add_argument("--fee", type=float, default=0.0005, help="单边手续费，默认 0.0005")
@@ -180,6 +218,7 @@ def main(argv=None):
 
     sp = sub.add_parser("discover", help="列出币安上黄金/白银/原油/美股等合约代码")
     sp.add_argument("--proxy")
+    sp.add_argument("--source", choices=["auto", "api", "vision"], default="auto")
     sp.add_argument("--save", action="store_true", help="写入 symbols.txt")
     sp.set_defaults(func=cmd_discover)
 
