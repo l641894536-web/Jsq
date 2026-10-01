@@ -9,13 +9,19 @@ INTERVAL_MINUTES = {
 }
 INTERVAL_MS = {k: v * 60_000 for k, v in INTERVAL_MINUTES.items()}
 
-# 默认标的。币安 TradFi 合约的具体代码以交易所为准：先运行 `python -m jsq discover --save`
-# 把交易所实际存在的标的写进 symbols.txt，之后所有命令默认读它。
+# 默认标的：2026-09 在币安历史数据站核实存在的 USDT 永续合约。
+# 注意 SPXUSDT 是 SPX6900 meme 币、DIAUSDT 是 DIA 预言机代币，都不是美股指数，已排除。
+# 运行 `python -m jsq discover --save` 可重新探测并写入 symbols.txt（优先于此列表）。
 DEFAULT_SYMBOLS = [
     "BTCUSDT", "ETHUSDT",
-    "PAXGUSDT",              # 黄金代币合约，历史比 XAUUSDT 长，可做黄金的长样本参照
-    "XAUUSDT", "XAGUSDT",    # 黄金、白银
-    "TSLAUSDT", "NVDAUSDT", "AAPLUSDT", "MSTRUSDT", "COINUSDT",
+    # 贵金属：PAXG 历史最长（2025-03 起），可做黄金长样本参照
+    "XAUUSDT", "PAXGUSDT", "XAUTUSDT", "XAGUSDT", "XPTUSDT", "XPDUSDT",
+    # 能源：CL=WTI 原油，BZ=布伦特原油
+    "CLUSDT", "BZUSDT", "NATGASUSDT",
+    # 美股 / ETF
+    "SPYUSDT", "QQQUSDT", "IWMUSDT", "AAPLUSDT", "MSFTUSDT", "NVDAUSDT", "GOOGLUSDT", "AMZNUSDT",
+    "METAUSDT", "TSLAUSDT", "NFLXUSDT", "AMDUSDT", "AVGOUSDT", "ORCLUSDT", "INTCUSDT", "BABAUSDT",
+    "COINUSDT", "MSTRUSDT", "HOODUSDT", "PLTRUSDT", "CRCLUSDT",
 ]
 SYMBOLS_FILE = Path("symbols.txt")
 

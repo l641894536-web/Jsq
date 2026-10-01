@@ -9,25 +9,29 @@ import numpy as np
 import pandas as pd
 
 from .analysis import FEATURE_CN
-from .config import EXIT_PROFILES
+from .config import EXIT_PROFILES, TRADFI_KEYWORDS
 
 EXIT_CN = {"sig": "信号进出", "sl3": "3ATR止损", "sl3tp6": "3ATR止损+6ATR止盈", "trail4": "4ATR移动止损",
            "sl4_24h": "4ATR止损+最长24h", "sl4_72h": "4ATR止损+最长72h"}
 
+DARK = "--bg:#0f1113;--fg:#e6e8ea;--mut:#9aa1a8;--card:#171a1d;--line:#262b30;--pos:74,222,128;--neg:248,113,113;--acc:#60a5fa;color-scheme:dark"
 CSS = """
-:root{--bg:#fafaf9;--fg:#1c1917;--mut:#78716c;--card:#fff;--line:#e7e5e4;--pos:22,163,74;--neg:220,38,38;--acc:#2563eb}
-@media (prefers-color-scheme:dark){:root{--bg:#0c0a09;--fg:#e7e5e4;--mut:#a8a29e;--card:#1c1917;--line:#292524;--pos:74,222,128;--neg:248,113,113;--acc:#60a5fa}}
+/* 单列报告：摘要 -> 分组一致性 -> 明细表；表格各自横向滚动 */
+:root{--bg:#f7f8f9;--fg:#16191c;--mut:#6b737b;--card:#fff;--line:#e3e6e9;--pos:22,163,74;--neg:220,38,38;--acc:#2563eb}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){%DARK%}}
+:root[data-theme="dark"]{%DARK%}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.55 -apple-system,"PingFang SC","Microsoft YaHei",sans-serif}
-main{max-width:1280px;margin:0 auto;padding:24px 16px 64px}h1{font-size:22px;margin:0 0 4px}h2{font-size:17px;margin:36px 0 8px}
+main{max-width:1280px;margin:0 auto;padding-inline:16px;padding-block:24px 64px}h1{font-size:22px;margin:0 0 4px;text-wrap:balance}h2{font-size:17px;margin:36px 0 8px}
 .mut{color:var(--mut)}.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin:10px 0}
 .scroll{overflow-x:auto}table{border-collapse:collapse;font-size:12.5px;font-variant-numeric:tabular-nums;width:max-content;min-width:100%}
 th,td{padding:5px 8px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}th{position:sticky;top:0;background:var(--card);font-weight:600}
 td.l,th.l{text-align:left}tr:hover td{background:rgba(127,127,127,.06)}.b{font-weight:700}
-.tabs button{border:1px solid var(--line);background:var(--card);color:var(--fg);padding:4px 10px;border-radius:6px;margin:0 4px 6px 0;cursor:pointer}
+.tabs button{border:1px solid var(--line);background:var(--card);color:var(--fg);padding:4px 10px;border-radius:6px;margin:0 4px 6px 0;cursor:pointer;font:inherit}
+.tabs button:focus-visible{outline:2px solid var(--acc);outline-offset:1px}
 .tabs button.on{border-color:var(--acc);color:var(--acc)}.pane{display:none}.pane.on{display:block}
 ul{padding-left:20px}li{margin:3px 0}code{background:rgba(127,127,127,.12);padding:1px 4px;border-radius:4px}
 svg.sp{display:block}
-"""
+""".replace("%DARK%", DARK)
 
 JS = """
 document.querySelectorAll('.tabs').forEach(t=>{const g=t.dataset.g;t.querySelectorAll('button').forEach(b=>b.onclick=()=>{
@@ -100,7 +104,16 @@ def _spark(curve: pd.Series | None, bench: pd.Series | None, w=170, h=38) -> str
     return out
 
 
-def build_report(run_dir: Path, top_n: int = 30, min_trades: int = 15) -> Path:
+def asset_group(symbol: str) -> str:
+    base = symbol[:-4] if symbol.endswith("USDT") else symbol
+    for cat, keys in TRADFI_KEYWORDS.items():
+        if base in keys:
+            return cat
+    return "加密"
+
+
+def build_report(run_dir: Path, top_n: int = 30, min_trades: int = 15, fragment: bool = False) -> Path:
+    """fragment=True 时输出不带 <html>/<head> 外壳的版本（report_artifact.html），用于发布成 Artifact。"""
     run_dir = Path(run_dir)
     meta = json.loads((run_dir / "meta.json").read_text()) if (run_dir / "meta.json").exists() else {}
     cov = pd.read_csv(run_dir / "coverage.csv")
@@ -117,6 +130,21 @@ def build_report(run_dir: Path, top_n: int = 30, min_trades: int = 15) -> Path:
              f'滑点 {pct(meta.get("slippage", 0), 3)}/边 · {meta.get("folds", "")} 段滚动样本外 · '
              f'资金费按真实历史结算计入</div>']
 
+    # 样本外天数
+    oos_days = {}
+    if "oos_start" in cov:
+        for r in cov.itertuples():
+            try:
+                oos_days[r.symbol] = (pd.Timestamp(r.end) - pd.Timestamp(r.oos_start)).days + 1
+            except (TypeError, ValueError):
+                pass
+
+    def _days(sym):
+        d = oos_days.get(sym)
+        if d is None:
+            return ""
+        return f"，样本外 {d} 天" + ("（⚠ 样本短，可能是运气）" if d < 180 else "")
+
     # ---------- 结论摘要
     summary = []
     if len(oos):
@@ -127,7 +155,7 @@ def build_report(run_dir: Path, top_n: int = 30, min_trades: int = 15) -> Path:
             items = "".join(
                 f"<li><b>{_e(r.symbol)}</b> · {_e(r.label)}：样本外 {int(r.trades)} 笔，胜率 {pct(r.win_rate)}，"
                 f"收益 {pct(r.total_return)}，夏普 {num(r.sharpe)}，最大回撤 {pct(r.max_drawdown)}，"
-                f"{int(r.folds_positive)}/{int(r.folds)} 段盈利</li>" for r in g.itertuples())
+                f"{int(r.folds_positive)}/{int(r.folds)} 段盈利{_days(r.symbol)}</li>" for r in g.itertuples())
             summary.append(f"<p>样本外表现较稳健（夏普&gt;0.5、t&gt;1.5、至少一半时间段盈利、交易≥{min_trades}笔）的组合：</p><ul>{items}</ul>")
         else:
             summary.append("<p>没有任何“策略×标的”组合在样本外同时满足 夏普&gt;0.5、t&gt;1.5、半数以上时间段盈利。"
@@ -152,6 +180,31 @@ def build_report(run_dir: Path, top_n: int = 30, min_trades: int = 15) -> Path:
         else:
             summary.append("<p>没有在前后两半样本中方向一致且显著(|t|&gt;2)的单因子。</p>")
     parts.append('<h2>结论摘要</h2><div class="card">' + "".join(summary) + "</div>")
+
+    # ---------- 分组一致性：同类资产上是否普遍有效，比单个标的的好成绩可靠得多
+    if len(oos):
+        g = oos[oos["strategy"] != "buy_hold"].assign(grp=lambda x: x["symbol"].map(asset_group))
+        groups = [c for c in ["加密", "贵金属", "能源", "美股/ETF"] if c in set(g["grp"])]
+        labels = g.drop_duplicates("strategy").set_index("strategy")["label"]
+        agg = g.groupby(["strategy", "grp"]).agg(sh=("sharpe", "mean"), pos=("total_return", lambda x: (x > 0).mean()),
+                                                 n=("symbol", "nunique"))
+        agg_all = g.groupby("strategy").agg(sh=("sharpe", "mean"), pos=("total_return", lambda x: (x > 0).mean()))
+        rows = []
+        for st in agg_all.sort_values("sh", ascending=False).index:
+            r = [f'<td class="l">{_e(labels.get(st, st))} <span class="mut">{_e(st)}</span></td>']
+            for gr in groups:
+                if (st, gr) in agg.index:
+                    a = agg.loc[(st, gr)]
+                    r.append(f'<td{_bg(a.sh, 2)} title="{int(a.n)} 个标的">{num(a.sh)} · {pct(a.pos, 0)}</td>')
+                else:
+                    r.append("<td>–</td>")
+            a = agg_all.loc[st]
+            r.append(f"<td{_bg(a.sh, 2)}>{num(a.sh)} · {pct(a.pos, 0)}</td>")
+            rows.append(r)
+        ns = g.groupby("grp")["symbol"].nunique()
+        parts.append('<h2>分组一致性（样本外）</h2><p class="mut">每格 = 该组所有标的的平均样本外夏普 · 盈利标的占比。'
+                     '一个策略只在单个标的上好看很可能是运气；在同类多个标的上都赚钱才值得信。</p>'
+                     + _table(["策略 \\ 资产组"] + [f"{_e(gr)}（{ns[gr]}）" for gr in groups] + ["全部"], rows))
 
     # ---------- 数据覆盖
     rows = [[f'<td class="l">{_e(r.symbol)}</td>', f"<td>{_e(r.start)}</td>", f"<td>{_e(r.end)}</td>",
@@ -269,9 +322,14 @@ def build_report(run_dir: Path, top_n: int = 30, min_trades: int = 15) -> Path:
 <li>币安 TradFi（黄金/白银/原油/美股）合约上线时间短，样本少，结论可信度明显低于 BTC。美股合约在美股休市时段（夜间、周末）价格行为与交易时段不同。</li>
 <li>本报告是历史统计，不构成投资建议。</li></ul></div>""")
 
-    page = (f'<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" '
-            f'content="width=device-width,initial-scale=1"><title>合约策略回测报告</title><style>{CSS}</style></head>'
-            f'<body><main>{"".join(parts)}</main><script>{JS}</script></body></html>')
-    out = run_dir / "report.html"
+    title = "币安合约策略回测"
+    if fragment:
+        page = f'<title>{title}</title><style>{CSS}</style><main>{"".join(parts)}</main><script>{JS}</script>'
+        out = run_dir / "report_artifact.html"
+    else:
+        page = (f'<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" '
+                f'content="width=device-width,initial-scale=1"><title>{title}</title><style>{CSS}</style></head>'
+                f'<body><main>{"".join(parts)}</main><script>{JS}</script></body></html>')
+        out = run_dir / "report.html"
     out.write_text(page, encoding="utf-8")
     return out

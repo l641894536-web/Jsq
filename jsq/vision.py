@@ -142,7 +142,11 @@ def update_symbol_vision(session: requests.Session, symbol: str, interval: str, 
 def probe_symbols(session: requests.Session, candidates: list[str] | None = None,
                   interval: str = "1h") -> pd.DataFrame:
     """检查哪些候选合约在历史数据站上有最近一个完整月的数据。"""
-    month = _months("2000-01")[-1]
+    # 上个月的月度文件通常要月初几天后才发布，找最近一个 BTCUSDT 已有文件的月份
+    month = next((m for m in reversed(_months("2000-01")[-4:])
+                  if session.head(_url("klines", "BTCUSDT", interval, m), timeout=20).status_code == 200), None)
+    if month is None:
+        raise RuntimeError("历史数据站最近几个月都没有 BTCUSDT 文件，请检查网络")
     if candidates is None:
         candidates = ["BTCUSDT", "ETHUSDT"] + sorted(
             {f"{b}USDT" for keys in TRADFI_KEYWORDS.values() for b in keys})
