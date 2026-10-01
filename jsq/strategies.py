@@ -298,6 +298,17 @@ STRATEGIES: dict[str, Strategy] = {s.name: s for s in [
     Strategy("offhours_fade", "休市涨跌回吐", offhours_fade, {"th": [1.0, 1.5, 2.5]}, (), "跨标的"),
 ]}
 
+
+def _factor_model(df, **kw):
+    from .model import factor_model
+    return factor_model(df, **kw)
+
+
+_factor_model.__doc__ = "多因子模型：滚动岭回归合成全部因子（每月只用过去数据重新拟合），预测强度超过阈值才开仓。"
+STRATEGIES["factor_model"] = Strategy("factor_model", "多因子模型", _factor_model,
+                                      {"horizon": [4, 12, 24], "th": [1.0, 2.0], "train_days": [60, 180]},
+                                      (), "模型")
+
 def get_strategies(names: str | None = None) -> list[Strategy]:
     if not names:
         return list(STRATEGIES.values())
