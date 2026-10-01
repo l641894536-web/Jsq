@@ -171,12 +171,22 @@ def predictive_power(df: pd.DataFrame, horizons_h=IC_HORIZONS_H, min_obs: int = 
             ic = _rank_ic(xv, yv)
             n_eff = max(n / hb, 3)
             t = ic * np.sqrt((n_eff - 2) / max(1 - ic ** 2, 1e-12)) if ic == ic else np.nan
+            # 按月分别算 IC，用月度 IC 的均值/标准差算 t：对变化缓慢的因子（盘口、持仓量、多空比）不会高估显著性
+            mon = x[m].index.tz_localize(None).to_period("M") if x[m].index.tz is not None else x[m].index.to_period("M")
+            mics = []
+            for _, idx in pd.Series(np.arange(n)).groupby(np.asarray(mon)):
+                if len(idx) >= 100:
+                    mics.append(_rank_ic(xv[idx.values], yv[idx.values]))
+            mics = np.array([v for v in mics if v == v])
+            t_month = (mics.mean() / mics.std(ddof=1) * np.sqrt(len(mics))
+                       if len(mics) >= 3 and mics.std(ddof=1) > 0 else np.nan)
             half = n // 2
             q = pd.qcut(pd.Series(xv).rank(method="first"), 5, labels=False)
             y = pd.Series(yv)
             rows.append({
                 "symbol": df.attrs.get("symbol"), "feature": name, "feature_cn": FEATURE_CN.get(name, name),
-                "horizon_h": hh, "n": n, "ic": ic, "t": t,
+                "horizon_h": hh, "n": n, "ic": ic, "t": t, "t_month": t_month, "months": len(mics),
+                "ic_pos_months": float((mics > 0).mean()) if len(mics) else np.nan,
                 "ic_h1": _rank_ic(xv[:half], yv[:half]), "ic_h2": _rank_ic(xv[half:], yv[half:]),
                 "q1_mean": float(y[q == 0].mean()), "q5_mean": float(y[q == 4].mean()),
                 "q5_minus_q1": float(y[q == 4].mean() - y[q == 0].mean()),
@@ -187,7 +197,9 @@ def predictive_power(df: pd.DataFrame, horizons_h=IC_HORIZONS_H, min_obs: int = 
             })
     out = pd.DataFrame(rows)
     if len(out):
-        out["stable"] = (np.sign(out["ic_h1"]) == np.sign(out["ic_h2"])) & (out["t"].abs() > 2)
+        # 稳定：前后半段同号，且逐根样本 t 与 月度 t 都超过 2（月度 t 防止慢变因子虚高）
+        out["stable"] = ((np.sign(out["ic_h1"]) == np.sign(out["ic_h2"])) & (out["t"].abs() > 2)
+                         & (out["t_month"].abs() > 2))
         # 扣费后仍可能有利：稳定 + 每笔毛收益超过一来一回成本（默认 0.14%）
         out["tradable"] = out["stable"] & (out["edge_bps"] > ROUND_TRIP_BPS)
     return out

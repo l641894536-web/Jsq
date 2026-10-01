@@ -176,7 +176,7 @@ def build_report(run_dir: Path, top_n: int = 30, min_trades: int = 15, fragment:
                 f"<li><b>{_e(r.symbol)}</b> · {_e(r.feature_cn)} → 未来{int(r.horizon_h)}h：IC {num(r.ic, 3)} (t={num(r.t, 1)})，"
                 f"{'值越高越容易涨' if r.ic > 0 else '值越高越容易跌'}；最高20%时上涨概率 {pct(r.q5_up_rate)}，"
                 f"最低20%时 {pct(r.q1_up_rate)}</li>" for r in st.itertuples())
-            summary.append(f"<p>前后半段方向一致且 |t|&gt;2 的预测因子：</p><ul>{items}</ul>")
+            summary.append(f"<p>稳定的预测因子（前后半段同向，逐根与月度 t 都 &gt;2，按 |t| 排序）：</p><ul>{items}</ul>")
         if "tradable" in ic:
             tr = ic[ic["tradable"]].copy()
             if len(tr):
@@ -242,7 +242,8 @@ def build_report(run_dir: Path, top_n: int = 30, min_trades: int = 15, fragment:
                         r.append("<td>–</td>")
                         continue
                     x = x.iloc[0]
-                    tip = (f"t={num(x.t, 1)} | 前半IC {num(x.ic_h1, 3)} 后半IC {num(x.ic_h2, 3)} | "
+                    tip = (f"t={num(x.t, 1)} 月度t={num(getattr(x, 't_month', np.nan), 1)}"
+                           f"（{int(getattr(x, 'months', 0) or 0)}个月）| 每笔毛收益 {num(getattr(x, 'edge_bps', np.nan), 1)}基点 | 前半IC {num(x.ic_h1, 3)} 后半IC {num(x.ic_h2, 3)} | "
                            f"低20%均收益 {pct(x.q1_mean, 2)} 上涨率 {pct(x.q1_up_rate)} | "
                            f"高20%均收益 {pct(x.q5_mean, 2)} 上涨率 {pct(x.q5_up_rate)}")
                     cls = ' class="b"' if x.stable else ""
@@ -250,7 +251,7 @@ def build_report(run_dir: Path, top_n: int = 30, min_trades: int = 15, fragment:
                 rows.append(r)
             panes[f"未来{hh}h"] = _table(["因子 \\ 标的"] + [_e(s) for s in symbols], rows)
         parts.append('<h2>因子预测力（Spearman IC）</h2><p class="mut">正值=因子越大未来越涨，负值=越大越跌。'
-                     '加粗=前后半段方向一致且 |t|&gt;2。鼠标悬停看分组胜率。资金费率类若为负，说明“反向”有效。</p>'
+                     '加粗=前后半段方向一致，且逐根 t 与按月计算的 t 都 &gt;2（月度 t 防止盘口、持仓量这类慢变因子显著性虚高）。鼠标悬停看月度 t、每笔毛收益和分组胜率。资金费率类若为负，说明“反向”有效。</p>'
                      + _tabs("ic", panes))
 
     # ---------- 时段效应

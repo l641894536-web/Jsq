@@ -210,6 +210,13 @@ def book_imbalance(df, hours=4, th=1.0, side=1):
     return hold_state(_cmp(z, ">", th), _cmp(z, "<", 0), _cmp(z, "<", -th), _cmp(z, ">", 0))
 
 
+def depth_imbalance(df, hours=4, th=1.0):
+    """深度失衡（±5%）：较大范围内挂的买单明显多于卖单（有资金在下方承接）做多，反之做空；失衡消失离场。"""
+    x = df["imb5"].rolling(bars(df, hours)).mean()
+    z = ind.zscore(x, bars(df, 7 * 24))
+    return hold_state(_cmp(z, ">", th), _cmp(z, "<", 0), _cmp(z, "<", -th), _cmp(z, ">", 0))
+
+
 def peer_lead(df, hours=4, th=1.5):
     """参照标的领先：参照（BTC/QQQ/黄金/WTI）先大涨而本标的还没跟上时做多，反之做空。"""
     n = bars(df, hours)
@@ -221,11 +228,11 @@ def peer_lead(df, hours=4, th=1.5):
                       _cmp(pz, "<", -th) & _cmp(gap, "<", -th / 2), _cmp(gap, ">", 0))
 
 
-def rel_revert(df, days=3, th=2.0):
-    """相对强弱回归：相对参照标的涨得过多做空、跌得过多做多（单腿配对交易）。"""
+def rel_revert(df, days=3, th=2.0, side=1):
+    """相对强弱：side=1 回归（相对参照涨多了做空、跌多了做多），side=-1 跟随（相对走强继续做多）。"""
     n = bars(df, days * 24)
     spread = np.log(df["close"]) - np.log(df["peer_close"])
-    z = ind.zscore(spread - spread.shift(n), bars(df, 30 * 24))
+    z = ind.zscore(spread - spread.shift(n), bars(df, 30 * 24)) * side
     return hold_state(_cmp(z, "<", -th), _cmp(z, ">", 0), _cmp(z, ">", th), _cmp(z, "<", 0))
 
 
@@ -293,8 +300,11 @@ STRATEGIES: dict[str, Strategy] = {s.name: s for s in [
     Strategy("smart_follow", "跟随大户持仓", smart_follow, {"th": [1.0, 1.5, 2.0]}, ("top_pos_ls", "global_ls"), "持仓/多空"),
     Strategy("book_imbalance", "盘口失衡", book_imbalance,
              {"hours": [1, 4, 12], "th": [1.0, 2.0], "side": [1, -1]}, ("imb1_mean",), "盘口"),
+    Strategy("depth_imbalance", "深度失衡±5%", depth_imbalance,
+             {"hours": [4, 12, 24], "th": [0.5, 1.0, 1.5]}, ("imb5",), "盘口"),
     Strategy("peer_lead", "参照标的领先", peer_lead, {"hours": [1, 4], "th": [1.5, 2.5]}, ("peer_close",), "跨标的"),
-    Strategy("rel_revert", "相对强弱回归", rel_revert, {"days": [1, 3, 7], "th": [1.5, 2.5]}, ("peer_close",), "跨标的"),
+    Strategy("rel_revert", "相对强弱(回归/跟随)", rel_revert,
+             {"days": [1, 3, 7], "th": [1.0, 1.5, 2.5], "side": [1, -1]}, ("peer_close",), "跨标的"),
     Strategy("offhours_fade", "休市涨跌回吐", offhours_fade, {"th": [1.0, 1.5, 2.5]}, (), "跨标的"),
 ]}
 

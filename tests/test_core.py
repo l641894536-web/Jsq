@@ -25,6 +25,7 @@ def frame(tmp_path_factory):
     df["top_acct_ls"] = 1.5 * walk(0.01)
     df["top_pos_ls"] = 1.2 * walk(0.01)
     df["imb1_mean"] = np.clip(rng.normal(0, 0.2, n), -1, 1)
+    df["imb5"] = np.clip(rng.normal(0, 0.1, n), -1, 1)
     df["peer_close"] = df["close"] * walk(0.003)
     return df
 
