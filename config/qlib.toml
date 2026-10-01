@@ -1,0 +1,30 @@
+# =====================================================================
+# 数据源：qlib 格式A股日线（chenditc/investment_data GitHub Release）
+#
+# 只覆盖“数据映射”类字段（指数代码、分母口径、数据目录），
+# 不改动 default.toml 里任何预注册的研究参数。
+# =====================================================================
+extends = "default.toml"
+
+[data]
+dir = "data/qlib"
+# 行业指数由个股按 250 日平均成交额加权合成，市场基准用同样方法合成（ALLA），保证相对强弱口径一致
+market_index = "ALLA"
+# 成交占比分母：全市场个股成交额（含未分类个股）
+total_amount_source = "file"
+
+[style]
+# 无国证成长/价值指数：用行业组合代替（见 ashare_lab/data/from_qlib.py）
+growth = "GROWTH"
+value = "VALUE"
+extra_pairs = [["000852", "000300"]]
+
+[diffusion]
+# 小微盘：不在沪深300/中证500/中证1000 中的个股等权
+small_index = "MICRO"
+large_index = "000300"
+
+[regime]
+# 市场环境用官方中证800（该数据源里的中证全指 000985 缺失 660 个交易日，最长连续 220 日，不可用）
+market_index = "000906"
+small_index = "000852"

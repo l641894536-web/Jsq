@@ -1,0 +1,12 @@
+# 数据与生成的报告（体积大/可重新生成）
+/data/
+/reports/
+
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.venv/
+venv/
+.DS_Store
+results/indicators_*/run_*.log

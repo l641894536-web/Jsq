@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ashare-lab"
+version = "0.1.0"
+description = "A股规律库：主线生命周期、拥挤度、主线大跌、风格切换、补涨扩散、市场环境的可证伪验证框架"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "numpy>=1.24",
+    "pandas>=2.0",
+    "scipy>=1.10",
+]
+
+[project.optional-dependencies]
+data = ["akshare>=1.14", "pyarrow>=12"]
+dev = ["pytest>=7"]
+
+[project.scripts]
+ashare-lab = "ashare_lab.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["ashare_lab*", "indicator_lab*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

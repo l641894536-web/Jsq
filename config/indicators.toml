@@ -1,0 +1,94 @@
+# =====================================================================
+# 指标实验室 —— 预注册参数（2026-09-30，在计算任何指标与收益的关系之前提交）
+# 协议全文：docs/indicators_protocol.md
+# 规则：看过结果后不得增删指标、改参数；确需修改，写入协议的变更记录并保留原结果。
+# =====================================================================
+
+[data]
+qlib_dir = "/home/user/qlibdata/cn_data"     # chenditc/investment_data 2026-09-29 版（sha256 已校验）
+industry_csv = "data/qlib/stock_industry_static.csv"
+start = "2010-01-01"                          # 指标预热从 2010 年开始
+regime_index = "000906"                       # 市场环境划分用中证800（研究F同口径）
+
+[split]
+discovery = ["2012-01-01", "2017-12-31"]      # 发现集：中证全指成分数据从 2011-08 起才完整
+validation = ["2018-01-01", "2022-12-31"]     # 验证集：判定的主要依据
+test = ["2023-01-01", "2026-12-31"]           # 最终测试集：全部判定写完后只打开一次
+
+[universe]
+# t 日可入选：t 日在中证全指成分内（按时点；自动排除 ST/*ST 与次新股）、上市 ≥60 个交易日、t 日有成交、
+# t+1 日开盘有价格且开盘未触及涨停（买得进）
+min_listed_days = 60
+limit_tol = 0.005          # 判定触及涨跌停的容差（涨跌幅 ≥ 限制 − 0.5%）
+
+[trade]
+horizons = [1, 5, 20]      # 持有期（交易日）
+# 标签：t 日收盘出信号，t+1 日开盘买入，t+1+h 日开盘卖出（开盘到开盘的复权收益）
+roundtrip_cost = 0.003     # 双边成本 0.3%（佣金+印花税+滑点），主口径
+stress_cost = 0.005        # 压力测试 0.5%
+top_quantile = 0.10        # 可交易检验：做多排名前 10%（方向由发现集的 IC 符号决定），等权
+max_sell_delay = 5         # 卖出日开盘跌停则顺延，最多 5 天
+
+[test]
+nw_min_lag = 5             # Newey-West 滞后阶数 = max(h, 5)
+t_threshold = 3.0          # 显著门槛 |t| > 3（Harvey-Liu-Zhu 2016 对多重检验环境的建议）
+fdr_q = 0.05
+rc_boot = 1000             # Reality Check（最大 t 统计量）自助次数
+rc_block = 20
+fm_min_t = 2.0             # 控制已知因子后，指标系数的 |t| > 2 才算有增量信息
+plateau_ratio = 0.5        # 参数平台：相邻参数同号且 |t| ≥ 最佳参数 |t| 的 50%
+n_boot = 2000
+
+# ---------------------------------------------------------------------
+# 指标清单（共 74 个信号）。名称_参数；全部用复权价，在 t 日收盘计算。
+# ---------------------------------------------------------------------
+[signals]
+trend = ["bias_5", "bias_10", "bias_20", "bias_60", "bias_120", "bias_250",
+         "ma_align", "macross_5_20", "macross_10_60", "macross_20_120"]
+momentum = ["ret_1", "ret_5", "ret_20", "ret_60", "ret_120", "ret_250", "mom_12_1"]
+oscillator = ["macd_dif_12_26", "macd_dea_12_26_9", "macd_hist_12_26_9",
+              "macd_dif_6_13", "macd_dea_6_13_5", "macd_hist_6_13_5",
+              "rsi_6", "rsi_14", "rsi_24", "kdj_k", "kdj_d", "kdj_j", "wr_14", "cci_14"]
+channel = ["boll_pos_20", "boll_width_20",
+           "dist_high_20", "dist_high_60", "dist_high_250",
+           "dist_low_20", "dist_low_60", "dist_low_250", "new_high_250"]
+volatility = ["vol_20", "vol_60", "atr_14", "amplitude_20", "max_ret_20", "min_ret_20", "skew_20"]
+volume = ["amt_ratio_5_20", "amt_ratio_20_60", "pv_corr_20", "obv_chg_20", "log_amount_20", "amihud_20",
+          "vol_chg_1", "abnormal_amt_1"]
+ashare = ["streak", "gap_1", "upper_shadow_5", "lower_shadow_5", "limit_up_20", "limit_down_20",
+          "close_pos_1", "intraday_ret_1", "overnight_ret_5"]
+events = ["ev_macd_golden", "ev_macd_dead", "ev_kdj_golden_low", "ev_rsi6_oversold", "ev_rsi6_overbought",
+          "ev_break_high_20", "ev_break_low_20", "ev_ma_golden_5_20", "ev_limit_up", "ev_limit_down"]
+
+# Fama-MacBeth 增量检验的控制变量（均为横截面秩标准化）
+[controls]
+factors = ["ret_1", "ret_20", "mom_12_1", "vol_20", "log_amount_20"]
+size_tiers = true          # 沪深300/中证500/中证1000/其余 的哑变量（市值代理）
+industry = true            # 申万一级行业哑变量（静态映射）
+
+# 参数族：用于“参数平台”检验
+[families]
+bias = ["bias_5", "bias_10", "bias_20", "bias_60", "bias_120", "bias_250"]
+ret = ["ret_1", "ret_5", "ret_20", "ret_60", "ret_120", "ret_250"]
+rsi = ["rsi_6", "rsi_14", "rsi_24"]
+macd_dif = ["macd_dif_6_13", "macd_dif_12_26"]
+macd_hist = ["macd_hist_6_13_5", "macd_hist_12_26_9"]
+dist_high = ["dist_high_20", "dist_high_60", "dist_high_250"]
+dist_low = ["dist_low_20", "dist_low_60", "dist_low_250"]
+vol = ["vol_20", "vol_60"]
+amt_ratio = ["amt_ratio_5_20", "amt_ratio_20_60"]
+macross = ["macross_5_20", "macross_10_60", "macross_20_120"]
+
+[secondary]
+# 次要研究（主研究完成后执行）：指数/行业择时
+instruments = ["000300", "000905", "000852", "ALLA"]
+include_sectors = true
+horizons = [5, 20, 60]
+# —— 以下细节于 2026-09-30 补充（在计算任何“指标 vs 指数/行业未来收益”之前）——
+# 涨跌停类与成交额水平类不适用于指数（指数无涨跌停；成交额水平随时间趋势增长）
+exclude_signals = ["limit_up_20", "limit_down_20", "ev_limit_up", "ev_limit_down", "log_amount_20", "amihud_20"]
+direction_period = ["2012-01-01", "2017-12-31"]   # 定方向
+eval_period = ["2018-01-01", "2026-12-31"]        # 评估（时间序列样本少，验证集与测试集合并）
+n_perm = 1000              # 循环平移次数
+timing_lookback = 250      # 择时：信号高于自身过去 250 日中位数 = 看多
+timing_cost = 0.001        # 择时：单边成本 0.1%（ETF 口径）

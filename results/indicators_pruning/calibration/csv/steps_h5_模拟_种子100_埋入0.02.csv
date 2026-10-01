@@ -1,0 +1,8 @@
+﻿步骤,入选,增量 t值,次优
+1,rsi_6,-13.708694182985242,streak(-12.8)、cci_14(-12.6)
+2,bias_5,-7.028659615990128,macd_hist_6_13_5(-5.6)、bias_10(-5.5)
+3,ret_5,-3.474479740719541,bias_10(-3.4)、ev_rsi6_overbought(-3.4)
+4,ev_limit_up,-3.303981460078414,ev_rsi6_overbought(-3.3)、ev_break_low_20(3.0)
+5,ev_rsi6_overbought,-3.108442875470872,ev_break_low_20(3.1)、ev_rsi6_oversold(2.9)
+6,ev_break_low_20,3.2158944330567514,ev_rsi6_oversold(3.0)、bias_10(-2.8)
+7,（停止）,-2.824744339987043,macd_hist_12_26_9(-2.4)、ev_rsi6_oversold(2.1)
