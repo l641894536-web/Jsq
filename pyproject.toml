@@ -22,7 +22,7 @@ dev = ["pytest>=7"]
 ashare-lab = "ashare_lab.cli:main"
 
 [tool.setuptools.packages.find]
-include = ["ashare_lab*"]
+include = ["ashare_lab*", "indicator_lab*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
