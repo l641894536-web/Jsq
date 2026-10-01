@@ -177,6 +177,18 @@ def build_report(run_dir: Path, top_n: int = 30, min_trades: int = 15, fragment:
                 f"{'值越高越容易涨' if r.ic > 0 else '值越高越容易跌'}；最高20%时上涨概率 {pct(r.q5_up_rate)}，"
                 f"最低20%时 {pct(r.q1_up_rate)}</li>" for r in st.itertuples())
             summary.append(f"<p>前后半段方向一致且 |t|&gt;2 的预测因子：</p><ul>{items}</ul>")
+        if "tradable" in ic:
+            tr = ic[ic["tradable"]].copy()
+            if len(tr):
+                tr = tr.sort_values("edge_bps", ascending=False).drop_duplicates(["symbol", "feature"]).head(12)
+                items = "".join(
+                    f"<li><b>{_e(r.symbol)}</b> · {_e(r.feature_cn)} → 未来{int(r.horizon_h)}h："
+                    f"每笔毛收益约 {num(r.edge_bps, 1)} 基点（成本约 14），IC {num(r.ic, 3)}，t={num(r.t, 1)}</li>"
+                    for r in tr.itertuples())
+                summary.append("<p><b>扣费后仍可能有利</b>的因子（稳定，且按因子方向每笔平均毛收益 &gt; 一来一回成本）：</p>"
+                               f"<ul>{items}</ul>")
+            else:
+                summary.append("<p>没有任何因子在稳定的同时，每笔平均毛收益超过一来一回的交易成本（约 14 基点）。</p>")
         else:
             summary.append("<p>没有在前后两半样本中方向一致且显著(|t|&gt;2)的单因子。</p>")
     parts.append('<h2>结论摘要</h2><div class="card">' + "".join(summary) + "</div>")
@@ -240,6 +252,31 @@ def build_report(run_dir: Path, top_n: int = 30, min_trades: int = 15, fragment:
         parts.append('<h2>因子预测力（Spearman IC）</h2><p class="mut">正值=因子越大未来越涨，负值=越大越跌。'
                      '加粗=前后半段方向一致且 |t|&gt;2。鼠标悬停看分组胜率。资金费率类若为负，说明“反向”有效。</p>'
                      + _tabs("ic", panes))
+
+    # ---------- 时段效应
+    seas_p = run_dir / "seasonality.csv"
+    if seas_p.exists():
+        se = pd.read_csv(seas_p)
+        panes = {}
+        for kind, title, keys, fmt in (("hour", "按小时(UTC)", range(24), lambda k: f"{k:02d}"),
+                                       ("weekday", "按星期", range(7), lambda k: "一二三四五六日"[k])):
+            sub = se[se["kind"] == kind]
+            rows = []
+            for k in keys:
+                r = [f'<td class="l">{fmt(k)}</td>']
+                for sym in symbols:
+                    x = sub[(sub["key"] == k) & (sub["symbol"] == sym)]
+                    if not len(x):
+                        r.append("<td>–</td>")
+                        continue
+                    x = x.iloc[0]
+                    cls = ' class="b"' if abs(x.t) > 3 else ""
+                    r.append(f'<td{_bg(x.mean_bps, 15)} title="t={num(x.t, 1)} 上涨率 {pct(x.up_rate)} n={int(x.n)}">'
+                             f'<span{cls}>{num(x.mean_bps, 1)}</span></td>')
+                rows.append(r)
+            panes[title] = _table(["时段 \\ 标的"] + [_e(s) for s in symbols], rows)
+        parts.append('<h2>时段效应</h2><p class="mut">该时段收盘后下一小时的平均收益（基点）。加粗 = |t|&gt;3'
+                     '（测了 24 个小时，|t|&gt;2 很容易碰巧出现）。</p>' + _tabs("seas", panes))
 
     # ---------- 策略 × 标的矩阵
     if len(oos):

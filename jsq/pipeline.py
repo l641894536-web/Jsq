@@ -11,7 +11,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from .analysis import predictive_power
+from .analysis import predictive_power, seasonality
 from .config import RESULTS_DIR, BacktestConfig
 from .data import coverage, load_frame
 from .optimize import evaluate_symbol
@@ -40,24 +40,26 @@ def _process(symbol, interval, data_dir, start, end, cfg, strategy_names, do_bac
         raise ValueError(f"{symbol} 只有 {len(df)} 根 K 线，样本太少")
     cov = coverage(df)
     ic = predictive_power(df)
+    seas = seasonality(df)
     res = evaluate_symbol(df, cfg, get_strategies(strategy_names)) if do_backtest else None
     if res is not None:
         cov["oos_start"] = res.oos_start[:10]
-    return symbol, cov, ic, res
+    return symbol, cov, (ic, seas), res
 
 
 def run_pipeline(symbols, interval, data_dir, cfg: BacktestConfig, start=None, end=None,
                  strategy_names=None, jobs=None, backtest=True, out_dir: Path | None = None) -> Path:
     out = out_dir or new_results_dir()
     jobs = jobs or max(1, min(len(symbols), (os.cpu_count() or 2) - 1))
-    covs, ics, oos, grids, folds, curves, best, errors = [], [], [], [], [], [], {}, {}
+    covs, ics, seass, oos, grids, folds, curves, best, errors = [], [], [], [], [], [], [], {}, {}
     t0 = time.time()
     args = [(s, interval, str(data_dir), start, end, cfg, strategy_names, backtest) for s in symbols]
 
     def collect(r):
-        sym, cov, ic, res = r
+        sym, cov, (ic, seas), res = r
         covs.append(cov)
         ics.append(ic)
+        seass.append(seas)
         if res is not None:
             oos.append(res.oos)
             grids.append(res.grid)
@@ -88,6 +90,7 @@ def run_pipeline(symbols, interval, data_dir, cfg: BacktestConfig, start=None, e
         raise RuntimeError(f"所有标的都失败了: {errors}")
     pd.DataFrame(covs).to_csv(out / "coverage.csv", index=False)
     pd.concat(ics, ignore_index=True).to_csv(out / "ic.csv", index=False)
+    pd.concat(seass, ignore_index=True).to_csv(out / "seasonality.csv", index=False)
     if oos:
         pd.concat(oos, ignore_index=True).to_csv(out / "oos_summary.csv", index=False)
         pd.concat(grids, ignore_index=True).to_csv(out / "full_grid.csv", index=False)

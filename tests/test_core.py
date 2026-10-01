@@ -15,7 +15,18 @@ from jsq.synthetic import make_dataset
 def frame(tmp_path_factory):
     d = tmp_path_factory.mktemp("data")
     syms = make_dataset(d, "1h", days=200)
-    return load_frame(syms[1], "1h", d)
+    df = load_frame(syms[1], "1h", d)
+    # 合成 持仓量/多空比/盘口/参照标的 列，让新策略也接受因果性测试
+    rng = np.random.default_rng(1)
+    n = len(df)
+    walk = lambda s: np.exp(np.cumsum(rng.normal(0, s, n)))
+    df["oi"] = 1e5 * walk(0.01)
+    df["global_ls"] = 1.5 * walk(0.01)
+    df["top_acct_ls"] = 1.5 * walk(0.01)
+    df["top_pos_ls"] = 1.2 * walk(0.01)
+    df["imb1_mean"] = np.clip(rng.normal(0, 0.2, n), -1, 1)
+    df["peer_close"] = df["close"] * walk(0.003)
+    return df
 
 
 def _prep(o, h=None, l=None, c=None, fund=None, atr=1.0):

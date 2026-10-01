@@ -14,6 +14,8 @@ import pandas as pd
 
 from . import indicators as ind
 from .config import IC_HORIZONS_H
+
+ROUND_TRIP_BPS = 14.0
 from .strategies import FUNDING_Z_FLOOR, PREMIUM_Z_FLOOR, bars
 
 FEATURE_CN = {
@@ -32,6 +34,29 @@ FEATURE_CN = {
     "taker_buy_12h": "主动买入占比(12h)",
     "volume_z_7d": "成交量 z(7天)",
     "vol_1d": "1天波动率",
+    # 持仓量 / 多空比 / 主动买卖
+    "oi_chg_4h": "持仓量4h变化",
+    "oi_chg_24h": "持仓量24h变化",
+    "oi_z_7d": "持仓量 z(7天)",
+    "ret_4h_oi_up": "涨跌·持仓增加时(新资金)",
+    "ret_4h_oi_down": "涨跌·持仓减少时(平仓)",
+    "top_acct_ls_z": "大户账户多空比 z",
+    "top_pos_ls_z": "大户持仓多空比 z",
+    "global_ls_z": "全体账户多空比 z",
+    "smart_vs_retail": "大户持仓-散户账户 多空差",
+    "global_ls_chg_24h": "全体多空比24h变化",
+    "taker_ls_4h": "主动买/卖量比(4h)",
+    # 订单簿
+    "book_imb1": "盘口失衡±1%",
+    "book_imb5": "盘口失衡±5%",
+    "book_imb1_4h": "盘口失衡±1%(4h均)",
+    "book_imb1_z": "盘口失衡±1% z",
+    # 跨标的 / 时段
+    "peer_ret_1h": "参照标的1h涨跌",
+    "peer_ret_4h": "参照标的4h涨跌",
+    "rel_ret_1d": "相对参照1天强弱",
+    "rel_ret_3d": "相对参照3天强弱",
+    "offhours_ret": "美股休市期间涨跌",
 }
 
 
@@ -59,7 +84,60 @@ def features(df: pd.DataFrame) -> pd.DataFrame:
                               / df["volume"].rolling(n).sum().replace(0, np.nan) - 0.5)
     f["volume_z_7d"] = ind.zscore(np.log1p(df["volume"]), 7 * d)
     f["vol_1d"] = c.pct_change().rolling(d).std()
+    h4 = bars(df, 4)
+
+    def has(col):
+        return col in df and df[col].notna().mean() > 0.3
+
+    if has("oi"):
+        loi = np.log(df["oi"])
+        f["oi_chg_4h"] = loi.diff(h4)
+        f["oi_chg_24h"] = loi.diff(d)
+        f["oi_z_7d"] = ind.zscore(loi, 7 * d)
+        r4 = c.pct_change(h4)
+        f["ret_4h_oi_up"] = r4.where(f["oi_chg_4h"] > 0)
+        f["ret_4h_oi_down"] = r4.where(f["oi_chg_4h"] < 0)
+    for col in ("top_acct_ls", "top_pos_ls", "global_ls"):
+        if has(col):
+            f[f"{col}_z"] = ind.zscore(np.log(df[col].where(df[col] > 0)), 7 * d)
+    if has("top_pos_ls") and has("global_ls"):
+        f["smart_vs_retail"] = ind.zscore(np.log(df["top_pos_ls"].where(df["top_pos_ls"] > 0))
+                                          - np.log(df["global_ls"].where(df["global_ls"] > 0)), 7 * d)
+        f["global_ls_chg_24h"] = np.log(df["global_ls"].where(df["global_ls"] > 0)).diff(d)
+    if has("taker_ls"):
+        f["taker_ls_4h"] = df["taker_ls"].rolling(h4).mean()
+    if has("imb1"):
+        f["book_imb1"] = df["imb1"]
+        f["book_imb5"] = df["imb5"]
+        f["book_imb1_4h"] = df["imb1_mean"].rolling(h4).mean()
+        f["book_imb1_z"] = ind.zscore(df["imb1_mean"], 7 * d)
+    if has("peer_close"):
+        pc = df["peer_close"]
+        f["peer_ret_1h"] = pc.pct_change(bars(df, 1))
+        f["peer_ret_4h"] = pc.pct_change(h4)
+        f["rel_ret_1d"] = c.pct_change(d) - pc.pct_change(d)
+        f["rel_ret_3d"] = c.pct_change(3 * d) - pc.pct_change(3 * d)
+    from .cross import offhours_return
+    f["offhours_ret"] = offhours_return(df)
     return f.replace([np.inf, -np.inf], np.nan)
+
+
+def seasonality(df: pd.DataFrame) -> pd.DataFrame:
+    """按 UTC 小时 和 星期几 统计下一根 K 线的平均收益与 t 值。"""
+    fwd = forward_returns(df, 1)
+    t = df.index + pd.Timedelta(hours=df.attrs.get("bar_hours", 1.0))  # 信号时刻 = 收盘
+    rows = []
+    for kind, key in (("hour", t.hour), ("weekday", t.weekday)):
+        g = fwd.groupby(np.asarray(key))
+        for k, x in g:
+            x = x.dropna()
+            if len(x) < 30:
+                continue
+            sd = x.std()
+            rows.append({"symbol": df.attrs.get("symbol"), "kind": kind, "key": int(k), "n": len(x),
+                         "mean_bps": x.mean() * 1e4, "t": x.mean() / sd * np.sqrt(len(x)) if sd > 0 else 0,
+                         "up_rate": (x > 0).mean()})
+    return pd.DataFrame(rows)
 
 
 def forward_returns(df: pd.DataFrame, horizon_bars: int) -> pd.Series:
@@ -104,8 +182,12 @@ def predictive_power(df: pd.DataFrame, horizons_h=IC_HORIZONS_H, min_obs: int = 
                 "q5_minus_q1": float(y[q == 4].mean() - y[q == 0].mean()),
                 "q1_up_rate": float((y[q == 0] > 0).mean()), "q5_up_rate": float((y[q == 4] > 0).mean()),
                 "base_up_rate": float((y > 0).mean()),
+                # 按 IC 方向做（高分位做多/低分位做空，或反之）时每笔的平均毛收益（基点）
+                "edge_bps": float(np.sign(ic) * (y[q == 4].mean() - y[q == 0].mean()) / 2 * 1e4) if ic == ic else np.nan,
             })
     out = pd.DataFrame(rows)
     if len(out):
         out["stable"] = (np.sign(out["ic_h1"]) == np.sign(out["ic_h2"])) & (out["t"].abs() > 2)
+        # 扣费后仍可能有利：稳定 + 每笔毛收益超过一来一回成本（默认 0.14%）
+        out["tradable"] = out["stable"] & (out["edge_bps"] > ROUND_TRIP_BPS)
     return out

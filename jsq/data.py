@@ -89,7 +89,7 @@ def update_symbol(client, symbol: str, interval: str, start: str, data_dir: Path
 
 
 def load_frame(symbol: str, interval: str, data_dir: Path,
-               start: str | None = None, end: str | None = None) -> pd.DataFrame:
+               start: str | None = None, end: str | None = None, enrich: bool = True) -> pd.DataFrame:
     """把 K 线、溢价、资金费率对齐成一张以 K 线开盘时间为索引的表。
 
     关键的防未来函数处理：
@@ -148,6 +148,15 @@ def load_frame(symbol: str, interval: str, data_dir: Path,
 
     tb = df.get("taker_buy_base")
     df["taker_buy_ratio"] = (tb / df["volume"].replace(0, np.nan)) if tb is not None else np.nan
+
+    df.attrs.update(symbol=symbol, interval=interval, bar_hours=bar_hours(interval))
+    if enrich:
+        from . import cross, extra
+        df = extra.attach(df, symbol, data_dir)
+        for c in ("oi", "oi_value"):
+            if c in df:
+                df[c] = df[c].where(df[c] > 0)
+        df = cross.attach_peer(df, Path(data_dir), interval)
 
     if start:
         df = df[df.index >= pd.Timestamp(start, tz="UTC")]

@@ -91,6 +91,27 @@ def cmd_fetch(a):
             log.error("%s 下载失败: %s", s, e)
 
 
+def cmd_fetch_extra(a):
+    """持仓量/多空比/主动买卖比 + 订单簿深度（历史数据站日度文件，聚合成 1 小时）。"""
+    from . import extra
+    from .data import paths
+    from .vision import make_session
+    sess = make_session(a.proxy)
+    kinds = ["metrics", "bookDepth"] if a.kind == "all" else [a.kind]
+    for s in load_symbols(a.symbols):
+        kp = paths(Path(a.data_dir), s, "1h")["klines"]
+        listed = None
+        if kp.exists():
+            t0 = pd.read_csv(kp, usecols=["open_time"])["open_time"].min()
+            listed = pd.Timestamp(int(t0), unit="ms").strftime("%Y-%m-%d")
+        for k in kinds:
+            try:
+                n = extra.update(sess, s, k, a.start, Path(a.data_dir), listed_from=listed)
+                log.info("%s %s: %d 小时", s, k, n)
+            except Exception as e:  # noqa: BLE001
+                log.error("%s %s 失败: %s", s, k, e)
+
+
 def _cfg(a) -> BacktestConfig:
     return BacktestConfig(fee=a.fee, slippage=a.slippage, folds=a.folds, min_trades=a.min_trades,
                           initial_train_frac=a.train_frac)
@@ -225,6 +246,11 @@ def main(argv=None):
     sp = sub.add_parser("fetch", help="下载/增量更新 K线、溢价指数、资金费率")
     common(sp, net=True)
     sp.set_defaults(func=cmd_fetch)
+
+    sp = sub.add_parser("fetch-extra", help="下载持仓量/多空比/订单簿深度（历史数据站）")
+    common(sp, net=True)
+    sp.add_argument("--kind", choices=["all", "metrics", "bookDepth"], default="all")
+    sp.set_defaults(func=cmd_fetch_extra)
 
     sp = sub.add_parser("analyze", help="只做因子预测力分析（IC），不回测")
     common(sp, bt=True)

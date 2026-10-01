@@ -163,6 +163,81 @@ def breakout_funding(df, n=72, th=0.5):
     return hold_state(le, _cmp(c, "<", lx), se, _cmp(c, ">", hx))
 
 
+# ----------------------------------------------------------------------------- 持仓量 / 多空比 / 盘口 / 跨标的
+
+def _ok(df, col):
+    return col in df and df[col].notna().mean() > 0.3
+
+
+def oi_flow(df, hours=4, th=1.0):
+    """持仓量确认的突破：价格 hours 小时涨幅 z>th 且持仓量同步增加（新资金进场）做多，反之做空；动量消失离场。"""
+    n = bars(df, hours)
+    r = df["close"].pct_change(n)
+    rz = r / (df["close"].pct_change().rolling(bars(df, 7 * 24)).std() * np.sqrt(n))
+    doi = np.log(df["oi"]).diff(n)
+    return hold_state(_cmp(rz, ">", th) & _cmp(doi, ">", 0), _cmp(rz, "<", 0),
+                      _cmp(rz, "<", -th) & _cmp(doi, ">", 0), _cmp(rz, ">", 0))
+
+
+def squeeze_fade(df, hours=4, th=1.5):
+    """平仓驱动的急涨急跌反向：价格大幅波动但持仓量下降（空头回补/多头止损），行情难以持续，反向做。"""
+    n = bars(df, hours)
+    r = df["close"].pct_change(n)
+    rz = r / (df["close"].pct_change().rolling(bars(df, 7 * 24)).std() * np.sqrt(n))
+    doi = np.log(df["oi"]).diff(n)
+    return hold_state(_cmp(rz, "<", -th) & _cmp(doi, "<", 0), _cmp(rz, ">", 0),
+                      _cmp(rz, ">", th) & _cmp(doi, "<", 0), _cmp(rz, "<", 0))
+
+
+def crowd_fade(df, col="global_ls", th=1.5):
+    """多空比反向：账户多空比（散户）异常偏多做空、异常偏空做多，回到均值离场。"""
+    z = ind.zscore(np.log(df[col].where(df[col] > 0)), bars(df, 7 * 24))
+    return hold_state(_cmp(z, "<", -th), _cmp(z, ">", 0), _cmp(z, ">", th), _cmp(z, "<", 0))
+
+
+def smart_follow(df, th=1.5):
+    """跟随大户：大户持仓多空比相对散户账户多空比异常偏多做多，反之做空。"""
+    x = (np.log(df["top_pos_ls"].where(df["top_pos_ls"] > 0))
+         - np.log(df["global_ls"].where(df["global_ls"] > 0)))
+    z = ind.zscore(x, bars(df, 7 * 24))
+    return hold_state(_cmp(z, ">", th), _cmp(z, "<", 0), _cmp(z, "<", -th), _cmp(z, ">", 0))
+
+
+def book_imbalance(df, hours=4, th=1.0, side=1):
+    """盘口失衡：±1% 内买盘明显厚于卖盘。side=1 跟随（买盘厚做多），side=-1 反向（厚盘是诱多/挂单墙）。"""
+    x = df["imb1_mean"].rolling(bars(df, hours)).mean()
+    z = ind.zscore(x, bars(df, 7 * 24)) * side
+    return hold_state(_cmp(z, ">", th), _cmp(z, "<", 0), _cmp(z, "<", -th), _cmp(z, ">", 0))
+
+
+def peer_lead(df, hours=4, th=1.5):
+    """参照标的领先：参照（BTC/QQQ/黄金/WTI）先大涨而本标的还没跟上时做多，反之做空。"""
+    n = bars(df, hours)
+    vol = df["peer_close"].pct_change().rolling(bars(df, 7 * 24)).std() * np.sqrt(n)
+    pz = df["peer_close"].pct_change(n) / vol
+    own = df["close"].pct_change(n) / vol
+    gap = pz - own
+    return hold_state(_cmp(pz, ">", th) & _cmp(gap, ">", th / 2), _cmp(gap, "<", 0),
+                      _cmp(pz, "<", -th) & _cmp(gap, "<", -th / 2), _cmp(gap, ">", 0))
+
+
+def rel_revert(df, days=3, th=2.0):
+    """相对强弱回归：相对参照标的涨得过多做空、跌得过多做多（单腿配对交易）。"""
+    n = bars(df, days * 24)
+    spread = np.log(df["close"]) - np.log(df["peer_close"])
+    z = ind.zscore(spread - spread.shift(n), bars(df, 30 * 24))
+    return hold_state(_cmp(z, "<", -th), _cmp(z, ">", 0), _cmp(z, ">", th), _cmp(z, "<", 0))
+
+
+def offhours_fade(df, th=1.5):
+    """休市期间的涨跌在开盘后回吐：美股休市时价格偏离上次收盘过多，反向开仓，回到收盘价附近离场。"""
+    from .cross import offhours_return
+    r = offhours_return(df)
+    vol = df["close"].pct_change().rolling(bars(df, 7 * 24)).std() * np.sqrt(bars(df, 16))
+    z = (r / vol).ffill(limit=bars(df, 6))  # 开盘后几小时内沿用休市时的偏离判断
+    return hold_state(_cmp(z, "<", -th), _cmp(z, ">", -0.3), _cmp(z, ">", th), _cmp(z, "<", 0.3))
+
+
 # ----------------------------------------------------------------------------- 注册表
 
 @dataclass
@@ -181,7 +256,7 @@ class Strategy:
         return [c for c in combos if self.constraint is None or self.constraint(c)]
 
     def available(self, df: pd.DataFrame) -> bool:
-        return all(c in df and df[c].notna().any() for c in self.needs)
+        return all(c in df and df[c].notna().mean() > 0.3 for c in self.needs)
 
     def signal(self, df: pd.DataFrame, params: dict) -> np.ndarray:
         return np.asarray(self.fn(df, **params), dtype=np.int8)
@@ -211,6 +286,16 @@ STRATEGIES: dict[str, Strategy] = {s.name: s for s in [
              {"fast": [24, 48], "slow": [168, 336], "th": [1.0, 2.0]}, ("funding_ann",), "组合"),
     Strategy("breakout_funding", "突破+费率确认", breakout_funding,
              {"n": [24, 72, 168], "th": [0.0, 1.0]}, ("funding_ann",), "组合"),
+    Strategy("oi_flow", "持仓量确认突破", oi_flow, {"hours": [4, 12, 24], "th": [1.0, 2.0]}, ("oi",), "持仓/多空"),
+    Strategy("squeeze_fade", "平仓急变反向", squeeze_fade, {"hours": [4, 12], "th": [1.5, 2.5]}, ("oi",), "持仓/多空"),
+    Strategy("crowd_fade", "账户多空比反向", crowd_fade,
+             {"col": ["global_ls", "top_acct_ls"], "th": [1.5, 2.5]}, ("global_ls", "top_acct_ls"), "持仓/多空"),
+    Strategy("smart_follow", "跟随大户持仓", smart_follow, {"th": [1.0, 1.5, 2.0]}, ("top_pos_ls", "global_ls"), "持仓/多空"),
+    Strategy("book_imbalance", "盘口失衡", book_imbalance,
+             {"hours": [1, 4, 12], "th": [1.0, 2.0], "side": [1, -1]}, ("imb1_mean",), "盘口"),
+    Strategy("peer_lead", "参照标的领先", peer_lead, {"hours": [1, 4], "th": [1.5, 2.5]}, ("peer_close",), "跨标的"),
+    Strategy("rel_revert", "相对强弱回归", rel_revert, {"days": [1, 3, 7], "th": [1.5, 2.5]}, ("peer_close",), "跨标的"),
+    Strategy("offhours_fade", "休市涨跌回吐", offhours_fade, {"th": [1.0, 1.5, 2.5]}, (), "跨标的"),
 ]}
 
 def get_strategies(names: str | None = None) -> list[Strategy]:
