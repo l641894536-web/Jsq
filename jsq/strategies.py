@@ -245,6 +245,113 @@ def offhours_fade(df, th=1.5):
     return hold_state(_cmp(z, "<", -th), _cmp(z, ">", -0.3), _cmp(z, ">", th), _cmp(z, "<", 0.3))
 
 
+# ----------------------------------------------------------------------------- 事件 / 交易时段（按资产类别设计）
+
+def event_hold(direction, hold: int) -> np.ndarray:
+    """事件发生后持有 hold 根 K 线（新事件覆盖旧事件）。具体何时离场交给出场方式（止损/最长持仓）。"""
+    d = np.nan_to_num(np.asarray(direction, dtype=float)).astype(int).tolist()
+    out = [0] * len(d)
+    cur, left = 0, 0
+    for i, v in enumerate(d):
+        if v != 0:
+            cur, left = v, hold
+        if left > 0:
+            out[i] = cur
+            left -= 1
+        else:
+            cur = 0
+    return np.array(out, dtype=np.int8)
+
+
+def _clock(df, tz):
+    """每根 K 线收盘时刻在指定时区的 日期 / 小时 / 星期。"""
+    t = (df.index + pd.Timedelta(hours=df.attrs.get("bar_hours", 1.0))).tz_convert(tz)
+    return np.asarray(t.date), np.asarray(t.hour), np.asarray(t.weekday)
+
+
+def shock(df, k=4.0, side=1):
+    """新闻冲击：1 小时涨跌超过平时波动的 k 倍（突发消息、讲话、数据）。side=1 顺着冲击方向做，-1 反向做回吐。"""
+    r = df["close"].pct_change()
+    sig = r.rolling(bars(df, 7 * 24)).std().shift(1)
+    ev = np.where(r.abs() > k * sig, np.sign(r), 0) * side
+    return event_hold(ev, bars(df, 7 * 24))
+
+
+def gap_trade(df, th=1.0, side=-1):
+    """美股开盘跳空：美东 10 点时价格相对上一交易日收盘的偏离超过 th 倍隔夜波动。side=-1 回补缺口，1 顺跳空方向。持有到收盘。"""
+    date, hour, wd = _clock(df, "America/New_York")
+    c = df["close"].to_numpy()
+    vol = (df["close"].pct_change().rolling(bars(df, 7 * 24)).std() * np.sqrt(18)).to_numpy()
+    ev = np.zeros(len(c))
+    last_close = np.nan
+    for i in range(len(c)):
+        if hour[i] == 16 and wd[i] < 5:
+            last_close = c[i]
+        elif hour[i] == 10 and wd[i] < 5 and last_close == last_close and vol[i] > 0:
+            z = (c[i] / last_close - 1) / vol[i]
+            if abs(z) > th:
+                ev[i] = side * np.sign(z)
+    return event_hold(ev, bars(df, 6))
+
+
+def opening_range(df, side=1):
+    """开盘区间突破：美东 9-10 点这根 K 线的高低点为区间，之后突破上沿做多、跌破下沿做空，收盘(16点)前离场。side=-1 为假突破反做。"""
+    date, hour, wd = _clock(df, "America/New_York")
+    h, l, c = df["high"].to_numpy(), df["low"].to_numpy(), df["close"].to_numpy()
+    out = np.zeros(len(c), dtype=np.int8)
+    rh = rl = np.nan
+    cur_day = None
+    state = 0
+    for i in range(len(c)):
+        if wd[i] >= 5:
+            state = 0
+            continue
+        if hour[i] == 10:
+            rh, rl, cur_day, state = h[i], l[i], date[i], 0
+        elif cur_day == date[i] and 10 < hour[i] < 16:
+            if state == 0:
+                if c[i] > rh:
+                    state = side
+                elif c[i] < rl:
+                    state = -side
+            out[i] = state
+        else:
+            state = 0
+    return out
+
+
+def session_break(df, start_utc=7):
+    """亚洲盘区间突破（贵金属/能源）：UTC 0 点到 start_utc 的高低点为区间，伦敦(7)/纽约(13)开盘后突破跟随，UTC 21 点离场。"""
+    date, hour, wd = _clock(df, "UTC")
+    h, l, c = df["high"].to_numpy(), df["low"].to_numpy(), df["close"].to_numpy()
+    out = np.zeros(len(c), dtype=np.int8)
+    rh, rl, day, state = -np.inf, np.inf, None, 0
+    for i in range(len(c)):
+        if date[i] != day:
+            day, rh, rl, state = date[i], -np.inf, np.inf, 0
+        if 0 < hour[i] <= start_utc:
+            rh, rl = max(rh, h[i]), min(rl, l[i])
+        elif start_utc < hour[i] < 21 and np.isfinite(rh):
+            if state == 0:
+                if c[i] > rh:
+                    state = 1
+                elif c[i] < rl:
+                    state = -1
+            out[i] = state
+        else:
+            state = 0
+    return out
+
+
+def eia_trade(df, weekday=2, k=1.0, side=1):
+    """数据发布反应（能源）：美东周三 10:30 EIA 原油库存（周四为天然气库存），发布那一小时涨跌超过 k 倍平时波动时，side=1 跟随、-1 反向。"""
+    date, hour, wd = _clock(df, "America/New_York")
+    r = df["close"].pct_change()
+    sig = r.rolling(bars(df, 7 * 24)).std().shift(1)
+    ev = np.where((hour == 11) & (wd == weekday) & (r.abs() > k * sig).to_numpy(), np.sign(r), 0) * side
+    return event_hold(ev, bars(df, 24))
+
+
 # ----------------------------------------------------------------------------- 注册表
 
 @dataclass
@@ -306,6 +413,12 @@ STRATEGIES: dict[str, Strategy] = {s.name: s for s in [
     Strategy("rel_revert", "相对强弱(回归/跟随)", rel_revert,
              {"days": [1, 3, 7], "th": [1.0, 1.5, 2.5], "side": [1, -1]}, ("peer_close",), "跨标的"),
     Strategy("offhours_fade", "休市涨跌回吐", offhours_fade, {"th": [1.0, 1.5, 2.5]}, (), "跨标的"),
+    Strategy("shock", "新闻冲击", shock, {"k": [3.0, 4.0, 6.0], "side": [1, -1]}, (), "事件"),
+    Strategy("gap_trade", "开盘跳空", gap_trade, {"th": [0.5, 1.0, 2.0], "side": [1, -1]}, (), "时段"),
+    Strategy("opening_range", "开盘区间突破", opening_range, {"side": [1, -1]}, (), "时段"),
+    Strategy("session_break", "亚洲盘区间突破", session_break, {"start_utc": [7, 13]}, (), "时段"),
+    Strategy("eia_trade", "库存数据反应", eia_trade,
+             {"weekday": [2, 3], "k": [0.5, 1.5], "side": [1, -1]}, (), "事件"),
 ]}
 
 

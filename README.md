@@ -40,6 +40,9 @@ python -m jsq backtest
 #    只测部分：--symbols BTCUSDT,XAUUSDT --strategies funding_fade,ema_cross
 #    只做因子分析：python -m jsq analyze
 
+# 3b. 按资产类别研究（推荐）：每类一套策略库、同类合并检验、行情状态拆分、持仓时间曲线
+python -m jsq classlab
+
 # 4. 用回测选出的参数看当前多空信号
 python -m jsq signal
 ```
@@ -58,6 +61,22 @@ python -m jsq signal
 | 实盘参数 | 用全部历史选出的参数，`signal` 命令使用 |
 
 结果目录里还有 `oos_summary.csv`、`full_grid.csv`（每组参数的全样本表现）、`ic.csv`、`folds.csv`，可以用 Excel 自己筛。
+
+## 按资产类别研究（classlab）
+
+加密、美股合约、贵金属、能源各用一套策略库，同类标的合并检验：
+
+| 类别 | 策略 |
+|---|---|
+| 加密 | 资金费率反向/顺势、溢价反向、持仓量突破、平仓急变反向、多空比反向、跟随大户、ETH/BTC 强弱、趋势、新闻冲击 |
+| 美股合约 | 开盘跳空（回补/跟随）、开盘区间突破、休市涨跌回吐、QQQ 领先、相对强弱、趋势、新闻冲击 |
+| 贵金属 | 趋势、亚洲盘区间突破（伦敦/纽约开盘）、金银等相对强弱、盘口深度、新闻冲击 |
+| 能源 | 趋势、EIA 库存数据反应、亚洲盘区间突破、新闻冲击（讲话、OPEC 等突发消息后的延续/回吐） |
+
+- 参数、出场方式（含最长持有 12h~7 天）、行情过滤（趋势/震荡/高波动/低波动）在同类所有标的上共用一套，只用过去的交易挑选
+- 核心指标：扣费后每笔期望（基点、R 倍数）、盈亏比、t 值、盈利标的占比；胜率只是参考
+- 持仓时间曲线：信号出现后持有 1 小时 ~ 7 天各自的平均收益，找优势最大的持有期
+- 结果：`class_oos.csv`、`class_regime.csv`、`class_decay.csv`、`class_best.json`、`class_report.html`
 
 ## 策略
 

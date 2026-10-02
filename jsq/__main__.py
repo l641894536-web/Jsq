@@ -155,6 +155,18 @@ def _print_top(out: Path, n=15):
     print(view.to_string(index=False))
 
 
+def cmd_classlab(a):
+    from .classlab import run_all
+    from .class_report import build_class_report
+    from .pipeline import new_results_dir
+    symbols = _available(load_symbols(a.symbols), a)
+    out = new_results_dir()
+    cfg = _cfg(a)
+    run_all(symbols, a.interval, Path(a.data_dir), cfg.cost, out, folds=a.folds, strategies=a.strategies,
+            jobs=a.jobs or 4)
+    print(f"\n结果目录: {out}\n报告: {build_class_report(out, fee=cfg.fee, slippage=cfg.slippage)}")
+
+
 def cmd_report(a):
     from .pipeline import latest_results_dir
     from .report import build_report
@@ -263,6 +275,10 @@ def main(argv=None):
     sp = sub.add_parser("run", help="fetch + backtest 一条龙")
     common(sp, net=True, bt=True)
     sp.set_defaults(func=lambda a: (cmd_fetch(a), cmd_backtest(a)))
+
+    sp = sub.add_parser("classlab", help="按资产类别研究：分类策略库 + 同类合并检验 + 行情状态 + 持仓时间曲线")
+    common(sp, bt=True)
+    sp.set_defaults(func=cmd_classlab, folds=3)
 
     sp = sub.add_parser("report", help="重新生成 HTML 报告")
     sp.add_argument("--results", help="结果目录，默认最近一次")
