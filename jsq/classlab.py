@@ -27,9 +27,9 @@ CLASS_LIB = {
     "美股/ETF": ["gap_trade", "opening_range", "offhours_fade", "peer_lead", "rel_revert", "shock",
                "ema_cross", "tsmom", "bb_revert", "crowd_fade"],
     "贵金属": ["ema_cross", "donchian", "tsmom", "macd_trend", "bb_revert", "rsi_revert", "rel_revert",
-            "session_break", "shock", "depth_imbalance"],
+            "session_break", "shock", "depth_imbalance", "news_follow", "news_tone"],
     "能源": ["ema_cross", "donchian", "tsmom", "macd_trend", "trend_funding", "bb_revert", "session_break",
-           "eia_trade", "shock"],
+           "eia_trade", "shock", "news_follow", "news_tone"],
 }
 
 # 出场方式：ATR 为 1 小时 ATR(14)。h* = 4ATR 止损 + 最长持有 * 小时

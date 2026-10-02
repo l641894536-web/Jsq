@@ -143,6 +143,35 @@ def build_class_report(run_dir: Path, fee: float = 0.0005, slippage: float = 0.0
                     '加粗为最佳持有期。曲线先升后降说明优势会衰减，应在峰值附近离场。</p>' + dtbl)
     parts.append("<h2>分类明细</h2>" + _tabs("grp", panes))
 
+    # ---------- 新闻事件研究（newslab 输出时才有）
+    ns_p = run_dir / "news_summary.csv"
+    if ns_p.exists() and ns_p.stat().st_size > 10:
+        ns = pd.read_csv(ns_p)
+        npanes = {}
+        for g in [x for x in GROUP_ORDER if x in set(ns["group"])]:
+            x = ns[ns["group"] == g]
+            rows = []
+            for topic in x["topic"].unique():
+                y = x[x["topic"] == topic].set_index("horizon_h")
+                for key, label in (("follow_bps", "顺着新闻小时的方向"), ("tone_bps", "按情绪方向")):
+                    tkey = "follow_t" if key == "follow_bps" else "tone_t"
+                    r = [f'<td class="l">{_e(y["topic_cn"].iloc[0])}</td>', f'<td class="l">{label}</td>',
+                         f"<td>{int(y['events'].max())}</td>"]
+                    for h in [1, 2, 4, 8, 12, 24]:
+                        if h not in y.index:
+                            r.append("<td>–</td>")
+                            continue
+                        v = y.loc[h]
+                        cls = ' class="b"' if abs(v[tkey]) > 2 else ""
+                        r.append(f'<td{_bg(v[key], 60)} title="t={num(v[tkey], 1)}"><span{cls}>{num(v[key], 0)}</span></td>')
+                    vr = y["vol_ratio"]
+                    r.append(f"<td>{num(vr.get(4, np.nan), 1)}×</td>")
+                    rows.append(r)
+            npanes[g] = _table(["新闻主题", "做法", "事件数", "1h", "2h", "4h", "8h", "12h", "24h", "4h波动放大"], rows, left_cols=2)
+        parts.append('<h2>新闻事件研究</h2><p class="mut">报道量超过过去 7 天均值 3 个标准差视为新闻突增（GDELT，新闻已延后 1 小时对齐）。'
+                     '数字为事件后持有 N 小时的每笔平均收益（已扣成本，基点）；加粗为 |t|&gt;2。'
+                     '“回吐反做”的收益约等于“顺势”取反再多扣一次成本。规则事先固定，未做参数优化。</p>' + _tabs("news", npanes))
+
     exits = "".join(f"<li><code>{_e(k)}</code> {_e(EXIT_CN[k])}：{_e(v or '仅信号')}</li>" for k, v in CLASS_EXITS.items())
     parts.append(f"""<h2>方法</h2><div class="card"><ul>
 <li>每类只测为它设计的策略；参数、出场方式、行情过滤在全类所有标的上共用一套，同类标的的交易合并统计。</li>

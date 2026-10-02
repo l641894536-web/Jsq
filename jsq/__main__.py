@@ -216,6 +216,38 @@ def cmd_class_signal(a):
     print(f"\n已保存 {out}")
 
 
+def cmd_fetch_news(a):
+    from . import news
+    from .vision import make_session
+    sess = make_session(a.proxy)
+    for t in (a.topics.split(",") if a.topics else news.TOPICS):
+        try:
+            n = news.update(sess, t, Path(a.data_dir), days=a.days, pause=a.pause)
+            log.info("新闻 %s: %d 条（15 分钟）", t, n)
+        except Exception as e:  # noqa: BLE001
+            log.error("新闻 %s 下载失败: %s", t, e)
+
+
+def cmd_newslab(a):
+    from . import newslab
+    from .class_report import build_class_report
+    from .classlab import run_all
+    from .cross import group_of
+    from .data import load_frame
+    from .pipeline import new_results_dir
+    syms = [s for s in _available(load_symbols(a.symbols), a) if group_of(s) in ("能源", "贵金属")]
+    frames = [load_frame(s, a.interval, Path(a.data_dir)) for s in syms]
+    if not any(c.startswith("news_") for f in frames for c in f.columns):
+        sys.exit("没有新闻数据。先运行: python -m jsq fetch-news")
+    out = new_results_dir()
+    cfg = _cfg(a)
+    ev, summ = newslab.run(frames, cfg.cost)
+    ev.to_csv(out / "news_events.csv", index=False)
+    summ.to_csv(out / "news_summary.csv", index=False)
+    run_all(syms, a.interval, Path(a.data_dir), cfg.cost, out, folds=a.folds, jobs=a.jobs or 2)
+    print(f"\n新闻事件 {len(ev)} 个；结果目录: {out}\n报告: {build_class_report(out, fee=cfg.fee, slippage=cfg.slippage)}")
+
+
 def cmd_report(a):
     from .pipeline import latest_results_dir
     from .report import build_report
@@ -340,6 +372,18 @@ def main(argv=None):
     sp.add_argument("--slippage", type=float, default=0.0002)
     sp.add_argument("--no-update", action="store_true", help="不联网更新，只用本地数据")
     sp.set_defaults(func=cmd_class_signal)
+
+    sp = sub.add_parser("fetch-news", help="下载 GDELT 新闻报道量/情绪（最近约 3 个月）")
+    sp.add_argument("--data-dir", default=str(DATA_DIR))
+    sp.add_argument("--proxy")
+    sp.add_argument("--topics", help="逗号分隔：oil,trump_energy,opec,mideast,russia_oil")
+    sp.add_argument("--days", type=int, default=90)
+    sp.add_argument("--pause", type=float, default=5.0, help="每次请求间隔秒数（GDELT 要求限速）")
+    sp.set_defaults(func=cmd_fetch_news)
+
+    sp = sub.add_parser("newslab", help="新闻事件研究（能源/贵金属）+ 含新闻策略的分类回测")
+    common(sp, bt=True)
+    sp.set_defaults(func=cmd_newslab, folds=3)
 
     sp = sub.add_parser("report", help="重新生成 HTML 报告")
     sp.add_argument("--results", help="结果目录，默认最近一次")

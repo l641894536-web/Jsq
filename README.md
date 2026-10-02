@@ -46,6 +46,10 @@ python -m jsq classlab
 # 3c. 用分类研究选出的配置看各标的当前持仓状态（会联网用实时接口更新；--no-update 只用本地数据）
 python -m jsq class-signal --strategies smart_follow,crowd_fade
 
+# 3d. 新闻（GDELT，需能访问 api.gdeltproject.org）：下载最近 3 个月报道量/情绪，做原油/贵金属新闻事件研究
+python -m jsq fetch-news
+python -m jsq newslab
+
 # 4. 用回测选出的参数看当前多空信号
 python -m jsq signal
 ```

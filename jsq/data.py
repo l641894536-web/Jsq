@@ -158,6 +158,8 @@ def load_frame(symbol: str, interval: str, data_dir: Path,
             if c in df:
                 df[c] = df[c].where(df[c] > 0)
         df = cross.attach_peer(df, Path(data_dir), interval)
+        from . import news
+        df = news.attach(df, Path(data_dir))
 
     if start:
         df = df[df.index >= pd.Timestamp(start, tz="UTC")]

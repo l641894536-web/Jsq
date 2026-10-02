@@ -352,6 +352,35 @@ def eia_trade(df, weekday=2, k=1.0, side=1):
     return event_hold(ev, bars(df, 24))
 
 
+def _news_spike(df, topic, z):
+    v = df.get(f"news_{topic}_vol")
+    if v is None:
+        return np.zeros(len(df), bool), None
+    m = v.rolling(168, min_periods=42).mean().shift(1)
+    sd = v.rolling(168, min_periods=42).std().shift(1)
+    zv = (v - m) / sd.replace(0, np.nan)
+    return ((zv > z) & ~(zv.shift(1) > z)).to_numpy(), zv
+
+
+def news_follow(df, topic="oil", z=3.0, side=1):
+    """新闻突增后顺势：报道量突然放大时，跟随新闻那一小时的涨跌方向（side=-1 为回吐反做）。"""
+    spike, _ = _news_spike(df, topic, z)
+    pre = (df["close"] / df["open"].shift(1) - 1).to_numpy()
+    ev = np.where(spike, np.sign(pre), 0) * side
+    return event_hold(ev, bars(df, 7 * 24))
+
+
+def news_tone(df, topic="oil", z=3.0, side=1):
+    """新闻情绪定方向：报道量突增时，情绪比平时更正面做多、更负面做空（side=-1 反过来）。"""
+    spike, _ = _news_spike(df, topic, z)
+    t = df.get(f"news_{topic}_tone")
+    if t is None:
+        return np.zeros(len(df), dtype=np.int8)
+    dev = (t - t.rolling(168, min_periods=42).mean().shift(1)).to_numpy()
+    ev = np.where(spike, np.sign(np.nan_to_num(dev)), 0) * side
+    return event_hold(ev, bars(df, 7 * 24))
+
+
 # ----------------------------------------------------------------------------- 注册表
 
 @dataclass
@@ -417,6 +446,10 @@ STRATEGIES: dict[str, Strategy] = {s.name: s for s in [
     Strategy("gap_trade", "开盘跳空", gap_trade, {"th": [0.5, 1.0, 2.0], "side": [1, -1]}, (), "时段"),
     Strategy("opening_range", "开盘区间突破", opening_range, {"side": [1, -1]}, (), "时段"),
     Strategy("session_break", "亚洲盘区间突破", session_break, {"start_utc": [7, 13]}, (), "时段"),
+    Strategy("news_follow", "新闻突增顺势", news_follow,
+             {"topic": ["oil", "trump_energy", "mideast"], "z": [3.0], "side": [1, -1]}, ("news_oil_vol",), "新闻"),
+    Strategy("news_tone", "新闻情绪方向", news_tone,
+             {"topic": ["oil", "trump_energy", "mideast"], "z": [3.0], "side": [1, -1]}, ("news_oil_vol",), "新闻"),
     Strategy("eia_trade", "库存数据反应", eia_trade,
              {"weekday": [2, 3], "k": [0.5, 1.5], "side": [1, -1]}, (), "事件"),
 ]}
