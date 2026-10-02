@@ -114,7 +114,9 @@ def decay_curve(df: pd.DataFrame, sig: np.ndarray, atr: np.ndarray, cost: float,
 
 
 def run_class(frames: list[pd.DataFrame], group: str, cost: float, folds: int = 3,
-              initial_frac: float = 0.4, strategies: list[str] | None = None, progress=None) -> ClassResult:
+              initial_frac: float = 0.4, strategies: list[str] | None = None, progress=None,
+              exits: dict | None = None) -> ClassResult:
+    exits = exits or CLASS_EXITS
     names = [s for s in (strategies or CLASS_LIB[group]) if s in STRATEGIES]
     preps = {f.attrs["symbol"]: (f, bt.Prepared.from_frame(f), regimes(f)) for f in frames}
     t0 = min(f.index[0] for f in frames)
@@ -129,13 +131,13 @@ def run_class(frames: list[pd.DataFrame], group: str, cost: float, folds: int = 
         sigs = {}
         for params in st.param_sets():
             key = json.dumps(params, ensure_ascii=False)
-            per_exit: dict[str, list] = {e: [] for e in CLASS_EXITS}
+            per_exit: dict[str, list] = {e: [] for e in exits}
             for sym, (f, p, reg) in preps.items():
                 if not st.available(f):
                     continue
                 sig = st.signal(f, params)
                 sigs[(key, sym)] = sig
-                for ename, ex in CLASS_EXITS.items():
+                for ename, ex in exits.items():
                     res = bt.run(p, sig, cost, **ex)
                     t = res.trades
                     if not len(t):
@@ -246,7 +248,7 @@ def groups_for(symbols: list[str]) -> dict[str, list[str]]:
     return out
 
 
-def _run_group(group, symbols, interval, data_dir, cost, folds, strategies):
+def _run_group(group, symbols, interval, data_dir, cost, folds, strategies, exits=None):
     from pathlib import Path
 
     from .data import load_frame
@@ -260,10 +262,10 @@ def _run_group(group, symbols, interval, data_dir, cost, folds, strategies):
             pass
     if not frames:
         return None
-    return run_class(frames, group, cost, folds=folds, strategies=strategies)
+    return run_class(frames, group, cost, folds=folds, strategies=strategies, exits=exits)
 
 
-def run_all(symbols, interval, data_dir, cost, out_dir, folds=3, strategies=None, jobs=4):
+def run_all(symbols, interval, data_dir, cost, out_dir, folds=3, strategies=None, jobs=4, exits=None):
     import logging
     from concurrent.futures import ProcessPoolExecutor
     log = logging.getLogger(__name__)
@@ -271,8 +273,8 @@ def run_all(symbols, interval, data_dir, cost, out_dir, folds=3, strategies=None
     results = []
     with ProcessPoolExecutor(max_workers=min(jobs, len(gs))) as ex:
         futs = {ex.submit(_run_group, g, syms, interval, str(data_dir), cost, folds,
-                          [s for s in (strategies or CLASS_LIB[g]) if s in CLASS_LIB[g]] if strategies else None): g
-                for g, syms in gs.items()}
+                          [s for s in strategies if s in CLASS_LIB[g]] if strategies else None, exits): g
+                for g, syms in gs.items() if not strategies or any(s in CLASS_LIB[g] for s in strategies)}
         for fu in futs:
             r = fu.result()
             if r is not None:

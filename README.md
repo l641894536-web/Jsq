@@ -43,6 +43,9 @@ python -m jsq backtest
 # 3b. 按资产类别研究（推荐）：每类一套策略库、同类合并检验、行情状态拆分、持仓时间曲线
 python -m jsq classlab
 
+# 3c. 用分类研究选出的配置看各标的当前持仓状态（会联网用实时接口更新；--no-update 只用本地数据）
+python -m jsq class-signal --strategies smart_follow,crowd_fade
+
 # 4. 用回测选出的参数看当前多空信号
 python -m jsq signal
 ```

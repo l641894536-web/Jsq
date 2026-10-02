@@ -150,3 +150,33 @@ def attach(df: pd.DataFrame, symbol: str, data_dir: Path) -> pd.DataFrame:
             if c != "t":
                 df[c] = m[c].values
     return df
+
+
+LIVE_ENDPOINTS = {
+    # 接口: [(返回字段, 本地列名)]，最多约 30 天、500 条
+    "/futures/data/openInterestHist": [("sumOpenInterest", "oi"), ("sumOpenInterestValue", "oi_value")],
+    "/futures/data/topLongShortAccountRatio": [("longShortRatio", "top_acct_ls")],
+    "/futures/data/topLongShortPositionRatio": [("longShortRatio", "top_pos_ls")],
+    "/futures/data/globalLongShortAccountRatio": [("longShortRatio", "global_ls")],
+    "/futures/data/takerlongshortRatio": [("buySellRatio", "taker_ls")],
+}
+
+
+def update_live(client, symbol: str, data_dir: Path) -> int:
+    """用币安实时接口补最近 ~20 天的持仓量/多空比（需要能访问 fapi.binance.com，国内一般要代理）。"""
+    cols = {}
+    for ep, fields in LIVE_ENDPOINTS.items():
+        rows = client.get(ep, {"symbol": symbol, "period": "1h", "limit": 500}) or []
+        for r in rows:
+            h = int(r["timestamp"]) // 3_600_000 * 3_600_000
+            for src, dst in fields:
+                v = float(r[src])
+                cols.setdefault(h, {})[dst] = np.log(v) if dst == "taker_ls" and v > 0 else v
+    if not cols:
+        return 0
+    new = pd.DataFrame.from_dict(cols, orient="index").rename_axis("hour").reset_index()
+    p = path(data_dir, symbol, "metrics")
+    old = pd.read_csv(p) if p.exists() else pd.DataFrame()
+    df = pd.concat([old, new], ignore_index=True).drop_duplicates("hour", keep="first").sort_values("hour")
+    df.to_csv(p, index=False)
+    return len(new)

@@ -162,9 +162,58 @@ def cmd_classlab(a):
     symbols = _available(load_symbols(a.symbols), a)
     out = new_results_dir()
     cfg = _cfg(a)
-    run_all(symbols, a.interval, Path(a.data_dir), cfg.cost, out, folds=a.folds, strategies=a.strategies,
-            jobs=a.jobs or 4)
+    from .classlab import CLASS_EXITS
+    exits = {k: CLASS_EXITS[k] for k in a.exits.split(",")} if a.exits else None
+    strategies = [x.strip() for x in a.strategies.split(",")] if a.strategies else None
+    run_all(symbols, a.interval, Path(a.data_dir), cfg.cost, out, folds=a.folds, strategies=strategies,
+            jobs=a.jobs or 4, exits=exits)
     print(f"\n结果目录: {out}\n报告: {build_class_report(out, fee=cfg.fee, slippage=cfg.slippage)}")
+
+
+def cmd_class_signal(a):
+    from . import extra
+    from .data import load_frame, update_symbol
+    from .live_class import class_signals, latest_class_dir
+    d = Path(a.results) if a.results else latest_class_dir(Path(a.results_dir))
+    symbols = _available(load_symbols(a.symbols), a)
+    if not a.no_update:
+        client = _client(a)
+        for s in symbols:
+            try:
+                update_symbol(client, s, a.interval, a.start, Path(a.data_dir))
+                extra.update_live(client, s, Path(a.data_dir))
+            except Exception as e:  # noqa: BLE001
+                log.warning("%s 实时更新失败，使用本地数据: %s", s, str(e)[:120])
+    frames = {}
+    for s in symbols:
+        try:
+            frames[s] = load_frame(s, a.interval, Path(a.data_dir))
+        except FileNotFoundError:
+            pass
+    only = [x.strip() for x in a.strategies.split(",")] if a.strategies else None
+    sig = class_signals(d, frames, a.fee + a.slippage, only=only, min_exp_bps=a.min_exp)
+    if not len(sig):
+        print("没有样本外期望为正的配置。可以用 --strategies 指定策略。")
+        return
+    side = {1: "做多", -1: "做空", 0: "空仓"}
+    pd.set_option("display.width", 220)
+    for (g, name), x in sig.groupby(["group", "strategy"], sort=False):
+        r0 = x.iloc[0]
+        print(f"\n== {g} · {r0['label']} {r0['params']} · {r0['filter']} · {r0['exit']} · "
+              f"样本外每笔 {r0['oos_exp_bps']:.1f} 基点 胜率 {r0['oos_win_rate']:.0%} 盈亏比 {r0['oos_payoff']:.2f}")
+        for r in x.itertuples():
+            line = f"  {r.symbol:10s} {r.bar_time} 收盘 {r.close:<10.6g} 行情 {r.regime or '-':6s} 持仓 {side[r.position]}"
+            if r.position:
+                line += (f"  开仓 {r.entry_time} @ {r.entry_px:.6g}  浮盈 {r.pnl_pct:+.2f}%  已持有 {r.held_h:.0f}h"
+                         + (f"  止损 {r.stop:.6g}" if r.stop == r.stop else "")
+                         + (f"  止盈 {r.take_profit:.6g}" if r.take_profit == r.take_profit else "")
+                         + (f"  最长 {r.max_hold_h:.0f}h" if r.max_hold_h == r.max_hold_h else ""))
+            elif r.raw_signal:
+                line += f"  （原始信号{side[r.raw_signal]}，但开仓时行情不符合过滤条件）"
+            print(line)
+    out = d / "class_signals_latest.csv"
+    sig.to_csv(out, index=False)
+    print(f"\n已保存 {out}")
 
 
 def cmd_report(a):
@@ -278,7 +327,19 @@ def main(argv=None):
 
     sp = sub.add_parser("classlab", help="按资产类别研究：分类策略库 + 同类合并检验 + 行情状态 + 持仓时间曲线")
     common(sp, bt=True)
+    sp.add_argument("--exits", help="只用这些出场方式，例如 h48,h96,h168（可选: sig,sl2tp6,trail4,h12,h24,h48,h96,h168）")
     sp.set_defaults(func=cmd_classlab, folds=3)
+
+    sp = sub.add_parser("class-signal", help="用分类研究选出的配置给出各标的当前持仓状态")
+    common(sp, net=True)
+    sp.add_argument("--results", help="分类研究结果目录，默认最近一次")
+    sp.add_argument("--results-dir", default=str(RESULTS_DIR))
+    sp.add_argument("--strategies", help="只看这些策略，例如 smart_follow")
+    sp.add_argument("--min-exp", type=float, default=0.0, help="样本外每笔期望门槛（基点）")
+    sp.add_argument("--fee", type=float, default=0.0005)
+    sp.add_argument("--slippage", type=float, default=0.0002)
+    sp.add_argument("--no-update", action="store_true", help="不联网更新，只用本地数据")
+    sp.set_defaults(func=cmd_class_signal)
 
     sp = sub.add_parser("report", help="重新生成 HTML 报告")
     sp.add_argument("--results", help="结果目录，默认最近一次")

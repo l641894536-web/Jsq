@@ -133,10 +133,28 @@ def update_symbol_vision(session: requests.Session, symbol: str, interval: str, 
             frames.append(_parse_funding(raw) if kind == "funding" else _parse_klines(raw, kind == "premium"))
         new = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
         if len(new) or p[kind].exists():
-            out[kind] = len(_merge_save(p[kind], new, key))
+            merged = _merge_save(p[kind], new, key)
+            out[kind] = len(merged)
+            # 月度文件之后的天数用日度文件补到昨天（资金费率没有日度文件）
+            if kind != "funding" and len(merged):
+                out[kind] = _fill_daily(session, p[kind], kind, symbol, interval, int(merged[key].max()), workers)
         else:
             out[kind] = 0
     return out
+
+
+def _fill_daily(session, path: Path, kind: str, symbol: str, interval: str, last_ms: int, workers: int) -> int:
+    first = pd.Timestamp(last_ms, unit="ms").normalize()
+    end = pd.Timestamp.now(tz="UTC").tz_localize(None).normalize() - pd.Timedelta(days=1)
+    days = [d.strftime("%Y-%m-%d") for d in pd.date_range(first, end, freq="D")]
+    folder = "klines" if kind == "klines" else "premiumIndexKlines"
+    urls = [f"{BASE.replace('/monthly', '/daily')}/{folder}/{symbol}/{interval}/{symbol}-{interval}-{d}.zip"
+            for d in days]
+    with ThreadPoolExecutor(max_workers=workers) as ex:
+        raws = list(ex.map(lambda u: _fetch_csv(session, u), urls))
+    frames = [_parse_klines(r, kind == "premium") for r in raws if r is not None and len(r)]
+    new = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
+    return len(_merge_save(path, new, "open_time"))
 
 
 def probe_symbols(session: requests.Session, candidates: list[str] | None = None,

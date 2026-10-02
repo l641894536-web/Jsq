@@ -132,8 +132,9 @@ def load_frame(symbol: str, interval: str, data_dir: Path,
             # 结算间隔（小时）：用相邻结算时间差，限制在 [1, 8]
             iv = f["t"].diff().dt.total_seconds().div(3600).clip(1, 8)
             f["interval_h"] = iv.bfill().fillna(8.0)
+            # 超过 2 个结算周期没有新费率（例如历史数据站当月费率尚未发布）就视为缺失，不沿用旧值
             known = pd.merge_asof(pd.DataFrame({"t": pd.DatetimeIndex(bar_end).as_unit("ns")}), f, on="t",
-                                  direction="backward")
+                                  direction="backward", tolerance=pd.Timedelta(hours=17))
             df["funding_rate"] = known["rate"].values
             df["funding_ann"] = (known["rate"] * 24 * 365 / known["interval_h"]).values
             # 把每次结算分配给 (open, open+bar] 包含它的那根 K 线
