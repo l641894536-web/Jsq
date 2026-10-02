@@ -87,7 +87,8 @@ def class_signals(run_dir: Path, frames: dict[str, pd.DataFrame], cost: float, o
                     seg = df.iloc[int(t["entry_i"]):]
                     best_px = seg["high"].max() if pos == 1 else seg["low"].min()
                     stop = best_px - pos * ex["trail_atr"] * a
-                row.update(entry_time=t["entry_time"].strftime("%Y-%m-%d %H:%M"), entry_px=epx,
+                ref_stop = epx - pos * 4.0 * a  # 出场方式不带止损时，给一个 4ATR 的参考止损
+                row.update(ref_stop=ref_stop if stop != stop else np.nan, entry_time=t["entry_time"].strftime("%Y-%m-%d %H:%M"), entry_px=epx,
                            pnl_pct=pos * (last / epx - 1) * 100, stop=stop, take_profit=tp,
                            held_h=(len(df) - int(t["entry_i"])) * p.bar_hours,
                            max_hold_h=ex.get("max_hold_h", np.nan))

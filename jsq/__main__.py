@@ -6,6 +6,7 @@ import logging
 import sys
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
 from .config import (DATA_DIR, DEFAULT_INTERVAL, DEFAULT_START, RESULTS_DIR, SYMBOLS_FILE, BacktestConfig,
@@ -206,6 +207,7 @@ def cmd_class_signal(a):
             if r.position:
                 line += (f"  开仓 {r.entry_time} @ {r.entry_px:.6g}  浮盈 {r.pnl_pct:+.2f}%  已持有 {r.held_h:.0f}h"
                          + (f"  止损 {r.stop:.6g}" if r.stop == r.stop else "")
+                         + (f"  参考止损(4ATR) {r.ref_stop:.6g}" if getattr(r, "ref_stop", np.nan) == getattr(r, "ref_stop", np.nan) else "")
                          + (f"  止盈 {r.take_profit:.6g}" if r.take_profit == r.take_profit else "")
                          + (f"  最长 {r.max_hold_h:.0f}h" if r.max_hold_h == r.max_hold_h else ""))
             elif r.raw_signal:
