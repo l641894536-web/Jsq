@@ -25,7 +25,9 @@ US_FUTURES = ["GC=F", "SI=F", "HG=F", "PL=F", "CL=F", "ES=F", "NQ=F"]
 US_EXTRA_STOCKS = ["MSTR", "COIN", "HOOD", "CRCL", "TSM", "ASML", "BABA", "PDD", "JD", "BIDU",
                    "NIO", "LI", "XPEV", "BILI", "FUTU", "SMCI", "ARM", "MARA", "RIOT", "CLSK",
                    "CRWV", "SNOW", "SHOP", "RDDT", "NET", "SOFI", "RKLB", "IONQ", "OKLO",
-                   "GME", "AMC", "SPOT", "SE", "MELI", "NU", "UBER", "ABNB"]
+                   "GME", "AMC", "SPOT", "SE", "MELI", "NU", "UBER", "ABNB",
+                   # Nasdaq-100 members not in the S&P 500
+                   "AZN", "CCEP", "TEAM", "GFS", "ZS", "MDB", "MRVL", "TRI"]
 # hourly bars (Yahoo keeps only ~730 days of 1h history; we accumulate from there)
 US_HOURLY = ["GC=F", "SI=F", "SPY", "QQQ", "TSLA", "NVDA", "AAPL", "MSFT", "AMZN", "GOOGL",
              "META", "MSTR", "COIN", "HOOD"]

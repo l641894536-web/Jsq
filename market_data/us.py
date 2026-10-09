@@ -68,8 +68,9 @@ def load_universe(root: Path, stage: Stage) -> pd.DataFrame:
     path = root / "us" / "meta" / "universe.csv"
     cached = pd.read_csv(path, dtype=str, keep_default_na=False) if path.exists() else None
     parts = []
-    for src, fetchers in (("sp500", [lambda: _wiki_table(SP500_URL, 450, 560), _sp500_csv]),
-                          ("ndx", [lambda: _wiki_table(NDX_URL, 95, 130)])):
+    # Nasdaq-100 names outside the S&P 500 are listed statically in config.US_EXTRA_STOCKS
+    # (Wikipedia's Nasdaq-100 page no longer parses cleanly).
+    for src, fetchers in (("sp500", [lambda: _wiki_table(SP500_URL, 450, 560), _sp500_csv]),):
         got = None
         for f in fetchers:
             try:
