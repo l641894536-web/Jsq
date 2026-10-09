@@ -78,19 +78,21 @@ def a_share(start: str | None = None, end: str | None = None, codes=None,
 
 
 def _adjust(df: pd.DataFrame, how: str) -> pd.DataFrame:
-    fac = pd.read_csv(DATA / "a_share" / "adj_factor.csv.xz", dtype={"code": str, "dividOperateDate": str})
-    fac = fac[fac["code"].isin(set(df["code"]))][["code", "dividOperateDate", "backAdjustFactor"]]
-    fac = fac.rename(columns={"dividOperateDate": "date"}).sort_values("date")
-    left = df.assign(_d=pd.to_datetime(df["date"])).sort_values("_d")
-    right = fac.assign(_d=pd.to_datetime(fac["date"])).drop(columns="date").sort_values("_d")
-    m = pd.merge_asof(left, right, on="_d", by="code", direction="backward")
-    m["backAdjustFactor"] = m["backAdjustFactor"].fillna(1.0)
-    f = m["backAdjustFactor"]
+    """Adjustment factor built from the exchange's own ex-rights reference price:
+    factor_t = prod(close_{s-1} / preclose_s), so adjusted returns equal pctChg exactly.
+    (baostock's adj_factor table is kept on disk but has a few spurious records, e.g.
+    sz.000001 2020-12-31, so it is not used.) hfq levels are relative to the first loaded bar;
+    qfq equals raw prices on the last loaded bar."""
+    df = df.sort_values(["code", "date"]).reset_index(drop=True)
+    prev_close = df.groupby("code")["close"].shift(1)
+    ratio = (prev_close / df["preclose"]).where(df["preclose"] > 0).fillna(1.0)
+    f = ratio.groupby(df["code"]).cumprod()
     if how == "qfq":
-        f = f / m.groupby("code")["backAdjustFactor"].transform("last")
+        f = f / f.groupby(df["code"]).transform("last")
+    df["adj_factor"] = f
     for c in PRICE_COLS:
-        m[c] = m[c] * f
-    return m.drop(columns=["_d"]).sort_values(["code", "date"]).reset_index(drop=True)
+        df[c] = df[c] * f
+    return df
 
 
 def a_share_stocks() -> pd.DataFrame:

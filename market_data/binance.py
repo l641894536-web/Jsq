@@ -168,6 +168,42 @@ def detect_stock_perps(sess, symbols: list[str], us_tickers: set[str], stage: St
     return found
 
 
+def _recent(root: Path, sub: str, months: int = 5) -> pd.DataFrame:
+    files = sorted((root / sub).glob("*/*.csv.xz"))[-months:]
+    if not files:
+        return pd.DataFrame()
+    return pd.concat([pd.read_csv(f, dtype=str, keep_default_na=False) for f in files],
+                     ignore_index=True)
+
+
+def validate_stock_perps(root: Path, cands: list[str], stage: Stage) -> list[str]:
+    """Name matches are not enough (crypto tokens C, F, O, MET... share stock tickers; CLUSDT is
+    crude oil). Keep a candidate only if its price tracks the US share: median price ratio within
+    3% and non-negative daily-return correlation. Too-new candidates (<3 shared days) are kept."""
+    bn, us_ = _recent(root, "binance/um_1d"), _recent(root, "us/daily")
+    if bn.empty or us_.empty:
+        return cands
+    bn = bn[bn["symbol"].isin(cands)][["symbol", "date", "close"]].copy()
+    bn["ticker"] = bn["symbol"].str[:-4]
+    m = bn.merge(us_[["ticker", "date", "close"]], on=["ticker", "date"], suffixes=("_bn", "_us"))
+    for c in ("close_bn", "close_us"):
+        m[c] = pd.to_numeric(m[c], errors="coerce")
+    keep, rejected = [], {}
+    for s in cands:
+        g = m[m["symbol"] == s].sort_values("date")
+        if len(g) < 3:
+            keep.append(s)
+            continue
+        ratio = float((g["close_bn"] / g["close_us"]).median())
+        corr = g["close_bn"].pct_change().corr(g["close_us"].pct_change()) if len(g) >= 30 else 1.0
+        if 0.97 <= ratio <= 1.03 and not corr < 0:
+            keep.append(s)
+        else:
+            rejected[s] = {"ratio": round(ratio, 4), "corr": None if pd.isna(corr) else round(float(corr), 2)}
+    stage.info["stock_perps_rejected"] = rejected
+    return keep
+
+
 def run(root: Path, mode: str, deadline: float, us_tickers: set[str]) -> tuple[dict, list[str]]:
     st = Stage("binance")
     stock_perps: list[str] = []
@@ -184,6 +220,7 @@ def run(root: Path, mode: str, deadline: float, us_tickers: set[str]) -> tuple[d
             raise RuntimeError("symbol listing came back empty")
 
         stock_perps = detect_stock_perps(sess, symbols, us_tickers, st)
+        stock_perps = validate_stock_perps(root, stock_perps, st)
         st.info["stock_perps"] = stock_perps
         st.log(f"stock perps: {stock_perps}")
         write_csv(pd.DataFrame({"symbol": symbols,

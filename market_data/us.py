@@ -44,8 +44,8 @@ def _wiki_table(url: str, lo: int, hi: int) -> pd.DataFrame:
         t = t.copy()
         t.columns = [_colname(c) for c in t.columns]
         cols = list(t.columns)
-        seen.append(f"{len(t)}x{cols[:4]}")
-        key = next((k for k in ("Symbol", "Ticker", "Ticker symbol") if k in cols), None)
+        seen.append(f"{len(t)}x{cols[:5]}")
+        key = next((c for c in cols if c.lower() in ("symbol", "ticker", "ticker symbol")), None)
         if key and lo <= len(t) <= hi:
             name = next((c for c in ("Security", "Company", "Company name") if c in cols), None)
             sector = next((c for c in cols if "Sector" in c), None)
@@ -54,7 +54,7 @@ def _wiki_table(url: str, lo: int, hi: int) -> pd.DataFrame:
                 "name": t[name].astype(str) if name else "",
                 "sector": t[sector].astype(str) if sector else "",
             })
-    raise RuntimeError(f"no constituent table at {url}; tables seen: {seen[:8]}")
+    raise RuntimeError(f"no constituent table at {url}; tables seen: {seen}")
 
 
 def _sp500_csv() -> pd.DataFrame:
@@ -69,7 +69,7 @@ def load_universe(root: Path, stage: Stage) -> pd.DataFrame:
     cached = pd.read_csv(path, dtype=str, keep_default_na=False) if path.exists() else None
     parts = []
     for src, fetchers in (("sp500", [lambda: _wiki_table(SP500_URL, 450, 560), _sp500_csv]),
-                          ("ndx", [lambda: _wiki_table(NDX_URL, 90, 115)])):
+                          ("ndx", [lambda: _wiki_table(NDX_URL, 95, 130)])):
         got = None
         for f in fetchers:
             try:
