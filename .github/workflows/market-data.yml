@@ -1,0 +1,99 @@
+name: market-data
+
+on:
+  schedule:
+    - cron: "17 22 * * *"        # 06:17 Beijing time: after the US close, A-share data long settled
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "full or smoke"
+        default: "full"
+        type: choice
+        options: [full, smoke]
+  push:
+    branches: [main]
+    paths:
+      - "market_data/**"
+      - "!market_data/load.py"
+      - ".github/workflows/market-data.yml"
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: market-data
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    env:
+      REPO_URL: https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git
+    steps:
+      - name: Get code
+        run: |
+          git init -q code && cd code
+          git remote add origin "$REPO_URL"
+          git fetch -q --depth 1 origin "$GITHUB_SHA"
+          git checkout -q FETCH_HEAD
+
+      - name: Get data branch
+        run: |
+          if git ls-remote --exit-code --heads "$REPO_URL" data >/dev/null; then
+            git clone -q --depth 1 --branch data "$REPO_URL" data
+          else
+            mkdir data
+          fi
+          du -sh data
+
+      - name: Install
+        run: |
+          python3 -m venv venv
+          venv/bin/pip install -q --upgrade pip
+          venv/bin/pip install -q -r code/market_data/requirements.txt
+          venv/bin/python -c "import pandas, yfinance, baostock; print('pandas', pandas.__version__, 'yfinance', yfinance.__version__)"
+
+      - name: Mode
+        id: mode
+        run: |
+          case "$GITHUB_EVENT_NAME" in
+            push) m=$(tr -d '[:space:]' < code/market_data/push_mode.txt) ;;
+            workflow_dispatch) m="${{ inputs.mode }}" ;;
+            *) m=full ;;
+          esac
+          echo "mode=${m:-full}" >> "$GITHUB_OUTPUT"
+          echo "mode=${m:-full}"
+
+      - name: Fetch
+        timeout-minutes: 320
+        working-directory: code
+        run: |
+          mkdir -p ../data/logs
+          set -o pipefail
+          ../venv/bin/python -u -m market_data.run --mode "${{ steps.mode.outputs.mode }}" \
+            --data-dir ../data --continue-flag ../continue.flag 2>&1 | tee ../data/logs/last_run.log
+
+      - name: Save data (single-commit snapshot on branch "data")
+        if: always()
+        working-directory: data
+        run: |
+          if [ -d .git ]; then
+            git checkout -q --orphan snapshot
+          else
+            git init -q -b snapshot
+            git remote add origin "$REPO_URL"
+          fi
+          git config user.name "market-data-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "data snapshot $(date -u +%Y-%m-%dT%H:%MZ) (${{ steps.mode.outputs.mode }})"
+          git push -q -f origin snapshot:data
+          du -sh --exclude=.git .
+
+      - name: Continue backfill
+        if: always() && hashFiles('continue.flag') != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run market-data.yml --repo "$GITHUB_REPOSITORY" --ref main -f mode=full
