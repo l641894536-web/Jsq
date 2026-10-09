@@ -27,36 +27,64 @@ NDX_URL = "https://en.wikipedia.org/wiki/Nasdaq-100"
 THREADS = 6
 
 
+SP500_CSV = ("https://raw.githubusercontent.com/datasets/s-and-p-500-companies/main/data/"
+             "constituents.csv")
+
+
+def _colname(c) -> str:
+    c = c[-1] if isinstance(c, tuple) else c
+    return str(c).split("[")[0].strip()
+
+
 def _wiki_table(url: str, lo: int, hi: int) -> pd.DataFrame:
     html = requests.get(url, headers=UA, timeout=30).text
-    for t in pd.read_html(StringIO(html)):
-        cols = [str(c) for c in t.columns]
-        key = next((k for k in ("Symbol", "Ticker") if k in cols), None)
+    tables = pd.read_html(StringIO(html))
+    seen = []
+    for t in tables:
+        t = t.copy()
+        t.columns = [_colname(c) for c in t.columns]
+        cols = list(t.columns)
+        seen.append(f"{len(t)}x{cols[:4]}")
+        key = next((k for k in ("Symbol", "Ticker", "Ticker symbol") if k in cols), None)
         if key and lo <= len(t) <= hi:
-            name = next((c for c in ("Security", "Company") if c in cols), None)
+            name = next((c for c in ("Security", "Company", "Company name") if c in cols), None)
             sector = next((c for c in cols if "Sector" in c), None)
             return pd.DataFrame({
                 "ticker": t[key].astype(str).str.strip().str.replace(".", "-", regex=False),
                 "name": t[name].astype(str) if name else "",
                 "sector": t[sector].astype(str) if sector else "",
             })
-    raise RuntimeError(f"no constituent table found at {url}")
+    raise RuntimeError(f"no constituent table at {url}; tables seen: {seen[:8]}")
+
+
+def _sp500_csv() -> pd.DataFrame:
+    t = pd.read_csv(StringIO(requests.get(SP500_CSV, headers=UA, timeout=30).text))
+    return pd.DataFrame({"ticker": t["Symbol"].astype(str).str.replace(".", "-", regex=False),
+                         "name": t.get("Security", ""), "sector": t.get("GICS Sector", "")})
 
 
 def load_universe(root: Path, stage: Stage) -> pd.DataFrame:
-    """S&P 500 + Nasdaq-100 from Wikipedia, plus our fixed extras. Falls back to the cached copy."""
+    """S&P 500 + Nasdaq-100 (Wikipedia, with fallbacks), plus our fixed extras."""
     path = root / "us" / "meta" / "universe.csv"
+    cached = pd.read_csv(path, dtype=str, keep_default_na=False) if path.exists() else None
     parts = []
-    try:
-        sp = _wiki_table(SP500_URL, 450, 560)
-        sp["source"] = "sp500"
-        nd = _wiki_table(NDX_URL, 90, 115)
-        nd["source"] = "ndx"
-        parts += [sp, nd]
-    except Exception as e:
-        stage.error(f"universe from wikipedia failed, using cache: {e}")
-        if path.exists():
-            parts.append(pd.read_csv(path, dtype=str, keep_default_na=False))
+    for src, fetchers in (("sp500", [lambda: _wiki_table(SP500_URL, 450, 560), _sp500_csv]),
+                          ("ndx", [lambda: _wiki_table(NDX_URL, 90, 115)])):
+        got = None
+        for f in fetchers:
+            try:
+                got = f()
+                break
+            except Exception as e:
+                stage.error(f"universe {src}: {e}")
+        if got is None and cached is not None:
+            got = cached[cached["source"].str.contains(src)]
+            stage.error(f"universe {src}: using cached list ({len(got)})")
+        if got is not None:
+            got = got.copy()
+            got["source"] = src
+            parts.append(got)
+            stage.info[f"n_{src}"] = len(got)
     for src, lst in (("extra", C.US_EXTRA_STOCKS), ("etf", C.US_ETFS), ("index", C.US_INDICES),
                      ("future", C.US_FUTURES)):
         parts.append(pd.DataFrame({"ticker": lst, "name": "", "sector": "", "source": src}))

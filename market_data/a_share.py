@@ -176,7 +176,7 @@ def run(root: Path, mode: str, deadline: float) -> tuple[dict, bool]:
         monthly_refresh = today_cst.weekday() == 5 and today_cst.day <= 7
         frames, factor_codes, done = [], set(), 0
         factor_frames, factor_done = [], []
-        workers = 2 if mode == "smoke" else 4
+        workers = 2 if mode == "smoke" else 6
         t_start = time.time()
         ctx = mp.get_context("spawn")
         with ctx.Pool(workers, initializer=_w_init) as pool:
