@@ -1,0 +1,13 @@
+[binance] 01:46:34 1061 USD-M symbols in archive
+/home/runner/work/Jsq/Jsq/venv/lib/python3.12/site-packages/numpy/lib/_function_base_impl.py:3036: RuntimeWarning: invalid value encountered in divide
+  c /= stddev[:, None]
+/home/runner/work/Jsq/Jsq/venv/lib/python3.12/site-packages/numpy/lib/_function_base_impl.py:3037: RuntimeWarning: invalid value encountered in divide
+  c /= stddev[None, :]
+[binance] 01:46:57 stock perps: ['AAPLUSDT', 'ACNUSDT', 'ADBEUSDT', 'AKAMUSDT', 'AMATUSDT', 'AMCUSDT', 'AMDUSDT', 'AMZNUSDT', 'ANETUSDT', 'APPUSDT', 'ARMUSDT', 'ASMLUSDT', 'AVGOUSDT', 'BABAUSDT', 'BEUSDT', 'BXUSDT', 'CATUSDT', 'CIENUSDT', 'COHRUSDT', 'COINUSDT', 'COSTUSDT', 'CRCLUSDT', 'CRMUSDT', 'CRWDUSDT', 'CRWVUSDT', 'CSCOUSDT', 'CVNAUSDT', 'DDOGUSDT', 'DELLUSDT', 'DISUSDT', 'EBAYUSDT', 'FLEXUSDT', 'GDXUSDT', 'GEVUSDT', 'GLWUSDT', 'GMEUSDT', 'GOOGLUSDT', 'GSUSDT', 'HDUSDT', 'HOODUSDT', 'HPEUSDT', 'IBMUSDT', 'INTCUSDT', 'IONQUSDT', 'IWMUSDT', 'JPMUSDT', 'KLACUSDT', 'KOUSDT', 'LITEUSDT', 'LLYUSDT', 'LRCXUSDT', 'MARAUSDT', 'MCDUSDT', 'MDBUSDT', 'METAUSDT', 'MRKUSDT', 'MRNAUSDT', 'MRVLUSDT', 'MSFTUSDT', 'MSTRUSDT', 'MUUSDT', 'NETUSDT', 'NFLXUSDT', 'NKEUSDT', 'NOWUSDT', 'NVDAUSDT', 'OKLOUSDT', 'ORCLUSDT', 'PANWUSDT', 'PDDUSDT', 'PLTRUSDT', 'PYPLUSDT', 'QCOMUSDT', 'QQQUSDT', 'RDDTUSDT', 'RKLBUSDT', 'SHOPUSDT', 'SMCIUSDT', 'SMHUSDT', 'SNDKUSDT', 'SNOWUSDT', 'SOFIUSDT', 'SOXLUSDT', 'SPYUSDT', 'SQQQUSDT', 'TEAMUSDT', 'TERUSDT', 'TQQQUSDT', 'TSLAUSDT', 'TSMUSDT', 'TTWOUSDT', 'TXNUSDT', 'UBERUSDT', 'UNHUSDT', 'VRTUSDT', 'VSTUSDT', 'VUSDT', 'WDCUSDT', 'WMTUSDT', 'XLEUSDT', 'XOMUSDT', 'ZSUSDT']
+[binance] 01:46:57 planning 1149 symbol/interval jobs
+[binance] 01:47:06 2 archive files to download
+[binance] 01:47:07 1d: +0 rows
+[us] 01:47:30 daily ok 583/583, +0 rows
+[a_share] 01:48:07 target end date 2026-10-09
+[a_share] 01:53:23 0 stocks to fetch (5479 in universe)
+{"us_universe": [true, 0], "binance": [true, 0], "us": [true, 0], "a_share": [true, 0]}
