@@ -250,6 +250,71 @@ def cmd_newslab(a):
     print(f"\n新闻事件 {len(ev)} 个；结果目录: {out}\n报告: {build_class_report(out, fee=cfg.fee, slippage=cfg.slippage)}")
 
 
+def cmd_hk_study(a):
+    from . import hk
+    from .pipeline import new_results_dir
+    from .vision import make_session
+    d = Path(a.data_dir) / "hk1m"
+    d.mkdir(parents=True, exist_ok=True)
+    syms = [x.strip() for x in a.symbols.split(",")] if a.symbols else hk.HK_SYMBOLS
+    if not a.no_update:
+        sess = make_session(a.proxy)
+        for s in syms:
+            log.info("%s 1 分钟数据: %s", s, hk.update(sess, s, d))
+    t = pd.concat([hk.daily_table(hk.load(s, d)) for s in syms if (d / f"{s}_1m_klines.csv").exists()],
+                  ignore_index=True)
+    out = new_results_dir()
+    t.to_csv(out / "hk_days.csv", index=False)
+    pre = hk.prepricing(t)
+    st = hk.strategies(t, cost=a.fee + a.slippage)
+    pre.to_csv(out / "hk_prepricing.csv", index=False)
+    st.to_csv(out / "hk_strategies.csv", index=False)
+    pd.set_option("display.width", 220)
+    print("\n跳空被合约提前反映的比例（斜率，1 = 全部反映）：")
+    print(pre[["symbol", "days", "abs_gap_bps", "priced_0859", "priced_0929", "left_0929_bps", "same_dir_0929"]]
+          .round(2).to_string(index=False))
+    print("\n开盘前后做法（每笔扣费后基点）：")
+    print(st[["desc", "trades", "win_rate", "exp_bps", "t"]].round(2).to_string(index=False))
+    print(f"\n结果目录: {out}")
+
+
+def cmd_hk_now(a):
+    """实时：开盘前输入竞价涨跌幅，看合约还剩多少没反映；开盘后看合约与正股的价差。需要能访问币安接口。"""
+    from . import hk
+    client = _client(a)
+    auction = {}
+    for kv in (a.auction or "").split(","):
+        if "=" in kv:
+            k, v = kv.split("=")
+            auction[k.strip().upper()] = float(v) / 100
+    syms = list(auction) or ([x.strip() for x in a.symbols.split(",")] if a.symbols else hk.HK_SYMBOLS)
+    now = pd.Timestamp.now(tz="Asia/Hong_Kong")
+    prev = pd.Timestamp(a.prev_day, tz="Asia/Hong_Kong") if a.prev_day else now.normalize() - pd.offsets.BDay(1)
+    t_close = int((prev.normalize() + pd.Timedelta(hours=16, minutes=10)).timestamp() * 1000)
+    print(f"现在 {now:%Y-%m-%d %H:%M} 香港时间；昨收取 {prev:%Y-%m-%d} 16:10")
+    for s in syms:
+        try:
+            pi = client.get("/fapi/v1/premiumIndex", {"symbol": s})
+            last = float(client.get("/fapi/v1/ticker/price", {"symbol": s})["price"])
+            k = client.get("/fapi/v1/klines", {"symbol": s, "interval": "1m", "startTime": t_close, "limit": 1})
+            idx_prev = client.get("/fapi/v1/indexPriceKlines", {"pair": s, "interval": "1m", "startTime": t_close, "limit": 1})
+        except Exception as e:  # noqa: BLE001
+            print(f"{s}: 获取失败 {str(e)[:100]}")
+            continue
+        perp_prev = float(k[0][4]) if k else np.nan
+        index_now = float(pi["indexPrice"])
+        perp_move = last / perp_prev - 1
+        line = f"{s:13s} 合约 {last:<9.5g} 自昨收 {perp_move:+.2%}"
+        if s in auction:
+            rem = hk.remaining_gap(auction[s], perp_move)
+            line += f" | 竞价 {auction[s]:+.2%} → 还差 {rem:+.2%}：{hk.advise_preopen(rem, auction[s])}"
+        hm = now.hour * 60 + now.minute
+        if 9 * 60 + 31 <= hm < 12 * 60:
+            basis = last / index_now - 1
+            line += f" | 合约/正股 {basis:+.2%}：{hk.advise_open(basis)}"
+        print(line)
+
+
 def cmd_report(a):
     from .pipeline import latest_results_dir
     from .report import build_report
@@ -386,6 +451,22 @@ def main(argv=None):
     sp = sub.add_parser("newslab", help="新闻事件研究（能源/贵金属）+ 含新闻策略的分类回测")
     common(sp, bt=True)
     sp.set_defaults(func=cmd_newslab, folds=3)
+
+    sp = sub.add_parser("hk-study", help="港股合约：开盘跳空被提前定价的研究（1 分钟数据）")
+    sp.add_argument("--symbols")
+    sp.add_argument("--data-dir", default=str(DATA_DIR))
+    sp.add_argument("--proxy")
+    sp.add_argument("--no-update", action="store_true")
+    sp.add_argument("--fee", type=float, default=0.0005)
+    sp.add_argument("--slippage", type=float, default=0.0005, help="港股合约流动性差，默认单边滑点 0.05%%")
+    sp.set_defaults(func=cmd_hk_study)
+
+    sp = sub.add_parser("hk-now", help="港股合约实时：竞价还剩多少没反映 / 开盘后合约与正股价差")
+    sp.add_argument("--symbols")
+    sp.add_argument("--auction", help="竞价相对昨收的涨跌幅(%%)，如 ZHIPUUSDT=-2.3,MINIMAXUSDT=1.5")
+    sp.add_argument("--prev-day", help="上一交易日 YYYY-MM-DD（默认上一个工作日，遇港股假期请手动指定）")
+    sp.add_argument("--proxy")
+    sp.set_defaults(func=cmd_hk_now)
 
     sp = sub.add_parser("report", help="重新生成 HTML 报告")
     sp.add_argument("--results", help="结果目录，默认最近一次")

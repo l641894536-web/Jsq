@@ -50,6 +50,11 @@ python -m jsq class-signal --strategies smart_follow,crowd_fade
 python -m jsq fetch-news
 python -m jsq newslab
 
+# 3e. 港股合约（智谱、MiniMax、腾讯、小米等）：合约 24 小时交易，开盘跳空被提前定价的研究
+python -m jsq hk-study
+#     实时：开盘前填入竞价相对昨收的涨跌幅(%)，看合约还剩多少没反映；09:31 后看合约与正股价差
+python -m jsq hk-now --auction ZHIPUUSDT=-2.3,MINIMAXUSDT=1.5 --proxy http://127.0.0.1:7890
+
 # 4. 用回测选出的参数看当前多空信号
 python -m jsq signal
 ```
