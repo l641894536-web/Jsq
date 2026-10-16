@@ -251,7 +251,8 @@ def cmd_newslab(a):
 
 
 def cmd_hk_study(a):
-    from . import hk
+    import json
+    from . import hk, hk_micro, hk_report
     from .pipeline import new_results_dir
     from .vision import make_session
     d = Path(a.data_dir) / "hk1m"
@@ -261,37 +262,42 @@ def cmd_hk_study(a):
         sess = make_session(a.proxy)
         for s in syms:
             log.info("%s 1 分钟数据: %s", s, hk.update(sess, s, d))
-    t = pd.concat([hk.daily_table(hk.load(s, d)) for s in syms if (d / f"{s}_1m_klines.csv").exists()],
-                  ignore_index=True)
+            if not a.skip_ticks:
+                n = len(hk_micro.collect(sess, s, Path(a.data_dir) / "hkmicro"))
+                log.info("%s 逐笔成本统计: %d 行", s, n)
+    data = hk_report.build_data(Path(a.data_dir), syms, slippage=a.slippage)
     out = new_results_dir()
-    t.to_csv(out / "hk_days.csv", index=False)
-    pre = hk.prepricing(t)
-    st = hk.strategies(t, cost=a.fee + a.slippage)
-    pre.to_csv(out / "hk_prepricing.csv", index=False)
-    st.to_csv(out / "hk_strategies.csv", index=False)
-    panels = {s: hk.panel(hk.load(s, d)) for s in syms if (d / f"{s}_1m_klines.csv").exists()}
-    days = sorted({x for p in panels.values() for x in p["close"].index})
-    rob = hk.robustness(panels, a.fee + a.slippage, split=days[len(days) // 2])
-    for k, v in rob.items():
-        v.to_csv(out / f"hk_robust_{k}.csv", index=False)
+    (out / "hk_report_data.json").write_text(json.dumps(data, ensure_ascii=False, indent=1))
+    rep = hk_report.build_html(data, out / "hk_report.html", fragment=False)
+    hk_report.build_html(data, out / "hk_report_artifact.html", fragment=True)
     pd.set_option("display.width", 220)
-    print("\n跳空被合约提前反映的比例（斜率，1 = 全部反映）：")
-    print(pre[["symbol", "days", "abs_gap_bps", "priced_0859", "priced_0929", "left_0929_bps", "same_dir_0929"]]
-          .round(2).to_string(index=False))
-    print("\n开盘前后做法（每笔扣费后基点）：")
-    print(st[["desc", "trades", "win_rate", "exp_bps", "t"]].round(2).to_string(index=False))
-    print("\n开盘后价差收敛（09:31 偏离 >0.3% 反向，持有到 11:59）：")
-    print(rob["decomposition"].round(1).to_string(index=False))
-    print(rob["stops"].round(2).to_string(index=False))
-    print(rob["by_symbol"][["symbol", "trades", "exp_bps", "t", "win_rate", "mae_med_bps", "mae_p90_bps"]]
-          .round(1).to_string(index=False))
-    print("\n午休后 13:01 价差收敛：")
-    print(rob["lunch"].round(2).to_string(index=False))
-    print(f"\n结果目录: {out}")
+    print("\n跳空被合约提前反映的比例：")
+    print(pd.DataFrame(data["prepricing"]).to_string(index=False))
+    print("\n按竞价方向追单，按隔夜合约是否走过头分组（每笔基点）：")
+    print(pd.DataFrame(data["cats"]).drop(columns="key").to_string(index=False))
+    t = data["tiles"]
+    print(f"\n开盘后价差收敛（09:31 偏离 >0.3% 反向，持有到 11:59）：每笔 {t['exp_real']} 基点（实测成本），"
+          f"t={t['t']}，胜率 {t['win']}%，{t['trades']} 笔")
+    print(pd.DataFrame(data["by_symbol"]).drop(columns=["symbol", "weak"]).to_string(index=False))
+    print(pd.DataFrame(data["stops"]).to_string(index=False))
+    print(f"\n结果目录: {out}\n报告: {rep}")
 
 
 def cmd_hk_now(a):
     """实时：开盘前输入竞价涨跌幅，看合约还剩多少没反映；开盘后看合约与正股的价差。需要能访问币安接口。"""
+    import time
+    if not a.watch:
+        return _hk_now_once(a)
+    try:
+        while True:
+            print("\033[2J\033[H", end="")   # 清屏
+            _hk_now_once(a)
+            time.sleep(a.watch)
+    except KeyboardInterrupt:
+        pass
+
+
+def _hk_now_once(a):
     from . import hk
     client = _client(a)
     auction = {}
@@ -469,8 +475,8 @@ def main(argv=None):
     sp.add_argument("--data-dir", default=str(DATA_DIR))
     sp.add_argument("--proxy")
     sp.add_argument("--no-update", action="store_true")
-    sp.add_argument("--fee", type=float, default=0.0005)
-    sp.add_argument("--slippage", type=float, default=0.0005, help="港股合约流动性差，默认单边滑点 0.05%%")
+    sp.add_argument("--skip-ticks", action="store_true", help="不更新逐笔成交/订单簿成本统计（较慢）")
+    sp.add_argument("--slippage", type=float, default=0.0005, help="假设的单边滑点，默认 0.05%%（另有实测价差版本）")
     sp.set_defaults(func=cmd_hk_study)
 
     sp = sub.add_parser("hk-now", help="港股合约实时：竞价还剩多少没反映 / 开盘后合约与正股价差")
@@ -478,6 +484,7 @@ def main(argv=None):
     sp.add_argument("--auction", help="竞价相对昨收的涨跌幅(%%)，如 ZHIPUUSDT=-2.3,MINIMAXUSDT=1.5")
     sp.add_argument("--prev-day", help="上一交易日 YYYY-MM-DD（默认上一个工作日，遇港股假期请手动指定）")
     sp.add_argument("--proxy")
+    sp.add_argument("--watch", type=int, default=0, help="每 N 秒刷新一次（Ctrl+C 退出），如 --watch 30")
     sp.set_defaults(func=cmd_hk_now)
 
     sp = sub.add_parser("report", help="重新生成 HTML 报告")

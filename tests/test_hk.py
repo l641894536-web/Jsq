@@ -59,3 +59,20 @@ def test_basis_trades_direction_stop_and_decomposition():
     # 持仓中最高价冲到 106（不利 ~5%）：3% 止损触发，按 -3% 计
     t = hk.basis_trades(_panel_one_day(spike=106.0), "X", "09:31", "11:59", 0.003, cost=0.0, stop=0.03)
     assert bool(t.iloc[0]["stopped"]) and np.isclose(t.iloc[0]["ret"], -0.03)
+
+
+def test_micro_spread_and_one_sided_window():
+    from jsq import hk_micro
+    t0 = int(pd.Timestamp("2026-08-04 09:31:00", tz="Asia/Hong_Kong").timestamp() * 1000)
+    rows = []
+    for k in range(60):  # 每 5 秒一买一卖：买 100.1，卖 99.9 -> 有效价差约 20 基点
+        rows.append([k, 100.1, 1.0, k, k, t0 + k * 5000, False])
+        rows.append([k, 99.9, 1.0, k, k, t0 + k * 5000 + 1000, True])
+    # 午休前窗口只有主动买：无法估计价差，但不能报错
+    t1 = int(pd.Timestamp("2026-08-04 11:55:00", tz="Asia/Hong_Kong").timestamp() * 1000)
+    rows += [[1000 + k, 100.0, 1.0, 0, 0, t1 + k * 1000, False] for k in range(10)]
+    df = pd.DataFrame(rows, columns=["agg_trade_id", "price", "quantity", "first_trade_id", "last_trade_id",
+                                     "transact_time", "is_buyer_maker"])
+    out = {r["window"]: r for r in hk_micro.trades_day(df)}
+    assert abs(out["open"]["spread_bps"] - 20) < 0.5
+    assert np.isnan(out["am_close"]["spread_bps"]) and out["am_close"]["trades"] == 10

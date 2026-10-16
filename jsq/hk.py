@@ -255,7 +255,7 @@ def robustness(P: dict, cost: float, split: str) -> dict[str, pd.DataFrame]:
         stops.append({"stop": stop or 0, "stopped_share": T["stopped"].mean(), "exp_bps": m["exp_bps"], "t": m["t"],
                       "win_rate": m["win_rate"]})
     T = pd.concat([basis_trades(p, s, "09:31", "11:59", 0.003, cost) for s, p in P.items()], ignore_index=True)
-    by_sym = T.groupby("symbol").apply(lambda x: pd.Series(summarize_trades(x))).reset_index()
+    by_sym = pd.DataFrame([{"symbol": sym, **summarize_trades(g)} for sym, g in T.groupby("symbol")])
     decomp = pd.DataFrame([{"gross_bps": T["gross"].mean() * 1e4, "stock_part_bps": T["stock_ret"].mean() * 1e4,
                             "basis_part_bps": T["basis_change"].mean() * 1e4,
                             "mae_median_bps": T["mae"].median() * 1e4, "mae_p90_bps": T["mae"].quantile(0.9) * 1e4}])

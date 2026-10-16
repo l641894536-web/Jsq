@@ -73,8 +73,12 @@ def trades_day(df: pd.DataFrame) -> list[dict]:
         d["n"] = d["px"] * d["q"]
         g = d.groupby(["b", "sell"]).agg(n=("n", "sum"), q=("q", "sum")).reset_index()
         g["vwap"] = g["n"] / g["q"]
-        p = g.pivot(index="b", columns="sell", values="vwap").dropna()
-        spread = ((p[False] - p[True]) / ((p[False] + p[True]) / 2)).clip(lower=-0.02, upper=0.05) if len(p) else pd.Series(dtype=float)
+        p = g.pivot(index="b", columns="sell", values="vwap")
+        if {False, True} <= set(p.columns):
+            p = p.dropna()
+            spread = ((p[False] - p[True]) / ((p[False] + p[True]) / 2)).clip(lower=-0.02, upper=0.05)
+        else:   # 窗口内只有单边主动成交，无法估计价差
+            spread = pd.Series(dtype=float)
         notional = d["n"].to_numpy()
         out.append({"window": w, "trades": int(m.sum()), "notional": float(notional.sum()),
                     "median_trade": float(np.median(notional)), "p90_trade": float(np.percentile(notional, 90)),
@@ -84,7 +88,8 @@ def trades_day(df: pd.DataFrame) -> list[dict]:
 
 
 def depth_day(df: pd.DataFrame) -> list[dict]:
-    t = pd.DatetimeIndex(pd.to_datetime(df["timestamp"], utc=True)).tz_convert("Asia/Hong_Kong")
+    t = pd.DatetimeIndex(pd.to_datetime(df["timestamp"], format="%Y-%m-%d %H:%M:%S", utc=True,
+                                        errors="coerce")).tz_convert("Asia/Hong_Kong")
     pct = pd.to_numeric(df["percentage"]).to_numpy()
     notional = pd.to_numeric(df["notional"]).to_numpy()
     out = []
@@ -107,6 +112,12 @@ def collect(session, sym: str, out_dir: Path, workers: int = 8) -> pd.DataFrame:
     days = [d for d in _days(session, "aggTrades", sym) if d not in done]
 
     def one(day):
+        try:
+            return _one(day)
+        except Exception:  # noqa: BLE001  个别日文件异常时跳过，不影响其它日期
+            return []
+
+    def _one(day):
         rows = []
         tr = _csv(session, f"{DAILY}/aggTrades/{sym}/{sym}-aggTrades-{day}.zip")
         bd = _csv(session, f"{DAILY}/bookDepth/{sym}/{sym}-bookDepth-{day}.zip")
