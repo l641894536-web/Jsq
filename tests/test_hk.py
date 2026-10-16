@@ -35,3 +35,27 @@ def test_daily_table_prepricing():
     assert abs(r["gap"] - 0.02) < 0.005          # 正股跳空约 +2%
     assert abs(r["perp_to_0929"] - 0.01) < 0.005  # 合约开盘前已走约 +1%
     assert r["resid_0929"] > 0                    # 还剩约 1% 没反映
+
+
+def _panel_one_day(perp_0931=101.0, perp_exit=100.0, index_0931=100.0, index_exit=100.0, spike=None):
+    cols = ["09:31", "09:32", "11:59"]
+    close = pd.DataFrame([[perp_0931, perp_0931, perp_exit]], index=["2026-08-04"], columns=cols)
+    high = close.copy()
+    low = close.copy()
+    if spike is not None:
+        high.loc[:, "09:32"] = spike
+    index = pd.DataFrame([[index_0931, index_0931, index_exit]], index=["2026-08-04"], columns=cols)
+    return {"close": close, "high": high, "low": low, "index": index}
+
+
+def test_basis_trades_direction_stop_and_decomposition():
+    # 合约比正股贵 1%：做空；合约回到 100 -> 毛收益约 +0.99%，全部来自价差收敛
+    t = hk.basis_trades(_panel_one_day(), "X", "09:31", "11:59", 0.003, cost=0.0)
+    r = t.iloc[0]
+    assert r["side"] == -1 and np.isclose(r["gross"], 1 / 101, atol=1e-6)
+    assert abs(r["stock_ret"]) < 1e-12 and r["basis_change"] > 0
+    # 偏离不够阈值：不交易
+    assert hk.basis_trades(_panel_one_day(perp_0931=100.2), "X", "09:31", "11:59", 0.003, 0.0).empty
+    # 持仓中最高价冲到 106（不利 ~5%）：3% 止损触发，按 -3% 计
+    t = hk.basis_trades(_panel_one_day(spike=106.0), "X", "09:31", "11:59", 0.003, cost=0.0, stop=0.03)
+    assert bool(t.iloc[0]["stopped"]) and np.isclose(t.iloc[0]["ret"], -0.03)

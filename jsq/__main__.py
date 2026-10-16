@@ -269,12 +269,24 @@ def cmd_hk_study(a):
     st = hk.strategies(t, cost=a.fee + a.slippage)
     pre.to_csv(out / "hk_prepricing.csv", index=False)
     st.to_csv(out / "hk_strategies.csv", index=False)
+    panels = {s: hk.panel(hk.load(s, d)) for s in syms if (d / f"{s}_1m_klines.csv").exists()}
+    days = sorted({x for p in panels.values() for x in p["close"].index})
+    rob = hk.robustness(panels, a.fee + a.slippage, split=days[len(days) // 2])
+    for k, v in rob.items():
+        v.to_csv(out / f"hk_robust_{k}.csv", index=False)
     pd.set_option("display.width", 220)
     print("\n跳空被合约提前反映的比例（斜率，1 = 全部反映）：")
     print(pre[["symbol", "days", "abs_gap_bps", "priced_0859", "priced_0929", "left_0929_bps", "same_dir_0929"]]
           .round(2).to_string(index=False))
     print("\n开盘前后做法（每笔扣费后基点）：")
     print(st[["desc", "trades", "win_rate", "exp_bps", "t"]].round(2).to_string(index=False))
+    print("\n开盘后价差收敛（09:31 偏离 >0.3% 反向，持有到 11:59）：")
+    print(rob["decomposition"].round(1).to_string(index=False))
+    print(rob["stops"].round(2).to_string(index=False))
+    print(rob["by_symbol"][["symbol", "trades", "exp_bps", "t", "win_rate", "mae_med_bps", "mae_p90_bps"]]
+          .round(1).to_string(index=False))
+    print("\n午休后 13:01 价差收敛：")
+    print(rob["lunch"].round(2).to_string(index=False))
     print(f"\n结果目录: {out}")
 
 
@@ -311,7 +323,7 @@ def cmd_hk_now(a):
         hm = now.hour * 60 + now.minute
         if 9 * 60 + 31 <= hm < 12 * 60:
             basis = last / index_now - 1
-            line += f" | 合约/正股 {basis:+.2%}：{hk.advise_open(basis)}"
+            line += f" | 合约/正股 {basis:+.2%}：{hk.advise_open(basis, symbol=s)}"
         print(line)
 
 

@@ -220,9 +220,107 @@ def advise_preopen(remaining: float, auction_chg: float, th: float = 0.003) -> s
             f"历史上这类日子追单平均亏损，开盘后合约常往回走")
 
 
-def advise_open(basis: float, th: float = 0.003) -> str:
+# 价差收敛规则在这些标的上历史无效（大盘蓝筹、定价已很有效），实时提示时标注出来
+WEAK_SYMBOLS = {"HK0700USDT", "TENCENTUSDT", "POPMARTUSDT"}
+
+
+def advise_open(basis: float, th: float = 0.003, symbol: str = "") -> str:
+    weak = "（该标的历史上此规则无效，仅供参考）" if symbol in WEAK_SYMBOLS else ""
     if basis > th:
-        return f"合约比正股贵 {basis:.2%}：可做空合约，持有到午休前（历史每笔约 +48~75 基点，胜率约 6 成）"
+        return (f"合约比正股贵 {basis:.2%}：可做空合约，持有到 11:59~13:30；只设 3~5% 的宽止损，"
+                f"靠仓位控制风险{weak}")
     if basis < -th:
-        return f"合约比正股便宜 {abs(basis):.2%}：可做多合约，持有到午休前（样本较少，约占 6% 的交易日）"
+        return f"合约比正股便宜 {abs(basis):.2%}：可做多合约，持有到 11:59~13:30（这类日子较少）{weak}"
     return "合约与正股价差在 ±0.3% 内，无信号"
+
+
+def robustness(P: dict, cost: float, split: str) -> dict[str, pd.DataFrame]:
+    """价差收敛规则的稳健性：参数网格（前后两段）、止损影响、按标的、午休时段。"""
+    grid = []
+    for sig in ["09:31", "09:33", "09:35"]:
+        for ex in ["10:30", "11:59", "13:30"]:
+            for th in [0.002, 0.003, 0.005]:
+                T = pd.concat([basis_trades(p, s, sig, ex, th, cost) for s, p in P.items()], ignore_index=True)
+                if not len(T):
+                    continue
+                f, a, b = (summarize_trades(x) for x in (T, T[T.day < split], T[T.day >= split]))
+                grid.append({"signal": sig, "exit": ex, "threshold": th, "trades": f["trades"], "exp_bps": f["exp_bps"],
+                             "t": f["t"], "win_rate": f["win_rate"], "exp_first_half": a.get("exp_bps"),
+                             "exp_second_half": b.get("exp_bps"), "t_second_half": b.get("t")})
+    stops = []
+    for stop in [None, 0.01, 0.02, 0.03, 0.05]:
+        T = pd.concat([basis_trades(p, s, "09:31", "11:59", 0.003, cost, stop=stop) for s, p in P.items()],
+                      ignore_index=True)
+        m = summarize_trades(T)
+        stops.append({"stop": stop or 0, "stopped_share": T["stopped"].mean(), "exp_bps": m["exp_bps"], "t": m["t"],
+                      "win_rate": m["win_rate"]})
+    T = pd.concat([basis_trades(p, s, "09:31", "11:59", 0.003, cost) for s, p in P.items()], ignore_index=True)
+    by_sym = T.groupby("symbol").apply(lambda x: pd.Series(summarize_trades(x))).reset_index()
+    decomp = pd.DataFrame([{"gross_bps": T["gross"].mean() * 1e4, "stock_part_bps": T["stock_ret"].mean() * 1e4,
+                            "basis_part_bps": T["basis_change"].mean() * 1e4,
+                            "mae_median_bps": T["mae"].median() * 1e4, "mae_p90_bps": T["mae"].quantile(0.9) * 1e4}])
+    lunch = []
+    for ex in ["14:00", "15:59"]:
+        L = pd.concat([basis_trades(p, s, "13:01", ex, 0.003, cost) for s, p in P.items()], ignore_index=True)
+        if len(L):
+            m = summarize_trades(L)
+            lunch.append({"signal": "13:01", "exit": ex, "trades": m["trades"], "exp_bps": m["exp_bps"], "t": m["t"]})
+    return {"grid": pd.DataFrame(grid), "stops": pd.DataFrame(stops), "by_symbol": by_sym,
+            "decomposition": decomp, "lunch": pd.DataFrame(lunch)}
+
+
+def panel(df: pd.DataFrame, start: str = "09:00", end: str = "16:10") -> dict[str, pd.DataFrame]:
+    """港股交易日 × 分钟（香港时间）的价格面板：close/high/low 为合约，index 为指数（≈正股）。"""
+    h = df.index.tz_convert("Asia/Hong_Kong")
+    day = np.asarray(h.strftime("%Y-%m-%d"))
+    hm = np.asarray(h.strftime("%H:%M"))
+    keep = (hm >= start) & (hm <= end) & (h.weekday < 5)
+    x = df.loc[keep, ["close", "high", "low", "index"]].assign(day=day[keep], hm=hm[keep])
+    out = {c: x.pivot_table(index="day", columns="hm", values=c, aggfunc="last") for c in ["close", "high", "low", "index"]}
+    # 交易日：09:31-09:59 指数有明显波动
+    cols = [c for c in out["index"].columns if "09:31" <= c <= "09:59"]
+    act = out["index"][cols].pct_change(axis=1).abs().mean(axis=1)
+    days = act[act > 2e-4].index
+    return {k: v.loc[v.index.intersection(days)] for k, v in out.items()}
+
+
+def basis_trades(p: dict, sym: str, sig_hm: str, exit_hm: str, th: float, cost: float,
+                 stop: float | None = None) -> pd.DataFrame:
+    """在 sig_hm 收盘看 合约/正股-1，超过 ±th 反向开仓（下一分钟按 sig_hm 收盘价近似成交），exit_hm 收盘平仓。
+    stop：相对开仓价的止损比例（用 1 分钟最高/最低价判断，触发按止损价成交）。"""
+    c, hi, lo, ix = p["close"], p["high"], p["low"], p["index"]
+    if sig_hm not in c or exit_hm not in c:
+        return pd.DataFrame()
+    basis = c[sig_hm] / ix[sig_hm] - 1
+    side = -np.sign(basis).where(basis.abs() > th)
+    path_cols = [m for m in c.columns if sig_hm < m <= exit_hm]
+    rows = []
+    for d, sd in side.dropna().items():
+        entry = c.at[d, sig_hm]
+        if not np.isfinite(entry):
+            continue
+        exit_px = c.at[d, exit_hm]
+        hi_p, lo_p = hi.loc[d, path_cols].to_numpy(), lo.loc[d, path_cols].to_numpy()
+        adverse = (np.nanmax(hi_p) / entry - 1) if sd < 0 else (1 - np.nanmin(lo_p) / entry)
+        favorable = (1 - np.nanmin(lo_p) / entry) if sd < 0 else (np.nanmax(hi_p) / entry - 1)
+        ret = sd * (exit_px / entry - 1)
+        stopped = False
+        if stop is not None and adverse >= stop:   # 持仓期间最不利价格触及止损
+            ret, stopped = -stop, True
+        stock_ret = ix.at[d, exit_hm] / ix.at[d, sig_hm] - 1
+        rows.append({"symbol": sym, "day": d, "side": sd, "basis": basis[d], "ret": ret - 2 * cost,
+                     "gross": ret, "mae": adverse, "mfe": favorable, "stopped": stopped,
+                     "stock_ret": sd * stock_ret, "basis_change": sd * ((exit_px / ix.at[d, exit_hm]) / (entry / ix.at[d, sig_hm]) - 1)})
+    return pd.DataFrame(rows)
+
+
+def summarize_trades(t: pd.DataFrame) -> dict:
+    if not len(t):
+        return {"trades": 0}
+    r = t["ret"]
+    sd = r.std(ddof=1)
+    return {"trades": len(r), "symbols": t["symbol"].nunique(), "win_rate": (r > 0).mean(),
+            "exp_bps": r.mean() * 1e4, "t": r.mean() / sd * np.sqrt(len(r)) if sd > 0 else 0,
+            "avg_win_bps": r[r > 0].mean() * 1e4, "avg_loss_bps": r[r <= 0].mean() * 1e4,
+            "mae_med_bps": t["mae"].median() * 1e4, "mae_p90_bps": t["mae"].quantile(0.9) * 1e4,
+            "sym_pos": float((t.groupby("symbol")["ret"].mean() > 0).mean())}
