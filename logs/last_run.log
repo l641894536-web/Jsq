@@ -1,0 +1,36 @@
+[binance] 00:30:55 1066 USD-M symbols in archive
+/home/runner/work/Jsq/Jsq/venv/lib/python3.12/site-packages/numpy/lib/_function_base_impl.py:3037: RuntimeWarning: invalid value encountered in divide
+  c /= stddev[:, None]
+/home/runner/work/Jsq/Jsq/venv/lib/python3.12/site-packages/numpy/lib/_function_base_impl.py:3038: RuntimeWarning: invalid value encountered in divide
+  c /= stddev[None, :]
+[binance] 00:31:12 stock perps: ['AAPLUSDT', 'ACNUSDT', 'ADBEUSDT', 'AKAMUSDT', 'AMATUSDT', 'AMCUSDT', 'AMDUSDT', 'AMZNUSDT', 'ANETUSDT', 'APPUSDT', 'ARMUSDT', 'ASMLUSDT', 'AVGOUSDT', 'BABAUSDT', 'BEUSDT', 'BXUSDT', 'CATUSDT', 'CIENUSDT', 'COHRUSDT', 'COINUSDT', 'COSTUSDT', 'CRCLUSDT', 'CRMUSDT', 'CRWDUSDT', 'CRWVUSDT', 'CSCOUSDT', 'CVNAUSDT', 'DDOGUSDT', 'DELLUSDT', 'DISUSDT', 'EBAYUSDT', 'FLEXUSDT', 'GDXUSDT', 'GEVUSDT', 'GLWUSDT', 'GMEUSDT', 'GOOGLUSDT', 'GSUSDT', 'HDUSDT', 'HOODUSDT', 'HPEUSDT', 'IBMUSDT', 'INTCUSDT', 'IONQUSDT', 'IWMUSDT', 'JPMUSDT', 'KLACUSDT', 'KOUSDT', 'LITEUSDT', 'LLYUSDT', 'LRCXUSDT', 'MARAUSDT', 'MCDUSDT', 'MDBUSDT', 'METAUSDT', 'MRKUSDT', 'MRNAUSDT', 'MRVLUSDT', 'MSFTUSDT', 'MSTRUSDT', 'MUUSDT', 'NETUSDT', 'NFLXUSDT', 'NKEUSDT', 'NOWUSDT', 'NVDAUSDT', 'OKLOUSDT', 'ORCLUSDT', 'PANWUSDT', 'PDDUSDT', 'PLTRUSDT', 'PYPLUSDT', 'QCOMUSDT', 'QQQUSDT', 'RDDTUSDT', 'RKLBUSDT', 'SHOPUSDT', 'SMCIUSDT', 'SMHUSDT', 'SNDKUSDT', 'SNOWUSDT', 'SNPSUSDT', 'SOFIUSDT', 'SOXLUSDT', 'SPYUSDT', 'SQQQUSDT', 'TEAMUSDT', 'TERUSDT', 'TQQQUSDT', 'TSLAUSDT', 'TSMUSDT', 'TTWOUSDT', 'TXNUSDT', 'UBERUSDT', 'UNHUSDT', 'VRTUSDT', 'VSTUSDT', 'VUSDT', 'WDCUSDT', 'WMTUSDT', 'XLEUSDT', 'XOMUSDT', 'ZSUSDT']
+[binance] 00:31:12 planning 1156 symbol/interval jobs
+[binance] 00:31:20 1154 archive files to download
+[binance] 00:31:33 1d: +926 rows
+[binance] 00:31:35 1h: +2712 rows
+[binance] 00:31:46 15m: +10848 rows
+[us] 00:32:07 daily ok 583/583, +582 rows
+[a_share] 00:32:46 target end date 2026-10-16
+[a_share] 00:37:27 5226 stocks to fetch (5481 in universe)
+[a_share] 00:37:46 bars 250/5226  0.08s/stock
+[a_share] 00:38:06 bars 500/5226  0.08s/stock
+[a_share] 00:38:23 bars 750/5226  0.07s/stock
+[a_share] 00:38:38 bars 1000/5226  0.07s/stock
+[a_share] 00:38:57 bars 1250/5226  0.07s/stock
+[a_share] 00:39:16 bars 1500/5226  0.07s/stock
+[a_share] 00:39:32 bars 1750/5226  0.07s/stock
+[a_share] 00:39:48 bars 2000/5226  0.07s/stock
+[a_share] 00:40:05 bars 2250/5226  0.07s/stock
+[a_share] 00:40:21 bars 2500/5226  0.07s/stock
+[a_share] 00:40:40 bars 2750/5226  0.07s/stock
+[a_share] 00:40:59 bars 3000/5226  0.07s/stock
+[a_share] 00:41:18 bars 3250/5226  0.07s/stock
+[a_share] 00:41:33 bars 3500/5226  0.07s/stock
+[a_share] 00:41:53 bars 3750/5226  0.07s/stock
+[a_share] 00:42:11 bars 4000/5226  0.07s/stock
+[a_share] 00:42:32 bars 4250/5226  0.07s/stock
+[a_share] 00:42:49 bars 4500/5226  0.07s/stock
+[a_share] 00:43:07 bars 4750/5226  0.07s/stock
+[a_share] 00:43:27 bars 5000/5226  0.07s/stock
+[a_share] 00:43:58 writing 36,574 bar rows
+{"us_universe": [true, 0], "binance": [true, 0], "us": [true, 0], "a_share": [true, 0]}
