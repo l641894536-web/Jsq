@@ -260,6 +260,7 @@ def cmd_hk_study(a):
     syms = [x.strip() for x in a.symbols.split(",")] if a.symbols else hk.HK_SYMBOLS
     if not a.no_update:
         sess = make_session(a.proxy)
+        log.info("BABAUSDT（夜盘参照）1 分钟数据: %s", hk.update(sess, "BABAUSDT", d))
         for s in syms:
             log.info("%s 1 分钟数据: %s", s, hk.update(sess, s, d))
             if not a.skip_ticks:
@@ -280,6 +281,13 @@ def cmd_hk_study(a):
           f"t={t['t']}，胜率 {t['win']}%，{t['trades']} 笔")
     print(pd.DataFrame(data["by_symbol"]).drop(columns=["symbol", "weak"]).to_string(index=False))
     print(pd.DataFrame(data["stops"]).to_string(index=False))
+    o = data["overnight"]
+    print("\n收盘后合约走势（按当天正股涨跌，每格 = 平均基点 / 上涨占比%）：")
+    print(pd.DataFrame(o["after"]).to_string(index=False))
+    print("\n白天涨跌 × 夜里涨跌（open/am：顺夜里方向为正，回落为负）：")
+    print(pd.DataFrame(o["cases"]).to_string(index=False))
+    print("\n开盘前规则（扣成本后）：")
+    print(pd.DataFrame(o["rules"]).to_string(index=False))
     print(f"\n结果目录: {out}\n报告: {rep}")
 
 
@@ -298,7 +306,9 @@ def cmd_hk_now(a):
 
 
 def _hk_now_once(a):
+    import json
     from . import hk
+    from . import hk_overnight as ho
     client = _client(a)
     auction = {}
     for kv in (a.auction or "").split(","):
@@ -307,30 +317,56 @@ def _hk_now_once(a):
             auction[k.strip().upper()] = float(v) / 100
     syms = list(auction) or ([x.strip() for x in a.symbols.split(",")] if a.symbols else hk.HK_SYMBOLS)
     now = pd.Timestamp.now(tz="Asia/Hong_Kong")
-    prev = pd.Timestamp(a.prev_day, tz="Asia/Hong_Kong") if a.prev_day else now.normalize() - pd.offsets.BDay(1)
-    t_close = int((prev.normalize() + pd.Timedelta(hours=16, minutes=10)).timestamp() * 1000)
-    print(f"现在 {now:%Y-%m-%d %H:%M} 香港时间；昨收取 {prev:%Y-%m-%d} 16:10")
+    hm = now.hour * 60 + now.minute
+    close_day = pd.Timestamp(a.prev_day, tz="Asia/Hong_Kong") if a.prev_day else ho.reference_close(now)
+    before = close_day - pd.offsets.BDay(1)
+    ms = lambda day: int((day.normalize() + pd.Timedelta(hours=16, minutes=10)).timestamp() * 1000)  # noqa: E731
+    t_close, t_before = ms(close_day), ms(before)
+    # 最近一次研究结果里的规则统计，用来给出历史胜率
+    rules = None
+    try:
+        from .pipeline import RESULTS_DIR
+        cands = sorted(Path(RESULTS_DIR).glob("*/hk_report_data.json"))
+        if cands:
+            rules = json.loads(cands[-1].read_text()).get("overnight", {}).get("rules")
+    except Exception:  # noqa: BLE001
+        rules = None
+
+    def kline_close(sym, t, index=False):
+        if index:
+            k = client.get("/fapi/v1/indexPriceKlines", {"pair": sym, "interval": "1m", "startTime": t, "limit": 1})
+        else:
+            k = client.get("/fapi/v1/klines", {"symbol": sym, "interval": "1m", "startTime": t, "limit": 1})
+        return float(k[0][4]) if k else np.nan
+
+    print(f"现在 {now:%Y-%m-%d %H:%M} 香港时间；参照收盘 {close_day:%Y-%m-%d} 16:10（遇港股假期请用 --prev-day 指定）")
+    try:
+        baba = float(client.get("/fapi/v1/ticker/price", {"symbol": "BABAUSDT"})["price"]) / kline_close("BABAUSDT", t_close) - 1
+        print("  " + ho.advise_baba(baba))
+    except Exception as e:  # noqa: BLE001
+        print(f"  阿里美股合约获取失败：{str(e)[:80]}")
     for s in syms:
         try:
             pi = client.get("/fapi/v1/premiumIndex", {"symbol": s})
             last = float(client.get("/fapi/v1/ticker/price", {"symbol": s})["price"])
-            k = client.get("/fapi/v1/klines", {"symbol": s, "interval": "1m", "startTime": t_close, "limit": 1})
-            idx_prev = client.get("/fapi/v1/indexPriceKlines", {"pair": s, "interval": "1m", "startTime": t_close, "limit": 1})
+            perp_close, idx_close = kline_close(s, t_close), kline_close(s, t_close, index=True)
+            idx_before = kline_close(s, t_before, index=True)
         except Exception as e:  # noqa: BLE001
             print(f"{s}: 获取失败 {str(e)[:100]}")
             continue
-        perp_prev = float(k[0][4]) if k else np.nan
-        index_now = float(pi["indexPrice"])
-        perp_move = last / perp_prev - 1
-        line = f"{s:13s} 合约 {last:<9.5g} 自昨收 {perp_move:+.2%}"
+        move = last / perp_close - 1
+        day_chg = idx_close / idx_before - 1
+        print(f"\n{s}  合约 {last:.5g} | 收盘日正股 {day_chg:+.2%}，收盘时合约比正股 {perp_close / idx_close - 1:+.2%}"
+              f" | 合约自收盘 {move:+.2%}")
+        in_session = (9 * 60 + 30 <= hm < 12 * 60) or (13 * 60 <= hm < 16 * 60 + 10)
+        if not in_session:
+            print("  " + ho.advise_overnight(move, hm, rules))
         if s in auction:
-            rem = hk.remaining_gap(auction[s], perp_move)
-            line += f" | 竞价 {auction[s]:+.2%} → 还差 {rem:+.2%}：{hk.advise_preopen(rem, auction[s])}"
-        hm = now.hour * 60 + now.minute
+            rem = hk.remaining_gap(auction[s], move)
+            print(f"  竞价 {auction[s]:+.2%} → 合约还差 {rem:+.2%}：{hk.advise_preopen(rem, auction[s])}")
         if 9 * 60 + 31 <= hm < 12 * 60:
-            basis = last / index_now - 1
-            line += f" | 合约/正股 {basis:+.2%}：{hk.advise_open(basis, symbol=s)}"
-        print(line)
+            basis = last / float(pi["indexPrice"]) - 1
+            print(f"  合约/正股 {basis:+.2%}：{hk.advise_open(basis, symbol=s)}")
 
 
 def cmd_report(a):

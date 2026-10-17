@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 
 from . import hk
+from . import hk_overnight as ho
 
 FEE = 0.0005          # 单边手续费（taker）
 CATS = {"over": "合约走过头", "under": "合约还没走够", "opposite": "合约方向相反"}
@@ -136,7 +137,34 @@ def build_data(data_dir: Path, symbols=None, slippage: float = 0.0005) -> dict:
                   "spread": _r(r.spread_bps, 1), "turnover": _r(r.notional_10min / 1e3, 0),
                   "trade": _r(r.median_trade, 0), "depth02": _r(r.depth02 / 1e3, 0), "depth1": _r(r.depth1 / 1e3, 0)}
                  for r in costs.itertuples()] if len(costs) else []
+    # ---------- 收盘 → 次日开盘
+    ref = hk.load("BABAUSDT", d) if (d / "BABAUSDT_1m_klines.csv").exists() else None
+    O = pd.concat([ho.overnight_table(f, ref) for f in frames.values()], ignore_index=True)
+    O = O[O["day_chg"].abs() <= 0.15].reset_index(drop=True)      # 去掉上市初期 ±15% 以上的极端日
+    basis = O.merge(T[["symbol", "day", "basis_0931"]].rename(columns={"day": "next_day"}),
+                    on=["symbol", "next_day"], how="left")["basis_0931"]
+    basis.index = O.index
+    ac = ho.after_close(O)
+    after_rows = [{"bucket": r["bucket"], "n": int(r["n"]), "day": _r(r["day_chg_bps"] / 100, 1),
+                   **{hm: [_r(r[f"{hm}_bps"], 0), _r((r[f"{hm}_up"] or 0) * 100, 0)] for hm in
+                      ("18:00", "21:30", "04:00", "08:59", "09:29")}} for _, r in ac.iterrows()]
+    fc = ho.four_cases(O)
+    case_rows = [{"case": r["case"], "n": int(r["n"]), "day": _r(r["day_chg_bps"] / 100, 1),
+                  "night": _r(r["overnight_bps"] / 100, 2), "gap": _r(r["gap_bps"] / 100, 2),
+                  "open": _r(r["cont_open_bps"], 0), "open_t": _r(r["cont_open_t"], 1),
+                  "am": _r(r["cont_am_bps"], 0), "am_t": _r(r["cont_am_t"], 1)} for _, r in fc.iterrows()]
+    pr = ho.preopen_rules(O, basis, split)
+    rule_rows = [{"rule": r.rule, "n": int(r.n), "exp": _r(r.exp_bps, 0), "win": _r(r.win * 100, 0), "t": _r(r.t, 1),
+                  "first": _r(r.first_bps, 0), "second": _r(r.second_bps, 0), "sym": _r(r.sym_pos * 100, 0)}
+                 for r in pr.itertuples()]
+    dec_o = ho.decompose(O) if ref is not None else {}
+    overnight = {"n": len(O), "after": after_rows, "cases": case_rows, "rules": rule_rows,
+                 "paths": [{k: (_r(v, 0) if k != "t" else v) for k, v in p.items()} for p in ho.paths(O)],
+                 "beta": _r(dec_o.get("beta", {}).get("slope"), 2), "mkt_t": _r(dec_o.get("market_vs_after", {}).get("t"), 1),
+                 "own_t": _r(dec_o.get("own_vs_after", {}).get("t"), 1)}
+
     return {
+        "overnight": overnight,
         "meta": {"symbols": len(syms), "obs": len(T), "start": min(T["day"]), "end": max(T["day"]),
                  "split": split, "cost_bps": _r(cost * 1e4, 0), "fee_bps": _r(FEE * 1e4, 0)},
         "profile": minute_profile(P), "scatter": scatter, "prepricing": pre_rows, "cats": cats,
@@ -224,7 +252,7 @@ pre{font:13px/1.55 var(--mono);background:var(--surface);border:1px solid var(--
 @media (prefers-reduced-motion:no-preference){.tip{transition:opacity .08s}}
 </style>
 <main>
-<h1>港股合约：开盘前被提前定价，开盘后往回收</h1>
+<h1>港股合约：收盘后怎么走，第二天开盘往哪回</h1>
 <div class="sub" id="meta"></div>
 
 <div class="timeline" aria-label="港交所交易时段（香港时间）">
@@ -239,7 +267,31 @@ pre{font:13px/1.55 var(--mono);background:var(--surface);border:1px solid var(--
 <h2>结论</h2>
 <ul class="key" id="summary"></ul>
 
-<h2>合约在 09:20 就动了，正股要到 09:30 才动</h2>
+<h2>收盘后：合约往哪走</h2>
+<p>按当天正股涨跌分组，看港股 16:10 收盘后合约相对收盘价的平均涨跌（基点）和上涨占比。</p>
+<div class="scroll" id="t-after"></div>
+<p class="mut" id="after-note"></p>
+
+<h2>夜里涨了还是跌了：开盘时怎么回</h2>
+<p>按 08:59（竞价前）合约相对收盘的涨跌分组，看两组的平均价格路径。</p>
+<figure id="f-paths">
+  <div class="fig-title">合约相对港股收盘价的平均走势（基点）</div>
+  <div class="legend"><span><i class="sw" style="background:var(--s1)"></i>夜里涨 &gt;1%</span><span><i class="sw" style="background:var(--s2)"></i>夜里跌 &gt;1%</span></div>
+  <div class="chart" id="c-paths"></div>
+  <div class="tip" hidden></div>
+  <details class="tv"><summary>数据表</summary><div class="scroll" id="t-paths"></div></details>
+</figure>
+<h3>白天涨跌 × 夜里涨跌：四种情况</h3>
+<p class="mut">正数 = 顺着合约夜里的方向继续走（夜里跌的继续跌、夜里涨的继续涨），负数 = 往回走。白天涨跌超过 1%、夜里合约涨跌超过 0.5% 才归类。</p>
+<div class="scroll" id="t-cases"></div>
+<p id="beta-note"></p>
+
+<h2>实盘规则（扣成本后）</h2>
+<p>每笔按一来一回 0.2% 扣成本（实测约 0.11%–0.20%）。“前段 / 后段”以 9 月 1 日为界分别统计。</p>
+<div class="scroll" id="t-rules"></div>
+<div class="callout"><b>怎么用：</b>每天 08:55 左右看合约相对昨天收盘涨了多少。涨超过 1% 就在 08:59 做空，09:31 看一眼：合约还比正股贵 0.3% 以上就拿到 11:59，否则平仓。夜里跌的不要抄底。</div>
+
+<h2>机制：合约在 09:20 就动了，正股要到 09:30 才动</h2>
 <p>每分钟的平均波动幅度。指数价格在港股交易时段跟随正股，休市时只缓慢跟随合约，所以它在 09:30 那一分钟一次性跳到开盘价；合约则在 09:20 竞价撮合那一分钟就明显放大，09:30 仍有一大段没走完。</p>
 <figure id="f-profile">
   <div class="fig-title">每分钟平均波动（基点，所有标的、所有交易日）</div>
@@ -336,12 +388,15 @@ function relPos(fig, ev){const r=fig.getBoundingClientRect();return [ev.clientX-
 (function(){
   const m=D.meta, t=D.tiles, dec=D.decomp, cats=D.cats;
   document.getElementById("meta").textContent=`${m.symbols} 个港股合约 · ${m.start} 至 ${m.end} · ${m.obs} 个“标的×交易日” · 假设成本单边 ${m.cost_bps} 基点（手续费 ${m.fee_bps} + 滑点），实测成本见下文`;
-  const over=cats.find(c=>c.key==="over");
+  const over=cats.find(c=>c.key==="over");const O=D.overnight;
+  const R=k=>O.rules.find(r=>r.rule.startsWith(k))||{};
+  const r1=R("夜里涨 >1.0%"),r2=R("夜里涨 >2.0%"),rc=R("夜里涨 >1%：08:59 做空；09:31"),rb=R("阿里美股");
   const items=[
-    `合约在港股收盘后继续交易，到 09:29 平均已经提前走掉正股开盘跳空的约 ${D.prepricing.find(r=>r.name==="全部")?.p0929 ?? "–"}%，但不同日子差别很大。`,
-    `约 ${over.share}% 的交易日合约<b>走过头</b>（比正股实际跳空走得更远）。这些日子按竞价方向追单平均亏损，正是“看着要跌去做空，开盘后反而在低位”的情况。`,
-    `开盘后（09:31）合约比正股贵 0.3% 以上时做空、持有到 11:59：每笔扣费后约 ${fmt(t.exp_real,0,true)} 基点，胜率 ${t.win}%，${t.trades} 笔，前后两段都为正。收益里有 ${fmt(dec.stock,0)} 基点来自正股本身回落，${fmt(dec.basis,0)} 基点来自价差收敛。`,
-    `规则在智谱、MiniMax、小米等散户关注度高的标的上有效，在腾讯、泡泡玛特上无效；止损会明显拉低收益，适合用 3–5% 的宽止损加小仓位。`,
+    `<b>收盘后：</b>白天大跌的，合约收盘后两小时平均小幅反弹；白天大涨的，小幅回落。幅度只有 0.2%–0.3%，不够交易成本，到第二天早上白天涨跌已经不影响合约走势。`,
+    `<b>夜里涨的靠不住，夜里跌的是真的：</b>合约到 08:59 比收盘涨超过 1% 的，开盘时平均吐回一半；夜里跌超过 1% 的，开盘后基本守住，到中午还在低位。跌后反弹的那种夜里上涨最容易过头。`,
+    `<b>规则一：</b>08:59 合约比收盘涨 &gt;1% 就做空，09:31 平仓：每笔 ${fmt(r1.exp,0,true)} 基点，胜率 ${r1.win}%，${r1.sym}% 的标的赚钱；涨 &gt;2% 时每笔 ${fmt(r2.exp,0,true)} 基点。09:31 合约仍比正股贵 0.3% 以上就拿到中午：每笔 ${fmt(rc.exp,0,true)} 基点。`,
+    `<b>规则二：</b>09:31 合约比正股贵 0.3% 以上做空、拿到 11:59：每笔约 ${fmt(t.exp_real,0,true)} 基点，胜率 ${t.win}%。在智谱、MiniMax、小米等散户关注度高的标的上有效，腾讯、泡泡玛特上无效。`,
+    `<b>辅助：</b>阿里巴巴美股合约夜里涨（跌）超过 0.5%，开盘后顺着做到中午，每笔 ${fmt(rb.exp,0,true)} 基点，较弱。竞价阶段（09:00–09:29）合约平均回落约 0.15%：要买等竞价结束，要空在 09:00 前后。`,
   ];
   const ul=document.getElementById("summary");items.forEach(s=>{const li=document.createElement("li");li.innerHTML=s;ul.appendChild(li)});
 
@@ -365,6 +420,51 @@ function relPos(fig, ev){const r=fig.getBoundingClientRect();return [ev.clientX-
     D.costs.map(r=>[r.name,r.window,fmt(r.spread,1),fmt(r.turnover),fmt(r.trade),fmt(r.depth02),fmt(r.depth1)]));}
   else document.getElementById("t-costs").textContent="逐笔成本数据尚未生成。";
 })();
+
+/* ---------- 收盘后 / 四种情况 / 规则 ---------- */
+(function(){const O=D.overnight;
+  const cell=v=>v&&v[0]!=null?{t:`${fmt(v[0],0,true)} / ${fmt(v[1],0)}%`,cls:v[0]>0?"posv":(v[0]<0?"negv":"")}:"–";
+  table(document.getElementById("t-after"),["当天正股","天数","平均涨跌","18:00","21:30","次日 04:00","08:59","09:29"],
+    O.after.map(r=>[r.bucket,r.n,fmt(r.day,1,true)+"%",cell(r["18:00"]),cell(r["21:30"]),cell(r["04:00"]),cell(r["08:59"]),cell(r["09:29"])]));
+  document.getElementById("after-note").textContent="每格为“平均涨跌（基点）/ 上涨占比”。21:30–04:00 为美股交易时段（夏令时）。";
+  table(document.getElementById("t-cases"),["情况","天数","白天涨跌","夜里合约","正股实际跳空","开盘那一下：顺夜里方向(+)/回落(-)","t","开盘后到中午：顺夜里方向(+)/回落(-)","t"],
+    O.cases.map(r=>[r.case,r.n,fmt(r.day,1,true)+"%",fmt(r.night,2,true)+"%",fmt(r.gap,2,true)+"%",fmt(r.open,0,true)+" 基点",fmt(r.open_t,1),fmt(r.am,0,true)+" 基点",fmt(r.am_t,1)]));
+  document.getElementById("beta-note").textContent=`夜里合约的涨跌里，跟着阿里巴巴美股合约走的部分（系数 ${fmt(O.beta,2)}）开盘后会继续（t=${fmt(O.mkt_t,1)}）；合约自己多走的部分开盘后不持续（t=${fmt(O.own_t,1)}）。`;
+  table(document.getElementById("t-rules"),["规则","笔数","每笔(基点)","胜率","t","前段","后段","盈利标的"],
+    O.rules.map(r=>[r.rule,r.n,signed(r.exp),r.win+"%",fmt(r.t,1),signed(r.first),signed(r.second),r.sym+"%"]));
+  table(document.getElementById("t-paths"),["时点","夜里涨>1%（基点）","夜里跌>1%（基点）"],O.paths.map(p=>[p.t,fmt(p.up,0,true),fmt(p.down,0,true)]));
+})();
+function drawPaths(){
+  const fig=document.getElementById("f-paths"),host=document.getElementById("c-paths"),P=D.overnight.paths;
+  const W=Math.max(300,host.clientWidth),Hh=Math.round(Math.min(320,Math.max(240,W*0.42)));
+  const narrow=W<560,m={l:44,r:narrow?44:64,t:22,b:narrow?46:30},iw=W-m.l-m.r,ih=Hh-m.t-m.b;
+  const vals=P.flatMap(p=>[p.up,p.down]);let tk=ticks(Math.min(0,...vals),Math.max(0,...vals),5);
+  const lo=Math.min(tk[0],...vals),hi=Math.max(tk[tk.length-1],...vals);
+  const x=i=>m.l+i*(iw/(P.length-1)),y=v=>m.t+(hi-v)/(hi-lo)*ih;
+  const svg=S("svg",{width:W,height:Hh,role:"img","aria-label":"夜里涨与夜里跌两组合约的平均走势",tabindex:0});
+  tk.forEach(v=>{S("line",{x1:m.l,x2:W-m.r,y1:y(v),y2:y(v),stroke:css("--grid"),"stroke-width":1},svg);
+    const tx=S("text",{x:m.l-6,y:y(v)+4,"text-anchor":"end","font-size":11,fill:css("--muted")},svg);tx.textContent=v;});
+  S("line",{x1:m.l,x2:W-m.r,y1:y(0),y2:y(0),stroke:css("--axis"),"stroke-width":1},svg);
+  const io=P.findIndex(p=>p.t.startsWith("09:29")),ia=P.findIndex(p=>p.t.startsWith("09:31"));
+  if(io>=0&&ia>=0){S("rect",{x:x(io),y:m.t,width:x(ia)-x(io),height:ih,fill:css("--tint2")},svg);
+    const tx=S("text",{x:(x(io)+x(ia))/2,y:m.t-8,"text-anchor":"middle","font-size":11,fill:css("--ink2")},svg);tx.textContent="开盘";}
+  P.forEach((p,i)=>{const lab=p.t.split(" ")[narrow?0:0];const tx=S("text",{x:x(i),y:Hh-(narrow?30:10),"text-anchor":narrow?"end":"middle",
+    "font-size":10.5,fill:css("--muted"),transform:narrow?`rotate(-40 ${x(i)} ${Hh-30})`:""},svg);tx.textContent=narrow?lab.replace("收盘","收"):p.t.replace(" 美股开盘","").replace(" 美股收盘","").replace(" 撮合","").replace(" 开盘后","");});
+  [["up","--s1","夜里涨"],["down","--s2","夜里跌"]].forEach(([k,c,lab])=>{S("path",{d:P.map((p,i)=>(i?"L":"M")+x(i).toFixed(1)+","+y(p[k]).toFixed(1)).join(""),
+      fill:"none",stroke:css(c),"stroke-width":2,"stroke-linejoin":"round","stroke-linecap":"round"},svg);
+    const last=P[P.length-1][k];S("circle",{cx:x(P.length-1),cy:y(last),r:4,fill:css(c),stroke:css("--surface"),"stroke-width":2},svg);
+    const tx=S("text",{x:x(P.length-1)+8,y:y(last)+4,"font-size":12,fill:css("--ink")},svg);tx.textContent=fmt(last,0,true);});
+  const cross=S("line",{y1:m.t,y2:m.t+ih,stroke:css("--axis"),"stroke-width":1,visibility:"hidden"},svg);
+  let cur=io>=0?io:0;
+  function show(i){cur=i;const p=P[i];cross.setAttribute("x1",x(i));cross.setAttribute("x2",x(i));cross.setAttribute("visibility","visible");
+    const fr=fig.getBoundingClientRect(),sr=svg.getBoundingClientRect();
+    showTip(fig,x(i)+(sr.left-fr.left),m.t+(sr.top-fr.top)+10,p.t,[[css("--s1"),"夜里涨 >1%",fmt(p.up,0,true)+" 基点"],[css("--s2"),"夜里跌 >1%",fmt(p.down,0,true)+" 基点"]]);}
+  function hide(){cross.setAttribute("visibility","hidden");hideTip(fig);}
+  svg.addEventListener("pointermove",ev=>{const r=svg.getBoundingClientRect();show(Math.max(0,Math.min(P.length-1,Math.round((ev.clientX-r.left-m.l)/(iw/(P.length-1))))));});
+  svg.addEventListener("pointerleave",hide);svg.addEventListener("focus",()=>show(cur));svg.addEventListener("blur",hide);
+  svg.addEventListener("keydown",ev=>{if(ev.key==="ArrowRight"){show(Math.min(P.length-1,cur+1));ev.preventDefault();}if(ev.key==="ArrowLeft"){show(Math.max(0,cur-1));ev.preventDefault();}});
+  host.replaceChildren(svg);
+}
 
 /* ---------- 图 1：分钟波动 ---------- */
 function drawProfile(){
@@ -471,7 +571,7 @@ function drawSym(){
 table(document.getElementById("t-sym"),["标的","交易次数","每笔净收益(实测成本)","每笔净收益(假设成本)","来回成本(基点)","胜率","不利波动90%(基点)"],
   D.by_symbol.map(r=>[r.name+(r.weak?"（历史无效）":""),r.n,signed(r.real),signed(r.assumed),fmt(r.real_cost,1),r.win+"%",fmt(r.mae90)]));
 
-function drawAll(){drawProfile();drawScatter();drawSym();}
+function drawAll(){drawPaths();drawProfile();drawScatter();drawSym();}
 drawAll();
 let rz;new ResizeObserver(()=>{clearTimeout(rz);rz=setTimeout(drawAll,120);}).observe(document.querySelector("main"));
 matchMedia("(prefers-color-scheme: dark)").addEventListener("change",drawAll);
