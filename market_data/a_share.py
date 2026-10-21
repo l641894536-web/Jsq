@@ -99,6 +99,57 @@ def _w_task(task):
 
 # ------------------------------------------------------------------ main
 
+# Start date the store was first backfilled from, before `fetched_from` was tracked.
+LEGACY_START = "2015-01-01"
+
+
+def _day_before(d: str) -> str:
+    return (datetime.fromisoformat(d) - timedelta(days=1)).strftime("%Y-%m-%d")
+
+
+def plan_tasks(stocks: pd.DataFrame, sd: dict, a_start: str, end: str) -> list[tuple]:
+    """Bar fetches needed to cover [max(a_start, ipoDate), min(end, outDate)] for every stock.
+
+    sd maps code -> [fetched_through, factor_through, fetched_from]. A stock already in the store
+    gets (a) a head task if a_start moved earlier than what was fetched, and (b) a tail task from a
+    week before fetched_through (late-arriving rows self-heal)."""
+    tasks = []
+    for r in stocks.itertuples():
+        stop = min(end, r.outDate) if r.outDate else end
+        first = max(a_start, r.ipoDate or a_start)
+        ft, fac, ff = (sd.get(r.code, []) + ["", "", ""])[:3]
+        if not ft:
+            if first <= stop:
+                tasks.append(("bars", r.code, first, stop))
+            continue
+        if not ff:   # stored before fetched_from existed: history began at LEGACY_START (or listing)
+            ff = max(LEGACY_START, r.ipoDate or LEGACY_START)
+            sd[r.code] = [ft, fac, ff]
+        if first < ff:
+            head_stop = min(_day_before(ff), stop)
+            if first <= head_stop:
+                tasks.append(("bars", r.code, first, head_stop))
+        if ft < stop:
+            start = max(first, (datetime.fromisoformat(ft) - timedelta(days=7)).strftime("%Y-%m-%d"))
+            if start <= stop:
+                tasks.append(("bars", r.code, start, stop))
+    return tasks
+
+
+def mark_done(sd: dict, task: tuple) -> None:
+    """Record a finished bar task in the fetch state."""
+    _, code, start, stop = task
+    v = sd.setdefault(code, ["", "", ""])
+    while len(v) < 3:
+        v.append("")
+    if v[0] and stop < v[0]:          # head backfill
+        v[2] = min(v[2], start) if v[2] else start
+    else:
+        v[0] = max(v[0], stop) if v[0] else stop
+        if not v[2]:
+            v[2] = start
+
+
 def _needs_factor(df: pd.DataFrame) -> bool:
     """Ex-rights day inside the fetched rows: preclose differs from the previous row's close."""
     if len(df) < 2:
@@ -122,7 +173,8 @@ def run(root: Path, mode: str, deadline: float) -> tuple[dict, bool]:
             raise RuntimeError("baostock login failed")
         now_cst = datetime.now(timezone.utc) + timedelta(hours=8)
         cutoff = now_cst.date() if now_cst.hour >= 20 else now_cst.date() - timedelta(days=1)
-        cal = _df(bs.query_trade_dates(start_date="2014-12-01", end_date=now_cst.strftime("%Y-%m-%d")))
+        cal_start = (datetime.fromisoformat(a_start) - timedelta(days=31)).strftime("%Y-%m-%d")
+        cal = _df(bs.query_trade_dates(start_date=cal_start, end_date=now_cst.strftime("%Y-%m-%d")))
         write_csv(cal, base / "meta" / "trade_dates.csv")
         trading = sorted(cal.loc[cal["is_trading_day"] == "1", "calendar_date"])
         end = max(d for d in trading if d <= cutoff.isoformat())
@@ -156,19 +208,9 @@ def run(root: Path, mode: str, deadline: float) -> tuple[dict, bool]:
         stocks = stocks.sort_values(["status", "code"], ascending=[False, True])
 
         state_path = base / "meta" / "fetch_state.csv"
-        state = load_state(state_path, ["code", "fetched_through", "factor_through"])
-        sd = {r.code: [r.fetched_through, r.factor_through] for r in state.itertuples()}
-        tasks = []
-        for r in stocks.itertuples():
-            stop = min(end, r.outDate) if r.outDate else end
-            ft = sd.get(r.code, ["", ""])[0]
-            if ft and ft >= stop:
-                continue
-            start = max(a_start, r.ipoDate or a_start)
-            if ft:   # re-fetch a week of overlap so late-arriving rows self-heal
-                start = max(start, (datetime.fromisoformat(ft) - timedelta(days=7)).strftime("%Y-%m-%d"))
-            if start <= stop:
-                tasks.append(("bars", r.code, start, stop))
+        state = load_state(state_path, ["code", "fetched_through", "factor_through", "fetched_from"])
+        sd = {r.code: [r.fetched_through, r.factor_through, r.fetched_from] for r in state.itertuples()}
+        tasks = plan_tasks(stocks, sd, a_start, end)
         st.info["bar_tasks"] = len(tasks)
         st.log(f"{len(tasks)} stocks to fetch ({len(stocks)} in universe)")
 
@@ -190,7 +232,7 @@ def run(root: Path, mode: str, deadline: float) -> tuple[dict, bool]:
                         frames.append(df)
                         if _needs_factor(df):
                             factor_codes.add(code)
-                    sd.setdefault(code, ["", ""])[0] = task[3]
+                    mark_done(sd, task)
                     done += 1
                     if done % 250 == 0:
                         el = time.time() - t_start
@@ -238,7 +280,8 @@ def run(root: Path, mode: str, deadline: float) -> tuple[dict, bool]:
             for c in factor_done:
                 sd[c][1] = end
             st.info["factors_refreshed"] = len(factor_done)
-        save_state(pd.DataFrame([{"code": k, "fetched_through": v[0], "factor_through": v[1]}
+        save_state(pd.DataFrame([{"code": k, "fetched_through": v[0], "factor_through": v[1],
+                                  "fetched_from": (v + ["", "", ""])[2]}
                                  for k, v in sorted(sd.items())]), state_path)
         remaining = sum(1 for r in stocks.itertuples()
                         if not sd.get(r.code, [""])[0])

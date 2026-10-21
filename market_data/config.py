@@ -1,7 +1,7 @@
 """What to fetch. Edit the lists here; the next run picks the changes up."""
 
 # ------------------------------------------------------------------ A-shares (baostock)
-A_START = "2015-01-01"
+A_START = "2005-01-01"   # moved from 2015: older history is backfilled automatically (see a_share.plan_tasks)
 A_INDICES = {
     "sh.000001": "上证指数",
     "sz.399001": "深证成指",
