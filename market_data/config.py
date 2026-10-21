@@ -28,6 +28,13 @@ US_EXTRA_STOCKS = ["MSTR", "COIN", "HOOD", "CRCL", "TSM", "ASML", "BABA", "PDD",
                    "GME", "AMC", "SPOT", "SE", "MELI", "NU", "UBER", "ABNB",
                    # Nasdaq-100 members not in the S&P 500
                    "AZN", "CCEP", "TEAM", "GFS", "ZS", "MDB", "MRVL", "TRI"]
+# Long daily history (back to 1985 or listing) for indices, index ETFs, metals and a few stocks,
+# so environment research covers 2000-02 and 2008. Everything else starts at US_START.
+US_LONG_START = "1985-01-01"
+US_LONG_TICKERS = ["^GSPC", "^NDX", "^DJI", "^RUT", "^VIX", "^TNX", "DX-Y.NYB",
+                   "SPY", "QQQ", "DIA", "IWM", "TLT", "IEF", "GLD", "SLV", "SMH", "SOXX",
+                   "XLK", "XLF", "XLE", "XLV", "GC=F", "SI=F", "HG=F", "CL=F", "AMD", "MU"]
+US_LONG_SINCE = "2026-10-22"   # tickers last fully fetched before this date get one long refetch
 # hourly bars (Yahoo keeps only ~730 days of 1h history; we accumulate from there)
 US_HOURLY = ["GC=F", "SI=F", "SPY", "QQQ", "TSLA", "NVDA", "AAPL", "MSFT", "AMZN", "GOOGL",
              "META", "MSTR", "COIN", "HOOD"]

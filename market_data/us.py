@@ -137,7 +137,7 @@ def run(root: Path, mode: str, deadline: float, universe: pd.DataFrame,
             tickers, hourly = list(C.US_SMOKE), list(C.US_SMOKE_HOURLY)
             us_start = "2025-01-01"
         else:
-            tickers = sorted(set(universe["ticker"]) | set(perp_underlyings))
+            tickers = sorted(set(universe["ticker"]) | set(perp_underlyings) | set(C.US_LONG_TICKERS))
             hourly = list(dict.fromkeys(C.US_HOURLY + perp_underlyings))
             us_start = C.US_START
         st.info.update(n_tickers=len(tickers), n_hourly=len(hourly))
@@ -148,11 +148,17 @@ def run(root: Path, mode: str, deadline: float, universe: pd.DataFrame,
         state = load_state(state_path, ["ticker", "fetched_through", "last_full"])
         sd = {r.ticker: (r.fetched_through, r.last_full) for r in state.itertuples()}
 
+        long_set = set(C.US_LONG_TICKERS) if mode != "smoke" else set()
+
+        def start_of(t):
+            return C.US_LONG_START if t in long_set else us_start
+
         def plan(t):
             ft, lf = sd.get(t, ("", ""))
             stale_full = not lf or (now.date() - datetime.fromisoformat(lf).date()).days >= 7
-            if not ft or stale_full or sunday:
-                return t, us_start, True
+            long_due = t in long_set and (not lf or lf < C.US_LONG_SINCE)
+            if not ft or stale_full or sunday or long_due:
+                return t, start_of(t), True
             start = (datetime.fromisoformat(ft) - timedelta(days=7)).strftime("%Y-%m-%d")
             return t, start, False
 
@@ -166,9 +172,9 @@ def run(root: Path, mode: str, deadline: float, universe: pd.DataFrame,
                     return job, None, None, ("no data" if full else None)
                 bars, ev = _daily_frames(t, h)
                 if not full and (ev["split"].fillna(0) != 0).any():   # split: refetch whole history
-                    h = _history(t, start=us_start, interval="1d", actions=True)
+                    h = _history(t, start=start_of(t), interval="1d", actions=True)
                     bars, ev = _daily_frames(t, h)
-                    job = (t, us_start, True)
+                    job = (t, start_of(t), True)
                 return job, bars, ev, None
             except Exception as e:
                 return job, None, None, str(e)
