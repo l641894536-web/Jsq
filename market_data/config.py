@@ -64,7 +64,11 @@ BN_SPOT_SMOKE = ["PAXGUSDT"]
 DK_STOCKS_1H = ["AAPL", "MSFT", "AMZN", "GOOGL", "META", "FB", "NVDA", "TSLA", "NFLX", "ADBE", "INTC", "CSCO",
                 "AVGO", "QCOM", "TXN", "AMD", "MU", "AMAT", "LRCX", "KLAC", "ADI", "MRVL", "ORCL", "CRM",
                 "PYPL", "INTU", "IBM", "DELL", "NXPI"]
-DK_SYMBOLS = ["XAUUSD", "XAGUSD"] + [t + "USUSD" for t in DK_STOCKS_1H]
+# large non-tech US names as of early 2021, for out-of-sample checks of rules found on the tech list
+DK_STOCKS_1H_OTHER = ["JPM", "BAC", "WFC", "GS", "V", "MA", "JNJ", "UNH", "PFE", "MRK", "ABBV", "LLY", "PG", "KO",
+                      "PEP", "WMT", "COST", "HD", "MCD", "NKE", "DIS", "XOM", "CVX", "BA", "CAT", "HON", "UNP",
+                      "T", "VZ", "CMCSA"]
+DK_SYMBOLS = ["XAUUSD", "XAGUSD"] + [t + "USUSD" for t in DK_STOCKS_1H + DK_STOCKS_1H_OTHER]
 DK_START = "2020-01"
 # 1-minute files -> stored as 5-minute bars (dukascopy/5m). AMD/MU/DELL are Dukascopy's US-stock quotes
 # (AMD.US/USD ...), regular session only; they back intraday tests of the Binance stock contracts.
