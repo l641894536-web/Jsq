@@ -62,3 +62,5 @@ BN_SPOT_SMOKE = ["PAXGUSDT"]
 # Binance contracts existed
 DK_SYMBOLS = ["XAUUSD", "XAGUSD"]
 DK_START = "2020-01"
+DK_M1_SYMBOLS = ["XAUUSD", "XAGUSD"]   # 1-minute files -> stored as 5-minute bars (dukascopy/5m)
+DK_M1_START = "2020-01"

@@ -170,9 +170,10 @@ def binance_spot(interval: str = "1h", symbols=None, start=None, end=None) -> pd
     return df.sort_values(["symbol", "ts"]).reset_index(drop=True)
 
 
-def dukascopy(symbols=None, start=None, end=None) -> pd.DataFrame:
-    """Spot XAUUSD / XAGUSD hourly bid candles from Dukascopy, 2020 on (complete months). ts = bar open, UTC."""
-    df = _parts("dukascopy/1h", start, end, dtype={"symbol": str, "ts": str})
+def dukascopy(symbols=None, start=None, end=None, interval: str = "1h") -> pd.DataFrame:
+    """Spot XAUUSD / XAGUSD bid candles from Dukascopy, 2020 on (complete months). interval: 1h or 5m.
+    ts = bar open, UTC."""
+    df = _parts(f"dukascopy/{interval}", start, end, dtype={"symbol": str, "ts": str})
     df = _clip(df, "ts", start, end)
     if symbols is not None:
         df = df[df["symbol"].isin(set([symbols] if isinstance(symbols, str) else symbols))]

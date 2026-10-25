@@ -51,7 +51,7 @@ def main() -> None:
         stock_perps = prev.get("stages", {}).get("binance", {}).get("stock_perps", [])
 
     if not only or "dukascopy" in only:
-        status["stages"]["dukascopy"] = dukascopy.run(root, args.mode, min(deadline, time.time() + 20 * 60))
+        status["stages"]["dukascopy"] = dukascopy.run(root, args.mode, min(deadline, time.time() + 45 * 60))
         write_json(status, status_path)
 
     if not only or "us" in only:

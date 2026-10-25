@@ -19,6 +19,7 @@ load.us_daily(["NVDA", "GC=F"]); load.us_hourly("GC=F")
 load.binance("1h", "XAUUSDT"); load.binance("1d")  # 1d = every USD-M perp; 1h/15m = watchlist
 load.binance_spot("1h", "PAXGUSDT")            # spot gold token, 1h/15m back to 2020 (XAUUSDT perp only from 2025-12)
 load.dukascopy(["XAUUSD", "XAGUSD"])           # interbank spot gold/silver 1h from 2020; cleaner than PAXG before 2025 (thin book, spiky wicks)
+load.dukascopy("XAUUSD", interval="5m")        # 5-minute bars built from Dukascopy 1-minute files (complete months)
 ```
 Local pandas has no pyarrow, so storage is CSV + xz, monthly partitions (`<dataset>/YYYY/YYYY-MM.csv.xz`).
 
