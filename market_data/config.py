@@ -60,7 +60,11 @@ BN_SPOT_SMOKE = ["PAXGUSDT"]
 
 # Dukascopy spot quotes (hourly, complete months only) for intraday gold/silver history before the
 # Binance contracts existed
-DK_SYMBOLS = ["XAUUSD", "XAGUSD"]
+# large US tech names as of early 2021 (chosen by size then, not by what happened later), hourly
+DK_STOCKS_1H = ["AAPL", "MSFT", "AMZN", "GOOGL", "META", "FB", "NVDA", "TSLA", "NFLX", "ADBE", "INTC", "CSCO",
+                "AVGO", "QCOM", "TXN", "AMD", "MU", "AMAT", "LRCX", "KLAC", "ADI", "MRVL", "ORCL", "CRM",
+                "PYPL", "INTU", "IBM", "DELL", "NXPI"]
+DK_SYMBOLS = ["XAUUSD", "XAGUSD"] + [t + "USUSD" for t in DK_STOCKS_1H]
 DK_START = "2020-01"
 # 1-minute files -> stored as 5-minute bars (dukascopy/5m). AMD/MU/DELL are Dukascopy's US-stock quotes
 # (AMD.US/USD ...), regular session only; they back intraday tests of the Binance stock contracts.

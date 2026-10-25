@@ -47,7 +47,7 @@ def parse(sym: str, month: str, blob: bytes, day: int | None = None) -> pd.DataF
         return pd.DataFrame(columns=list(SCHEMA))
     recs = [REC.unpack_from(raw, i * REC.size) for i in range(n)]
     df = pd.DataFrame(recs, columns=["sec", "open", "close", "low", "high", "volume"])
-    lo, hi = PLAUSIBLE.get(sym, (0, float("inf")))
+    lo, hi = PLAUSIBLE.get(sym, (0.5, 20000) if sym.endswith("USUSD") else (0, float("inf")))
     med = float(df["close"].median())
     factor = next((f for f in (1000, 100000, 100, 10000, 10) if lo <= med / f <= hi), 1000)
     for c in ("open", "close", "low", "high"):
