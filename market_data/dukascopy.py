@@ -32,6 +32,22 @@ REC = struct.Struct(">Iiiiif")
 PLAUSIBLE = {"XAUUSD": (200, 20000), "XAGUSD": (2, 500), "AMDUSUSD": (2, 3000), "MUUSUSD": (2, 5000), "DELLUSUSD": (2, 3000)}
 
 
+def _download(sess, url: str, cap: float = 90.0):
+    """GET with a hard wall-clock cap: a server that trickles bytes can otherwise hold a thread for hours
+    (the read timeout only covers gaps between chunks). Returns (content | None for 404)."""
+    t0 = time.time()
+    with sess.get(url, timeout=(10, 20), stream=True) as r:
+        if r.status_code == 404:
+            return None
+        r.raise_for_status()
+        buf = bytearray()
+        for chunk in r.iter_content(65536):
+            buf.extend(chunk)
+            if time.time() - t0 > cap:
+                raise TimeoutError(f"download slower than {cap:.0f}s")
+        return bytes(buf)
+
+
 def months(start: str, end_excl: str) -> list[str]:
     out, y, m = [], int(start[:4]), int(start[5:7])
     while f"{y}-{m:02d}" < end_excl:
@@ -100,13 +116,12 @@ def fetch_month_m1(sess, sym: str, month: str, deadline: float):
         url = URL_M1.format(sym=sym, y=y, m0=mo - 1, d=d)
         err = None
         for attempt in range(6):
+            if time.time() > deadline:
+                return None, "deadline"
             try:
-                r = sess.get(url, timeout=60)
-                if r.status_code == 404:
-                    break
-                r.raise_for_status()
-                if r.content:
-                    out.append(to_5m(parse(sym, month, r.content, day=d)))
+                content = _download(sess, url)
+                if content:
+                    out.append(to_5m(parse(sym, month, content, day=d)))
                 err = None
                 break
             except Exception as e:
@@ -141,12 +156,13 @@ def run(root: Path, mode: str, deadline: float) -> dict:
                 return job, None, "deadline"
             url = URL.format(sym=s, y=m[:4], m0=int(m[5:7]) - 1)
             for attempt in range(6):
+                if time.time() > deadline:
+                    return job, None, "deadline"
                 try:
-                    r = sess.get(url, timeout=60)
-                    if r.status_code == 404:
+                    content = _download(sess, url)
+                    if content is None:
                         return job, None, None
-                    r.raise_for_status()
-                    return job, parse(s, m, r.content), None
+                    return job, parse(s, m, content), None
                 except Exception as e:
                     err = str(e)
                     time.sleep(5 * (attempt + 1))   # the feed answers 503 when hit too fast
