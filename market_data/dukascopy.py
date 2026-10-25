@@ -89,7 +89,7 @@ def run(root: Path, mode: str, deadline: float) -> dict:
             if time.time() > deadline:
                 return job, None, "deadline"
             url = URL.format(sym=s, y=m[:4], m0=int(m[5:7]) - 1)
-            for attempt in range(4):
+            for attempt in range(6):
                 try:
                     r = sess.get(url, timeout=60)
                     if r.status_code == 404:
@@ -98,11 +98,11 @@ def run(root: Path, mode: str, deadline: float) -> dict:
                     return job, parse(s, m, r.content), None
                 except Exception as e:
                     err = str(e)
-                    time.sleep(2 * (attempt + 1))
+                    time.sleep(5 * (attempt + 1))   # the feed answers 503 when hit too fast
             return job, None, err
 
         parts, n_ok = [], 0
-        with ThreadPoolExecutor(4) as ex:              # be gentle with a free public feed
+        with ThreadPoolExecutor(2) as ex:              # be gentle with a free public feed
             for (s, m), df, err in ex.map(fetch, todo):
                 if err:
                     st.error(f"{s} {m}: {err}")
