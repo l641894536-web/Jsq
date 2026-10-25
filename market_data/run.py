@@ -7,7 +7,7 @@ import shutil
 import time
 from pathlib import Path
 
-from . import a_share, binance, us
+from . import a_share, binance, dukascopy, us
 from .common import Stage, utcnow, write_json
 
 
@@ -17,7 +17,7 @@ def main() -> None:
     ap.add_argument("--data-dir", default="data")
     ap.add_argument("--budget-min", type=float, default=290)
     ap.add_argument("--continue-flag", default="continue.flag")
-    ap.add_argument("--only", default="", help="comma list of stages to run (binance,us,a_share)")
+    ap.add_argument("--only", default="", help="comma list of stages to run (binance,dukascopy,us,a_share)")
     args = ap.parse_args()
 
     t0 = time.time()
@@ -49,6 +49,10 @@ def main() -> None:
         write_json(status, status_path)
     else:
         stock_perps = prev.get("stages", {}).get("binance", {}).get("stock_perps", [])
+
+    if not only or "dukascopy" in only:
+        status["stages"]["dukascopy"] = dukascopy.run(root, args.mode, min(deadline, time.time() + 20 * 60))
+        write_json(status, status_path)
 
     if not only or "us" in only:
         status["stages"]["us"] = us.run(root, args.mode, min(deadline, time.time() + 60 * 60),
