@@ -996,7 +996,7 @@ function histLine(k, be) {
   const out = k < cv[0][0] || k > cv[cv.length - 1][0] ? `（盈亏比超出 1~3 的统计范围，按 1:${kk} 估）` : "";
   return `<div class="sep"></div><dt>如果这是"回调结束顺势"结构单：历史上 1:${k.toFixed(2)} 的胜率约${out}</dt><dd><b>${w.toFixed(0)}%</b></dd>
     <dt>和你这笔的保本胜率相比</dt><dd class="${cls}">${edge >= 0 ? "高" : "低"} ${Math.abs(edge).toFixed(0)} 个百分点</dd>
-    <dt style="grid-column:1/-1;font-size:12px">统计：${NAMES[state.sym]} 2021–2026（戴尔 2022 年起），止损放在回调低点外；止盈放得越远，胜率越低。</dt>`;
+    <dt style="grid-column:1/-1;font-size:12px">统计：${NAMES[state.sym]} ${state.sym === "DELLUSDT" ? "2022" : "2021"}–2026，止损放在回调低点外；止盈放得越远，胜率越低。</dt>`;
 }
 function setFields(side, entry, stop, target, type) {
   const dp = dpFor(entry);
