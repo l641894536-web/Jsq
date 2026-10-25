@@ -231,6 +231,7 @@ td.n { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
             <button type="button" data-rep="silver_15m" aria-pressed="false">白银 15分</button>
             <button type="button" data-rep="gold_1h" aria-pressed="false">黄金 1小时</button>
             <button type="button" data-rep="trend" aria-pressed="false">趋势规则</button>
+            <button type="button" data-rep="log" aria-pressed="false">验证记录</button>
           </div>
         </div>
         <div class="report">
@@ -711,8 +712,24 @@ function renderTrendRules() {
     keys.map(k => { const r = R[k]; return `<tr><td>${r.label}</td><td class="n">${pc(r.stockLongCagr)} / −${r.stockLongDD}%</td><td class="n ${cls(r.stockShortAvg)}">${pc(r.stockShortAvg)} / ${r.stockShortWin}%</td><td class="n">${pc(r.qqqLong)} / −${r.qqqLongDD}%</td><td class="n">${pc(r.gldBoth)}</td><td class="n">${pc(r.gold4hBoth)}</td></tr>`; }).join("") + `</tbody>`;
   $("repNote").innerHTML = `2021年10月至2026年10月，日线；科技股为标普500信息技术板块 74 只（现有成分股，结果对做多偏乐观、对做空偏悲观），纳指用 QQQ，黄金日线用 GLD，黄金4小时用币安合约（2025年3月起）。每次进出按 0.06% 成本计。<b>结论：四种趋势规则都跑输一直拿着；做空下跌趋势的科技股每一种都亏钱；它们的作用主要是把回撤压小，同时也少赚。</b>`;
 }
+const VLOG = [
+  ["App 原样：$2 止损 / $3 止盈", "黄金 15 分，2025-03~2026-10", "扣费后每笔 −1.52R，胜率 32%（保本要 79%）", "bad", "没通过"],
+  ["支撑/阻力反弹（S1/R1）", "黄金 15 分，同上", "不算成本 +0.05R，扣费后 −1.24R", "bad", "没通过"],
+  ["24 小时高低点反弹", "黄金 15 分，同上", "不算成本 0.00R，扣费后 −0.96R", "bad", "没通过"],
+  ["双底 / 双顶突破", "黄金 15 分，同上", "不算成本 −0.04R，扣费后 −0.37R", "bad", "没通过"],
+  ["顺势 + 支撑阻力 + 分批平仓/保本/跟踪", "黄金 15 分 / 1 小时", "比随机进场多 0.05~0.1R，扣费后 15 分 −0.6R、1 小时 −0.15R；浮盈变浮亏从 16% 降到 4~6%", "warn", "管理有用，信号不够"],
+  ["四种趋势规则（均线、双均线、20/55 日突破）", "科技股 74 只 + 指数 ETF，日线 2021-10~2026-10", "趋势状态不预测之后涨跌；只做多跑输一直拿着，做空每种都亏", "bad", "没通过（只能降回撤）"],
+  ["黄金 4 小时：24h 区间 + 顺势 + 跟踪止损", "发现期 2025-03~2026-10；检验期 2021-01~2024-09（现货黄金）", "发现期挂单 +0.13R；检验期 −0.16R，四年全负，和随机进场一样", "bad", "没通过"],
+  ["大跌后买，拿两周（指数 ETF）", "8 只宽基/行业 ETF，2021-10~2026-10", "平均 +1.65%，随便买 +0.59%；熊市里最明显；独立样本只有几十次", "warn", "待验证"]
+];
+function renderLog() {
+  $("repTable").innerHTML = `<thead><tr><th>打法</th><th>数据</th><th>结果</th><th>结论</th></tr></thead><tbody>` +
+    VLOG.map(r => `<tr><td>${r[0]}</td><td>${r[1]}</td><td style="white-space:normal;min-width:240px;text-align:left">${r[2]}</td><td><span class="chip ${r[3]}">${r[4]}</span></td></tr>`).join("") + `</tbody>`;
+  $("repNote").innerHTML = `每一条都按"先写规则、再看结果"测，成本按币安合约普通费率。1R 等于一个止损的钱。<b>"没通过"的意思是照着做长期不赚钱，不是说图形完全没信息</b>：大多数打法比随机进场略好一点，但小于手续费，或者换一段时间就消失。`;
+}
 function renderReport() {
   if (state.rep === "trend") return renderTrendRules();
+  if (state.rep === "log") return renderLog();
   const S = STATS[state.rep], keys = ["sr", "r24", "dbl", "app"].filter(k => S[k]);
   const cell = (x) => x ? `<td class="n ${rCls(x.net)}">${rTxt(x.net)}</td>` : `<td class="n">—</td>`;
   $("repTable").innerHTML = `<thead><tr><th>信号</th><th>笔数</th><th>胜率</th><th>不算成本</th><th>扣成本后</th><th>上涨环境</th><th>下跌环境</th><th>震荡</th><th>顺势</th><th>逆势</th></tr></thead><tbody>` +
