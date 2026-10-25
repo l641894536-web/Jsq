@@ -171,7 +171,8 @@ def binance_spot(interval: str = "1h", symbols=None, start=None, end=None) -> pd
 
 
 def dukascopy(symbols=None, start=None, end=None, interval: str = "1h") -> pd.DataFrame:
-    """Spot XAUUSD / XAGUSD bid candles from Dukascopy, 2020 on (complete months). interval: 1h or 5m.
+    """Dukascopy bid candles, 2020 on (complete months). 1h: XAUUSD / XAGUSD; 5m also AMDUSUSD, MUUSUSD,
+    DELLUSUSD (US-stock quotes, regular session). interval: 1h or 5m.
     ts = bar open, UTC."""
     df = _parts(f"dukascopy/{interval}", start, end, dtype={"symbol": str, "ts": str})
     df = _clip(df, "ts", start, end)

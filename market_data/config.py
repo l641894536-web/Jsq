@@ -62,5 +62,7 @@ BN_SPOT_SMOKE = ["PAXGUSDT"]
 # Binance contracts existed
 DK_SYMBOLS = ["XAUUSD", "XAGUSD"]
 DK_START = "2020-01"
-DK_M1_SYMBOLS = ["XAUUSD", "XAGUSD"]   # 1-minute files -> stored as 5-minute bars (dukascopy/5m)
+# 1-minute files -> stored as 5-minute bars (dukascopy/5m). AMD/MU/DELL are Dukascopy's US-stock quotes
+# (AMD.US/USD ...), regular session only; they back intraday tests of the Binance stock contracts.
+DK_M1_SYMBOLS = ["XAUUSD", "XAGUSD", "AMDUSUSD", "MUUSUSD", "DELLUSUSD"]
 DK_M1_START = "2020-01"

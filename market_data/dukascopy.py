@@ -29,7 +29,7 @@ URL_M1 = "https://datafeed.dukascopy.com/datafeed/{sym}/{y}/{m0:02d}/{d:02d}/BID
 SCHEMA = {"symbol": "str", "ts": "str", "open": ("float", 5), "high": ("float", 5), "low": ("float", 5),
           "close": ("float", 5), "volume": ("float", 4)}
 REC = struct.Struct(">Iiiiif")
-PLAUSIBLE = {"XAUUSD": (200, 20000), "XAGUSD": (2, 500)}
+PLAUSIBLE = {"XAUUSD": (200, 20000), "XAGUSD": (2, 500), "AMDUSUSD": (2, 3000), "MUUSUSD": (2, 5000), "DELLUSUSD": (2, 3000)}
 
 
 def months(start: str, end_excl: str) -> list[str]:
