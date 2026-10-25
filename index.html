@@ -135,6 +135,9 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px s
 .trow .hist { grid-column: 1 / -1; font-size: 12px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .trow .hist b { color: var(--ink); font-weight: 600; font-family: var(--font-num); }
 .trend-note { padding: 2px 14px 14px; }
+.combo { margin: 0 14px; padding: 10px 12px; border-radius: 8px; background: var(--sunk); font-size: 13px; display: grid; gap: 4px; }
+.combo b { font-weight: 600; }
+.combo span { color: var(--muted); font-size: 12px; }
 .calc { padding: 12px 14px 14px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
 .example { font-size: 12px; color: var(--warn); background: var(--warn-soft); border-radius: 7px; padding: 6px 10px; }
 .fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
@@ -243,8 +246,9 @@ td.n { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
 
     <div class="col">
       <section class="panel" id="trendPanel">
-        <div class="panel-h"><h2>趋势仪表</h2><span class="sub" id="trendSub">日线 · 4小时 · 1小时</span></div>
+        <div class="panel-h"><h2>K线结构</h2><span class="sub" id="trendSub">4小时 · 1小时 · 15分钟</span></div>
         <div class="trend" id="trendRows"><div class="empty">等K线载入后计算。</div></div>
+        <div class="combo" id="combo" hidden></div>
         <p class="note trend-note" id="trendNote"></p>
       </section>
 
@@ -293,6 +297,7 @@ td.n { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
 (() => {
 "use strict";
 const STATS = {"gold_15m":{"sr":{"all":{"n":3733,"win":33.9,"gross":0.05,"net":-1.24,"netpct":-0.107},"bull":{"n":2415,"win":35.4,"gross":0.06,"net":-1.13,"netpct":-0.104},"bear":{"n":746,"win":32.0,"gross":0.01,"net":-1.42,"netpct":-0.114},"range":{"n":572,"win":30.2,"gross":0.05,"net":-1.5,"netpct":-0.109},"with":{"n":1895,"win":36.4,"gross":0.1,"net":-1.15,"netpct":-0.097},"against":{"n":1838,"win":31.4,"gross":0.0,"net":-1.34,"netpct":-0.117}},"r24":{"all":{"n":1492,"win":35.0,"gross":-0.0,"net":-0.96,"netpct":-0.111},"bull":{"n":959,"win":36.1,"gross":0.01,"net":-0.84,"netpct":-0.114},"bear":{"n":298,"win":31.2,"gross":-0.08,"net":-1.19,"netpct":-0.126},"range":{"n":235,"win":35.3,"gross":0.07,"net":-1.13,"netpct":-0.083},"with":{"n":343,"win":36.2,"gross":0.01,"net":-1.08,"netpct":-0.106},"against":{"n":1149,"win":34.6,"gross":-0.01,"net":-0.92,"netpct":-0.113}},"dbl":{"all":{"n":655,"win":38.0,"gross":-0.04,"net":-0.37,"netpct":-0.099},"bull":{"n":408,"win":37.5,"gross":-0.08,"net":-0.38,"netpct":-0.105},"bear":{"n":131,"win":42.0,"gross":0.06,"net":-0.27,"netpct":-0.057},"range":{"n":116,"win":35.3,"gross":-0.02,"net":-0.46,"netpct":-0.124},"with":{"n":374,"win":39.3,"gross":-0.02,"net":-0.34,"netpct":-0.114},"against":{"n":281,"win":36.3,"gross":-0.08,"net":-0.41,"netpct":-0.078}},"app":{"all":{"n":1814,"win":32.4,"gross":-0.18,"net":-1.52,"netpct":-0.076},"bull":{"n":1159,"win":33.2,"gross":-0.16,"net":-1.5,"netpct":-0.075},"bear":{"n":384,"win":30.5,"gross":-0.24,"net":-1.59,"netpct":-0.08},"range":{"n":271,"win":31.7,"gross":-0.19,"net":-1.53,"netpct":-0.077},"with":{"n":1766,"win":32.5,"gross":-0.18,"net":-1.52,"netpct":-0.076},"against":{"n":48,"win":29.2,"gross":-0.27,"net":-1.64,"netpct":-0.082}}},"silver_15m":{"sr":{"all":{"n":1675,"win":36.9,"gross":0.0,"net":-0.51,"netpct":-0.13},"bull":{"n":563,"win":41.6,"gross":0.11,"net":-0.33,"netpct":-0.094},"bear":{"n":675,"win":35.3,"gross":-0.03,"net":-0.57,"netpct":-0.154},"range":{"n":437,"win":33.4,"gross":-0.07,"net":-0.66,"netpct":-0.138},"with":{"n":839,"win":37.7,"gross":0.02,"net":-0.48,"netpct":-0.123},"against":{"n":836,"win":36.1,"gross":-0.01,"net":-0.54,"netpct":-0.138}},"r24":{"all":{"n":713,"win":35.1,"gross":-0.06,"net":-0.53,"netpct":-0.129},"bull":{"n":208,"win":41.3,"gross":0.05,"net":-0.27,"netpct":-0.098},"bear":{"n":308,"win":33.4,"gross":-0.08,"net":-0.53,"netpct":-0.137},"range":{"n":197,"win":31.0,"gross":-0.13,"net":-0.8,"netpct":-0.151},"with":{"n":179,"win":31.8,"gross":-0.09,"net":-0.71,"netpct":-0.138},"against":{"n":534,"win":36.1,"gross":-0.04,"net":-0.47,"netpct":-0.127}},"dbl":{"all":{"n":302,"win":38.7,"gross":-0.06,"net":-0.2,"netpct":-0.177},"bull":{"n":106,"win":44.3,"gross":0.03,"net":-0.08,"netpct":-0.069},"bear":{"n":117,"win":41.9,"gross":0.02,"net":-0.11,"netpct":-0.062},"range":{"n":79,"win":26.6,"gross":-0.3,"net":-0.49,"netpct":-0.491},"with":{"n":166,"win":41.6,"gross":0.02,"net":-0.12,"netpct":-0.032},"against":{"n":136,"win":35.3,"gross":-0.16,"net":-0.3,"netpct":-0.353}},"app":{"all":{"n":914,"win":22.4,"gross":-0.44,"net":-1.86,"netpct":-0.093},"bull":{"n":288,"win":19.4,"gross":-0.51,"net":-1.95,"netpct":-0.098},"bear":{"n":359,"win":21.4,"gross":-0.46,"net":-1.89,"netpct":-0.095},"range":{"n":267,"win":27.0,"gross":-0.32,"net":-1.71,"netpct":-0.085},"with":{"n":885,"win":22.4,"gross":-0.44,"net":-1.86,"netpct":-0.093},"against":{"n":29,"win":24.1,"gross":-0.4,"net":-1.8,"netpct":-0.09}}},"gold_1h":{"sr":{"all":{"n":885,"win":39.8,"gross":-0.03,"net":-0.34,"netpct":-0.143},"bull":{"n":547,"win":40.8,"gross":-0.02,"net":-0.31,"netpct":-0.124},"bear":{"n":142,"win":33.8,"gross":-0.16,"net":-0.45,"netpct":-0.185},"range":{"n":196,"win":41.3,"gross":0.01,"net":-0.33,"netpct":-0.168},"with":{"n":453,"win":38.6,"gross":-0.08,"net":-0.37,"netpct":-0.193},"against":{"n":432,"win":41.0,"gross":0.02,"net":-0.31,"netpct":-0.091}},"r24":{"all":{"n":768,"win":40.4,"gross":-0.02,"net":-0.28,"netpct":-0.122},"bull":{"n":467,"win":40.7,"gross":-0.02,"net":-0.27,"netpct":-0.125},"bear":{"n":132,"win":34.8,"gross":-0.13,"net":-0.37,"netpct":-0.19},"range":{"n":169,"win":43.8,"gross":0.07,"net":-0.22,"netpct":-0.06},"with":{"n":311,"win":40.2,"gross":-0.04,"net":-0.29,"netpct":-0.179},"against":{"n":457,"win":40.5,"gross":-0.0,"net":-0.27,"netpct":-0.083}},"dbl":{"all":{"n":203,"win":43.8,"gross":-0.0,"net":-0.09,"netpct":-0.029},"bull":{"n":126,"win":44.4,"gross":-0.03,"net":-0.12,"netpct":-0.029},"bear":{"n":38,"win":44.7,"gross":0.01,"net":-0.07,"netpct":-0.003},"range":{"n":39,"win":41.0,"gross":0.08,"net":-0.0,"netpct":-0.053},"with":{"n":106,"win":48.1,"gross":0.1,"net":0.02,"netpct":0.003},"against":{"n":97,"win":39.2,"gross":-0.11,"net":-0.2,"netpct":-0.063}}}};
+const SSTATS = {"gold":{"4h":{"up":54.2,"down":48.0,"acc":51.1,"base":53.1},"1h":{"up":52.5,"down":46.2,"acc":49.3,"base":53.1},"15m":{"up":52.8,"down":46.4,"acc":49.6,"base":53.2},"5m":{"up":53.1,"down":46.7,"acc":49.9,"base":53.2}},"silver":{"4h":{"up":50.5,"down":46.3,"acc":48.4,"base":51.9},"1h":{"up":51.5,"down":47.4,"acc":49.5,"base":52.0},"15m":{"up":51.0,"down":46.9,"acc":49.0,"base":52.0},"5m":{"up":51.0,"down":46.9,"acc":49.0,"base":52.0}},"stock":{"4h":{"up":50.5,"down":48.6,"acc":49.5,"base":50.8},"1h":{"up":49.6,"down":47.5,"acc":48.5,"base":50.8}}};
 const TSTATS = {"1d":{"gold":{"base_up":60.4,"base_mean":1.42,"up":{"n":689,"upProb":63.0,"mean":1.77,"excess":0.35},"flat":{"n":274,"upProb":66.8,"mean":2.0,"excess":0.58},"down":{"n":272,"upProb":47.4,"mean":-0.03,"excess":-1.46}},"silver":{"base_up":56.4,"base_mean":1.9,"up":{"n":507,"upProb":50.7,"mean":2.33,"excess":0.43},"flat":{"n":409,"upProb":54.8,"mean":0.92,"excess":-0.98},"down":{"n":319,"upProb":67.4,"mean":2.46,"excess":0.56}},"stock":{"base_up":54.2,"base_mean":2.03,"up":{"n":37951,"upProb":55.2,"mean":2.31,"excess":0.02},"flat":{"n":25389,"upProb":51.4,"mean":1.26,"excess":-0.78},"down":{"n":27451,"upProb":55.3,"mean":2.37,"excess":0.69}}},"4h":{"gold":{"base_up":53.8,"base_mean":0.07,"up":{"n":2819,"upProb":54.5,"mean":0.09,"excess":0.02},"flat":{"n":1950,"upProb":54.7,"mean":0.1,"excess":0.02},"down":{"n":1842,"upProb":51.7,"mean":0.02,"excess":-0.06}},"silver":{"base_up":50.6,"base_mean":-0.07,"up":{"n":502,"upProb":50.6,"mean":-0.19,"excess":-0.12},"flat":{"n":541,"upProb":51.0,"mean":0.06,"excess":0.13},"down":{"n":689,"upProb":50.2,"mean":-0.08,"excess":-0.01}},"stock":{"base_up":50.9,"base_mean":0.02,"up":{"n":24520,"upProb":50.7,"mean":-0.03,"excess":-0.09},"flat":{"n":25312,"upProb":49.7,"mean":-0.02,"excess":-0.04},"down":{"n":25174,"upProb":52.2,"mean":0.12,"excess":0.12}}},"1h":{"gold":{"base_up":53.5,"base_mean":0.08,"up":{"n":10225,"upProb":54.6,"mean":0.13,"excess":0.05},"flat":{"n":7232,"upProb":51.1,"mean":0.02,"excess":-0.05},"down":{"n":8020,"upProb":54.4,"mean":0.06,"excess":-0.02}},"silver":{"base_up":51.1,"base_mean":-0.07,"up":{"n":2602,"upProb":50.0,"mean":-0.15,"excess":-0.08},"flat":{"n":1985,"upProb":49.0,"mean":0.01,"excess":0.08},"down":{"n":2339,"upProb":54.1,"mean":-0.05,"excess":0.02}},"stock":{"base_up":50.9,"base_mean":0.02,"up":{"n":109683,"upProb":49.2,"mean":-0.08,"excess":-0.12},"flat":{"n":88668,"upProb":49.5,"mean":-0.05,"excess":-0.07},"down":{"n":101577,"upProb":53.9,"mean":0.19,"excess":0.18}}},"rules":{"regime":{"label":"均线趋势(大环境规则)","stockLongCagr":4.7,"stockLongDD":40.0,"stockShortAvg":-2.23,"stockShortWin":22.0,"qqqLong":24.0,"qqqLongDD":16.0,"qqqBoth":0.0,"qqqHold":87.0,"qqqHoldDD":37.0,"gldLong":68.0,"gldLongDD":21.0,"gldBoth":81.0,"gldHold":119.0,"gldHoldDD":29.0,"gold4hBoth":1.0},"ema":{"label":"双均线 20/50","stockLongCagr":6.0,"stockLongDD":47.0,"stockShortAvg":-5.93,"stockShortWin":16.0,"qqqLong":27.0,"qqqLongDD":27.0,"qqqBoth":-25.0,"qqqHold":87.0,"qqqHoldDD":37.0,"gldLong":121.0,"gldLongDD":24.0,"gldBoth":115.0,"gldHold":119.0,"gldHoldDD":29.0,"gold4hBoth":5.0},"dc20":{"label":"20日突破/10日离场","stockLongCagr":3.5,"stockLongDD":42.0,"stockShortAvg":-3.14,"stockShortWin":28.0,"qqqLong":50.0,"qqqLongDD":17.0,"qqqBoth":17.0,"qqqHold":87.0,"qqqHoldDD":37.0,"gldLong":25.0,"gldLongDD":23.0,"gldBoth":15.0,"gldHold":119.0,"gldHoldDD":29.0,"gold4hBoth":10.0},"dc55":{"label":"55日突破/20日离场","stockLongCagr":2.7,"stockLongDD":40.0,"stockShortAvg":-6.25,"stockShortWin":19.0,"qqqLong":55.0,"qqqLongDD":15.0,"qqqBoth":1.0,"qqqHold":87.0,"qqqHoldDD":37.0,"gldLong":79.0,"gldLongDD":21.0,"gldBoth":71.0,"gldHold":119.0,"gldHoldDD":29.0,"gold4hBoth":1.0}},"stockHold":{"cagr":13.2,"dd":55.0},"gold4hHold":34.0};
 const LWC = window.LightweightCharts;
 const REST = "https://fapi.binance.com";
@@ -720,6 +725,11 @@ const VLOG = [
   ["顺势 + 支撑阻力 + 分批平仓/保本/跟踪", "黄金 15 分 / 1 小时", "比随机进场多 0.05~0.1R，扣费后 15 分 −0.6R、1 小时 −0.15R；浮盈变浮亏从 16% 降到 4~6%", "warn", "管理有用，信号不够"],
   ["四种趋势规则（均线、双均线、20/55 日突破）", "科技股 74 只 + 指数 ETF，日线 2021-10~2026-10", "趋势状态不预测之后涨跌；只做多跑输一直拿着，做空每种都亏", "bad", "没通过（只能降回撤）"],
   ["黄金 4 小时：24h 区间 + 顺势 + 跟踪止损", "发现期 2025-03~2026-10；检验期 2021-01~2024-09（现货黄金）", "发现期挂单 +0.13R；检验期 −0.16R，四年全负，和随机进场一样", "bad", "没通过"],
+  ["结构判断方向（摆动高低点 / 突破结构）", "4 小时、1 小时、15 分、5 分；黄金白银 2021–2026，股票合约 2025–2026", "顺结构方向，之后 24 小时方向对 48~51%，和瞎猜一样", "bad", "没有预测力"],
+  ["完整结构体系：4h 结构 → 1h 回调 → 5 分钟转强 → 回调低点止损 → 前高平一半 + 结构持有", "开发 2021–2023；检验 2024–2026 黄金、2021–2026 白银", "开发期不算成本 +0.12R；检验期黄金 +0.01R、扣费 −0.18R，白银扣费 −0.19R；不如随机进场", "bad", "没通过"],
+  ["上级周期过滤（必须顺 4 小时结构）", "同上", "开发期顺 4h 每天多走约 0.3 个 ATR、方向对 55%；检验期变回 50%", "bad", "没通过"],
+  ["结构延续持有 vs 固定 2R vs 拿 24 小时", "同上", "差别都在 ±0.1R 以内，没有哪种稳定更好", "warn", "没区别"],
+  ["震荡区间边缘假突破", "黄金 2021–2023", "不算成本 −0.2~0R，扣费后 −0.5R 以上", "bad", "没通过"],
   ["大跌后买，拿两周（指数 ETF）", "8 只宽基/行业 ETF，2021-10~2026-10", "平均 +1.65%，随便买 +0.59%；熊市里最明显；独立样本只有几十次", "warn", "待验证"]
 ];
 function renderLog() {
@@ -761,28 +771,73 @@ function trendVerdict(st, e) {
   if (st === 1 && e <= -0.3) return `<span class="chip flat">之后反而偏弱</span>`;
   return `<span class="chip flat">没有预测力</span>`;
 }
+function swingStructure(rows, theta = 2) {
+  const n = rows.length; if (n < 40) return null;
+  const a = new Array(n); let p = null;
+  for (let i = 0; i < n; i++) { const r = rows[i], pc = i ? rows[i - 1].c : r.c; const tr = Math.max(r.h - r.l, Math.abs(r.h - pc), Math.abs(r.l - pc)); p = p == null ? tr : p + (tr - p) / 14; a[i] = p; }
+  const sw = []; let d = 0, ext = null, ei = 0, hi = null, hiI = 0, lo = null, loI = 0;
+  for (let t = 0; t < n; t++) {
+    const h = rows[t].h, l = rows[t].l;
+    if (d === 0) {
+      if (hi === null) { hi = h; hiI = t; lo = l; loI = t; }
+      if (h > hi) { hi = h; hiI = t; } if (l < lo) { lo = l; loI = t; }
+      if (hi - lo >= theta * a[t]) {
+        if (hiI > loI) { d = 1; ext = hi; ei = hiI; sw.push({ k: -1, p: lo, i: loI, c: t }); }
+        else { d = -1; ext = lo; ei = loI; sw.push({ k: 1, p: hi, i: hiI, c: t }); }
+      }
+      continue;
+    }
+    if (d === 1) { if (h >= ext) { ext = h; ei = t; } else if (l <= ext - theta * a[t]) { sw.push({ k: 1, p: ext, i: ei, c: t }); d = -1; ext = l; ei = t; } }
+    else { if (l <= ext) { ext = l; ei = t; } else if (h >= ext + theta * a[t]) { sw.push({ k: -1, p: ext, i: ei, c: t }); d = 1; ext = h; ei = t; } }
+  }
+  // walk forward: break-of-structure trend uses only swings already confirmed at each bar
+  let trend = 0, since = 0, j = 0; const H = [], L = [];
+  sw.sort((x, y) => x.c - y.c);
+  for (let t = 0; t < n; t++) {
+    while (j < sw.length && sw[j].c <= t) { (sw[j].k === 1 ? H : L).push(sw[j]); j++; }
+    const c = rows[t].c, prev = trend;
+    if (H.length && c > H[H.length - 1].p && trend !== 1) trend = 1;
+    else if (L.length && c < L[L.length - 1].p && trend !== -1) trend = -1;
+    since = trend === prev ? since + 1 : 0;
+  }
+  const lH = H[H.length - 1], pH = H[H.length - 2], lL = L[L.length - 1], pL = L[L.length - 2];
+  let pattern = 0;
+  if (lH && pH && lL && pL) pattern = lH.p > pH.p && lL.p > pL.p ? 1 : (lH.p < pH.p && lL.p < pL.p ? -1 : 0);
+  return { trend, since, pattern, lastH: lH ? lH.p : null, lastL: lL ? lL.p : null, hh: lH && pH ? lH.p > pH.p : null, hl: lL && pL ? lL.p > pL.p : null };
+}
 let trendBusy = false;
 async function renderTrend() {
   if (trendBusy) return; trendBusy = true;
   try {
-    const sym = state.sym, tok = loadToken, g = groupOf(sym), TF = ["1d", "4h", "1h"];
+    const sym = state.sym, tok = loadToken, g = groupOf(sym), TF = ["4h", "1h", "15m"];
     const all = await Promise.all(TF.map(tf => closedRows(sym, tf)));
     if (tok !== loadToken || sym !== state.sym) return;
-    const NAME = { "1d": "日线", "4h": "4小时", "1h": "1小时" }, KEY = { 1: "up", 0: "flat", "-1": "down" }, WORD = { 1: "向上", 0: "无趋势", "-1": "向下" };
+    const NAME = { "4h": "4小时", "1h": "1小时", "15m": "15分钟" }, dp = VIEW ? VIEW.dp : 2;
+    const st = {};
     $("trendRows").innerHTML = TF.map((tf, k) => {
-      const rows = all[k];
-      if (!rows || rows.length < 75) return `<div class="trow"><span class="tf">${NAME[tf]}</span><span class="chip flat">数据不足</span><span></span></div>`;
-      const states = regimeStates(rows.map(r => r.c)), st = states[states.length - 1];
-      let len = 0; for (let i = states.length - 1; i >= 0 && states[i] === st; i--) len++;
-      const S = TSTATS[tf][g], h = S[KEY[st]], hz = tf === "1d" ? "20个交易日" : "1天";
-      const unit = tf === "1d" ? "天" : "根K线";
-      return `<div class="trow"><span class="tf">${NAME[tf]}</span><span class="chip ${st === 1 ? "up" : st === -1 ? "down" : "flat"}"><i></i>${WORD[st]}</span><span class="run">已持续 ${len} ${unit}</span>
-        <div class="hist">历史上这种状态之后${hz}上涨概率 <b>${h.upProb}%</b>（平时 ${S.base_up}%）${trendVerdict(st, h.excess)}</div></div>`;
+      const S = all[k] ? swingStructure(all[k]) : null; st[tf] = S;
+      if (!S || S.trend === 0) return `<div class="trow"><span class="tf">${NAME[tf]}</span><span class="chip flat">结构未成形</span><span></span></div>`;
+      const up = S.trend === 1;
+      const pat = S.pattern === 1 ? "高点抬高、低点抬高" : S.pattern === -1 ? "高点降低、低点降低" : (S.hh && !S.hl ? "高点抬高但低点降低（扩散）" : (!S.hh && S.hl ? "高点降低但低点抬高（收敛）" : "高低点不一致"));
+      const fail = up ? `跌破 <b>${fmt(S.lastL, dp)}</b> 结构失效` : `突破 <b>${fmt(S.lastH, dp)}</b> 转为上涨`;
+      const ss = SSTATS[g] && SSTATS[g][tf];
+      const hist = ss ? `历史上顺这个方向，之后24小时方向对 <b>${up ? ss.up : ss.down}%</b>（瞎猜 50%）<span class="chip flat">没有预测力</span>` : `<span class="chip flat">这个周期没统计</span>`;
+      return `<div class="trow"><span class="tf">${NAME[tf]}</span><span class="chip ${up ? "up" : "down"}"><i></i>${up ? "上涨结构" : "下跌结构"}</span><span class="run">${pat}</span>
+        <div class="hist">${fail} · ${hist}</div></div>`;
     }).join("");
-    const gname = { gold: "黄金", silver: "白银", stock: "股票合约" }[g];
-    const src = { gold: "黄金：日线用 GLD 近5年，4小时和1小时用币安和 COMEX 黄金", silver: "白银：日线用 SLV 近5年，短周期用币安白银（2026年起）", stock: "股票：日线用标普500科技股近5年，短周期用币安 83 个股票合约" }[g];
-    $("trendSub").textContent = gname;
-    $("trendNote").innerHTML = `趋势用"收盘价和50根均线、均线是否在上升"判断，和回测同一条规则。${src}。近5年里它对个股和股指的方向没有预测力，做空下跌趋势的科技股每种规则都亏；黄金日线是例外。`;
+    const a = st["4h"], b = st["1h"], c = st["15m"], combo = $("combo");
+    if (a && b && c && a.trend && b.trend && c.trend) {
+      const dir = a.trend === 1 ? "多" : "空";
+      let text, note;
+      if (b.trend === -a.trend && c.trend === a.trend) { text = `4小时${a.trend === 1 ? "上涨" : "下跌"}，1小时${a.trend === 1 ? "回调" : "反弹"}中，15分钟已经转回顺势：这正是"${a.trend === 1 ? "回调结束顺势做多" : "反弹结束顺势做空"}"的样子`; note = "这套做法检验过：2024–2026 年黄金扣费后每笔 −0.18R，白银 −0.19R，不赚钱。"; }
+      else if (b.trend === -a.trend) { text = `4小时${a.trend === 1 ? "上涨" : "下跌"}，1小时${a.trend === 1 ? "回调" : "反弹"}中，15分钟还没转回来`; note = "历史上等15分钟转回来再进场，也没有比随便进场更好。"; }
+      else if (b.trend === a.trend && c.trend === a.trend) { text = `三个周期都是${a.trend === 1 ? "上涨" : "下跌"}结构，方向一致`; note = "历史上三个周期同向时，之后24小时方向对的比例仍在 50% 左右。"; }
+      else { text = "周期之间方向不一致，属于过渡或震荡阶段"; note = "震荡区间边缘的假突破也检验过，扣费后不赚钱。"; }
+      combo.innerHTML = `<b>${text}</b><span>${note}</span>`; combo.hidden = false;
+    } else combo.hidden = true;
+    const src = { gold: "黄金：2021–2026 年现货黄金", silver: "白银：2021–2026 年现货白银", stock: "股票：币安股票合约 2025–2026 年" }[g];
+    $("trendSub").textContent = { gold: "黄金", silver: "白银", stock: "股票合约" }[g] + " · 4小时 · 1小时 · 15分钟";
+    $("trendNote").innerHTML = `结构用摆动高低点判断：收盘突破最近确认的高点算上涨结构，跌破最近确认的低点算下跌结构（摆动 = 反向走出 2 倍平均波幅），和回测同一套规则。它准确描述了现在的结构和失效位置，但统计上不预测接下来往哪走（${src}）。`;
   } finally { trendBusy = false; }
 }
 
