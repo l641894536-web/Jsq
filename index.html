@@ -831,7 +831,7 @@ async function renderTrend() {
       let text, note;
       if (b.trend === -a.trend && c.trend === a.trend) { text = `4小时${a.trend === 1 ? "上涨" : "下跌"}，1小时${a.trend === 1 ? "回调" : "反弹"}中，15分钟已经转回顺势：这正是"${a.trend === 1 ? "回调结束顺势做多" : "反弹结束顺势做空"}"的样子`; note = "这套做法检验过：2024–2026 年黄金扣费后每笔 −0.18R，白银 −0.19R，不赚钱。"; }
       else if (b.trend === -a.trend) { text = `4小时${a.trend === 1 ? "上涨" : "下跌"}，1小时${a.trend === 1 ? "回调" : "反弹"}中，15分钟还没转回来`; note = "历史上等15分钟转回来再进场，也没有比随便进场更好。"; }
-      else if (b.trend === a.trend && c.trend === a.trend) { text = `三个周期都是${a.trend === 1 ? "上涨" : "下跌"}结构，方向一致`; note = "历史上三个周期同向时，之后24小时方向对的比例仍在 50% 左右。"; }
+      else if (b.trend === a.trend && c.trend === a.trend) { text = `三个周期都是${a.trend === 1 ? "上涨" : "下跌"}结构，方向一致`; note = "历史上三个周期同向时，之后24小时方向对的比例：黄金 50.0%，白银 47.5%，和瞎猜一样。"; }
       else { text = "周期之间方向不一致，属于过渡或震荡阶段"; note = "震荡区间边缘的假突破也检验过，扣费后不赚钱。"; }
       combo.innerHTML = `<b>${text}</b><span>${note}</span>`; combo.hidden = false;
     } else combo.hidden = true;
