@@ -91,7 +91,7 @@ def fetch_month_m1(sess, sym: str, month: str, deadline: float):
     """All days of one month as 5-minute bars, or an error (then nothing is written for that month)."""
     y, mo = int(month[:4]), int(month[5:7])
     ndays = (pd.Timestamp(y, mo, 1) + pd.offsets.MonthEnd(0)).day
-    out = []
+    out, bad = [], []
     for d in range(1, ndays + 1):
         if time.time() > deadline:
             return None, "deadline"
@@ -113,10 +113,14 @@ def fetch_month_m1(sess, sym: str, month: str, deadline: float):
                 err = str(e)
                 time.sleep(5 * (attempt + 1))
         if err:
-            return None, f"{d:02d}: {err}"
+            bad.append(f"{d:02d}: {err[:120]}")
+            if len(bad) > 2:                      # more than two broken days: retry the whole month next run
+                return None, "; ".join(bad)
         time.sleep(0.15)
     out = [o for o in out if len(o)]
-    return (pd.concat(out, ignore_index=True) if out else pd.DataFrame(columns=list(SCHEMA))), None
+    df = pd.concat(out, ignore_index=True) if out else pd.DataFrame(columns=list(SCHEMA))
+    # a day or two the feed keeps refusing (often holidays / near-empty Sundays) should not block a month forever
+    return df, ("partial:" + "; ".join(bad)) if bad else None
 
 
 def run(root: Path, mode: str, deadline: float) -> dict:
@@ -168,6 +172,9 @@ def run(root: Path, mode: str, deadline: float) -> dict:
         with ThreadPoolExecutor(3) as ex:
             futs = ex.map(lambda j: (j, *fetch_month_m1(sess, j[0], j[1], deadline)), todo5)
             for (s, m), df, err in futs:
+                if err and err.startswith("partial:"):
+                    st.info.setdefault("days_missing_5m", []).append(f"{s} {m} {err[8:]}"[:200])
+                    err = None
                 if err:
                     errs5 += 1
                     if err != "deadline":
