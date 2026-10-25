@@ -754,6 +754,21 @@ function onKline(sym, k) {
   if (VIEW) { VIEW.last = bar.c; VIEW.rows = rows; VIEW.n = rows.length; renderPrice(); legend(null); }
   if (k.x || Date.now() - lastAnalysis > 4000 || bar.t > last.t) reanalyze();
 }
+function paintChip(sym) {
+  const tk = TICK[sym], el = document.querySelector(`.sym[data-sym="${sym}"] small`);
+  if (tk && el) { el.textContent = fmt(tk.c, dpFor(tk.c)); el.className = (tk.c >= tk.o) !== state.redUp ? "u" : "d"; }
+}
+async function seedTickers() {          // fill every chip right away; the stream only pushes on new trades
+  await Promise.all(ORDER.map(async s => {
+    try {
+      const r = await fetch(`${REST}/fapi/v1/ticker/24hr?symbol=${s}`, { cache: "no-store" });
+      if (!r.ok) return;
+      const d = await r.json();
+      if (!TICK[s]) { TICK[s] = { c: +d.lastPrice, o: +d.openPrice }; paintChip(s); }
+    } catch (e) {}
+  }));
+  if (VIEW) renderPrice();
+}
 function openTicker() {
   clearTimeout(timerT);
   if (wsT) { const old = wsT; wsT = null; try { old.close(); } catch (e) {} }
@@ -768,8 +783,7 @@ function openTicker() {
     if (d.e !== "24hrMiniTicker") return;
     lastTick = Date.now(); retryT = 0;
     TICK[d.s] = { c: +d.c, o: +d.o };
-    const el = document.querySelector(`.sym[data-sym="${d.s}"] small`);
-    if (el) { el.textContent = fmt(+d.c, dpFor(+d.c)); el.className = (+d.c >= +d.o) !== state.redUp ? "u" : "d"; }
+    paintChip(d.s);
   };
   ws.onclose = () => { if (ws !== wsT) return; timerT = setTimeout(openTicker, [1000, 3000, 10000, 20000][Math.min(retryT++, 3)]); };
   ws.onerror = () => { try { ws.close(); } catch (e) {} };
@@ -880,12 +894,12 @@ function wire() {
   $("calc").addEventListener("submit", e => e.preventDefault());
   $("useLong").addEventListener("click", () => fillFromChart(1));
   $("useShort").addEventListener("click", () => fillFromChart(-1));
-  $("colorMode").addEventListener("click", () => { state.redUp = !state.redUp; store.set("redUp", state.redUp ? "1" : "0"); $("colorMode").textContent = state.redUp ? "红涨绿跌" : "绿涨红跌"; applyTheme(); renderPrice(); });
+  $("colorMode").addEventListener("click", () => { state.redUp = !state.redUp; store.set("redUp", state.redUp ? "1" : "0"); $("colorMode").textContent = state.redUp ? "红涨绿跌" : "绿涨红跌"; applyTheme(); renderPrice(); ORDER.forEach(paintChip); });
   $("colorMode").textContent = state.redUp ? "红涨绿跌" : "绿涨红跌";
   window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", applyTheme);
   document.addEventListener("visibilitychange", () => {
     if (document.hidden) { hiddenAt = Date.now(); return; }
-    if (hiddenAt && Date.now() - hiddenAt > 30000) { load(); openTicker(); }   // phones freeze sockets in the background
+    if (hiddenAt && Date.now() - hiddenAt > 30000) { load(); openTicker(); seedTickers(); }   // phones freeze sockets in the background
     hiddenAt = 0;
   });
   setInterval(() => {
@@ -900,7 +914,7 @@ function wire() {
 function boot() {
   if (!LWC) { $("overlay").textContent = "画图组件没有载入成功，请刷新页面再试。"; return; }
   renderSyms(); buildCharts(); wire(); renderReport(); setSide(-1); calc();
-  load(); openTicker();
+  load(); openTicker(); seedTickers();
 }
 boot();
 })();
