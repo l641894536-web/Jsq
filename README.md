@@ -7,6 +7,7 @@ GitHub Actions 每天北京时间 06:17 自动抓取行情，存到本仓库的 
 | A股 | baostock | 全部A股日线（含已退市，未复权）+ 复权因子 + 行业 + 主要指数 | 2005 |
 | 美股 | Yahoo Finance | 标普500 + 纳斯达克100 + 常用ETF/指数 + 金银等期货，日线；部分品种1小时线 | 2010；主要指数、指数ETF、金银、AMD、美光从1985年或上市起（小时线约近2年起） |
 | 币安 | data.binance.vision | 全部U本位永续合约日线；BTC/ETH/黄金/白银/股票合约等 1小时、15分钟线 | 2017（15分钟 2022） |
+| 币安现货 | data.binance.vision | PAXGUSDT（1盎司黄金代币，和黄金合约一样全天交易）1小时、15分钟线，用来回测黄金短周期 | 2020 |
 
 - 抓取代码：`market_data/`，要抓的品种在 `market_data/config.py` 里改
 - 每次运行的结果：`data` 分支的 `status.json` 和 `logs/last_run.log`

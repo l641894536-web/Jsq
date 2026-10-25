@@ -50,3 +50,10 @@ BN_WATCH = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT", "DOGEUSDT",
             "XAUUSDT", "XAGUSDT", "PAXGUSDT", "XAUTUSDT"]
 BN_STOCK_PERP_SINCE = "2025-06-01"   # a stock-ticker-named perp first listed after this = stock perp
 BN_SMOKE = ["BTCUSDT", "XAUUSDT", "PAXGUSDT", "TSLAUSDT"]
+
+# spot pairs with long intraday history; PAXGUSDT is 1 troy ounce of gold and trades 24/7 like the
+# XAUUSDT perp, so it carries gold back to 2020 for intraday backtests
+BN_SPOT_WATCH = ["PAXGUSDT"]
+BN_SPOT_INTERVALS = ["1h", "15m"]
+BN_SPOT_START = "2020-01-01"
+BN_SPOT_SMOKE = ["PAXGUSDT"]

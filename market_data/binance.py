@@ -1,4 +1,4 @@
-"""Binance USD-M perpetual klines from the public archive at data.binance.vision.
+"""Binance USD-M perpetual klines (plus a few spot pairs) from the public archive at data.binance.vision.
 
 The REST API (fapi.binance.com) refuses US IPs, which is where GitHub runners live; the archive
 is Binance's own bulk-download site and is not geo-restricted. Daily files appear the next UTC day,
@@ -125,7 +125,7 @@ def _prev_month(m: str) -> str:
 
 
 def plan_urls(sess, sym: str, interval: str, last_ms: int | None, min_start: date,
-              today: date) -> list[str]:
+              today: date, market: str = "futures/um") -> list[str]:
     if last_ms:
         frm = datetime.fromtimestamp((last_ms + INTERVAL_MS[interval]) / 1000, tz=timezone.utc).date()
         frm = max(frm, min_start)
@@ -136,7 +136,7 @@ def plan_urls(sess, sym: str, interval: str, last_ms: int | None, min_start: dat
     cur_m, frm_m = _month(today), _month(frm)
     urls, covered = [], []
     if frm_m < cur_m:
-        keys, _ = s3_list(sess, f"data/futures/um/monthly/klines/{sym}/{interval}/")
+        keys, _ = s3_list(sess, f"data/{market}/monthly/klines/{sym}/{interval}/")
         for k in keys:
             if k.endswith(".zip"):
                 m = k[-11:-4]
@@ -145,7 +145,7 @@ def plan_urls(sess, sym: str, interval: str, last_ms: int | None, min_start: dat
                     covered.append(m)
     m = _next_month(max(covered)) if covered else max(frm_m, _prev_month(cur_m))
     while m <= cur_m:
-        keys, _ = s3_list(sess, f"data/futures/um/daily/klines/{sym}/{interval}/{sym}-{interval}-{m}")
+        keys, _ = s3_list(sess, f"data/{market}/daily/klines/{sym}/{interval}/{sym}-{interval}-{m}")
         for k in keys:
             if k.endswith(".zip") and frm.isoformat() <= k[-14:-4] < today.isoformat():
                 urls.append(DL + k)
@@ -252,13 +252,19 @@ def run(root: Path, mode: str, deadline: float, us_tickers: set[str]) -> tuple[d
                 stale = lm is not None and (time.time() * 1000 - lm) > 60 * 86_400_000
                 if stale and not sunday:
                     continue   # long-dead contract: re-check weekly only
-                jobs.append((s, interval, lm))
+                jobs.append((s, interval, lm, "futures/um"))
+        spot_syms = C.BN_SPOT_SMOKE if mode == "smoke" else C.BN_SPOT_WATCH
+        spot_start = today - timedelta(days=10) if mode == "smoke" else date.fromisoformat(C.BN_SPOT_START)
+        for interval in C.BN_SPOT_INTERVALS:
+            for s in spot_syms:
+                jobs.append((s, interval, last.get(("spot:" + s, interval)), "spot"))
         st.log(f"planning {len(jobs)} symbol/interval jobs")
 
         def _plan(job):
-            s, interval, lm = job
+            s, interval, lm, market = job
             try:
-                return job, plan_urls(sess, s, interval, lm, starts[interval], today), None
+                frm = spot_start if market == "spot" else starts[interval]
+                return job, plan_urls(sess, s, interval, lm, frm, today, market), None
             except Exception as e:
                 return job, [], str(e)
 
@@ -267,12 +273,12 @@ def run(root: Path, mode: str, deadline: float, us_tickers: set[str]) -> tuple[d
             for job, urls, err in ex.map(_plan, jobs):
                 if err:
                     st.error(f"plan {job[0]} {job[1]}: {err}")
-                downloads += [(job[0], job[1], u) for u in urls]
+                downloads += [(job[0], job[1], u, job[3]) for u in urls]
         st.log(f"{len(downloads)} archive files to download")
         st.info["files_planned"] = len(downloads)
 
         def _dl(item):
-            s, interval, url = item
+            s, interval, url, market = item
             if time.time() > deadline:
                 return item, None, "deadline"
             try:
@@ -285,39 +291,41 @@ def run(root: Path, mode: str, deadline: float, us_tickers: set[str]) -> tuple[d
             except Exception as e:
                 return item, None, str(e)
 
-        frames = {"1d": [], "1h": [], "15m": []}
+        frames: dict = {}
         n_ok = 0
         with ThreadPoolExecutor(THREADS) as ex:
-            for (s, interval, url), df, err in ex.map(_dl, downloads):
+            for (s, interval, url, market), df, err in ex.map(_dl, downloads):
                 if err:
                     st.error(f"download {url}: {err}")
                 elif df is not None and not df.empty:
-                    frames[interval].append(df)
+                    frames.setdefault((market, interval), []).append(df)
                     n_ok += 1
         st.info["files_ok"] = n_ok
 
         new_last = dict(last)
-        for interval, parts in frames.items():
-            if not parts:
-                st.info[f"rows_added_{interval}"] = 0
-                continue
+        for (market, interval), parts in sorted(frames.items()):
+            spot = market == "spot"
+            key = (lambda s: "spot:" + s) if spot else (lambda s: s)
+            tag = ("spot_" if spot else "") + interval
             df = pd.concat(parts, ignore_index=True)
             df = df.drop_duplicates(["symbol", "open_time"], keep="last")
-            prev = df["symbol"].map(lambda s: last.get((s, interval), -1))
+            prev = df["symbol"].map(lambda s: last.get((key(s), interval), -1))
             df = df[df["open_time"] > prev]
             fmt = "%Y-%m-%d" if interval == "1d" else "%Y-%m-%d %H:%M"
             df[time_col(interval)] = pd.to_datetime(df["open_time"], unit="ms", utc=True).dt.strftime(fmt)
             for s, mx in df.groupby("symbol")["open_time"].max().items():
-                new_last[(s, interval)] = int(mx)
-            added = merge_partitioned(df, base / f"um_{interval}", ["symbol", time_col(interval)],
-                                      time_col(interval), schema(interval))
-            st.info[f"rows_added_{interval}"] = int(added)
-            st.log(f"{interval}: +{added} rows")
+                new_last[(key(s), interval)] = int(mx)
+            added = merge_partitioned(df, base / (f"spot_{interval}" if spot else f"um_{interval}"),
+                                      ["symbol", time_col(interval)], time_col(interval), schema(interval))
+            st.info[f"rows_added_{tag}"] = int(added)
+            st.log(f"{tag}: +{added} rows")
 
         save_state(pd.DataFrame([{"symbol": k[0], "interval": k[1], "last_ms": str(v)}
                                  for k, v in sorted(new_last.items())]), state_path)
         st.info["latest_1d"] = max((datetime.fromtimestamp(v / 1000, tz=timezone.utc).date().isoformat()
                                     for (s, i), v in new_last.items() if i == "1d"), default=None)
+        st.info["spot_latest"] = {f"{s} {i}": datetime.fromtimestamp(v / 1000, tz=timezone.utc).strftime("%Y-%m-%d %H:%M")
+                                  for (s, i), v in new_last.items() if s.startswith("spot:")}
         st.info["ok"] = (st.n_errors <= max(3, 0.05 * len(jobs))
                          and (st.info.get("files_ok", 0) > 0 or len(downloads) == 0))
     except Exception as e:

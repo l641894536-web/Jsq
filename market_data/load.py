@@ -160,5 +160,15 @@ def binance(interval: str = "1d", symbols=None, start=None, end=None) -> pd.Data
     return df.sort_values(["symbol", tcol]).reset_index(drop=True)
 
 
+def binance_spot(interval: str = "1h", symbols=None, start=None, end=None) -> pd.DataFrame:
+    """Spot pairs with long intraday history (config.BN_SPOT_WATCH, e.g. PAXGUSDT). interval: 1h / 15m."""
+    df = _parts(f"binance/spot_{interval}", start, end, dtype={"symbol": str, "ts": str})
+    df = _clip(df, "ts", start, end)
+    if symbols is not None:
+        df = df[df["symbol"].isin(set([symbols] if isinstance(symbols, str) else symbols))]
+    df["ts"] = pd.to_datetime(df["ts"], utc=True)
+    return df.sort_values(["symbol", "ts"]).reset_index(drop=True)
+
+
 def binance_symbols() -> pd.DataFrame:
     return pd.read_csv(DATA / "binance" / "meta" / "um_symbols.csv", dtype={"symbol": str})

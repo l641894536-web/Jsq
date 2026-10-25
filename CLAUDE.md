@@ -17,6 +17,7 @@ load.status()                                   # what the last run did, newest 
 load.a_share(start="2024-01-01", adjust="hfq")  # raw / hfq / qfq; plus a_share_stocks(), a_share_index()
 load.us_daily(["NVDA", "GC=F"]); load.us_hourly("GC=F")
 load.binance("1h", "XAUUSDT"); load.binance("1d")  # 1d = every USD-M perp; 1h/15m = watchlist
+load.binance_spot("1h", "PAXGUSDT")            # spot gold token, 1h/15m back to 2020 (XAUUSDT perp only from 2025-12)
 ```
 Local pandas has no pyarrow, so storage is CSV + xz, monthly partitions (`<dataset>/YYYY/YYYY-MM.csv.xz`).
 
