@@ -258,8 +258,12 @@ td.n { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
       </section>
 
       <section class="panel" id="calcPanel">
-        <div class="panel-h"><h2>下单前成本检查</h2><span class="sub">币安合约普通费率</span></div>
+        <div class="panel-h"><h2>下单前：仓位和成本</h2><span class="sub">币安合约普通费率</span></div>
         <form class="calc" id="calc" autocomplete="off">
+          <div class="row-btns">
+            <button type="button" class="btn" id="useLong">按 1 小时结构做多</button>
+            <button type="button" class="btn" id="useShort">按 1 小时结构做空</button>
+          </div>
           <div class="example" id="exampleTag">示例：视频里那笔单（做空 3,997.01，止损 3,999.01，止盈 3,994.01）</div>
           <div class="fields">
             <div class="field full">
@@ -280,10 +284,6 @@ td.n { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
           </div>
           <div class="verdict" id="verdict"></div>
           <dl class="kv" id="calcOut"></dl>
-          <div class="row-btns">
-            <button type="button" class="btn" id="useLong">按当前图上的支撑做多</button>
-            <button type="button" class="btn" id="useShort">按当前图上的阻力做空</button>
-          </div>
         </form>
       </section>
     </div>
@@ -298,6 +298,9 @@ td.n { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
 "use strict";
 const STATS = {"gold_15m":{"sr":{"all":{"n":3733,"win":33.9,"gross":0.05,"net":-1.24,"netpct":-0.107},"bull":{"n":2415,"win":35.4,"gross":0.06,"net":-1.13,"netpct":-0.104},"bear":{"n":746,"win":32.0,"gross":0.01,"net":-1.42,"netpct":-0.114},"range":{"n":572,"win":30.2,"gross":0.05,"net":-1.5,"netpct":-0.109},"with":{"n":1895,"win":36.4,"gross":0.1,"net":-1.15,"netpct":-0.097},"against":{"n":1838,"win":31.4,"gross":0.0,"net":-1.34,"netpct":-0.117}},"r24":{"all":{"n":1492,"win":35.0,"gross":-0.0,"net":-0.96,"netpct":-0.111},"bull":{"n":959,"win":36.1,"gross":0.01,"net":-0.84,"netpct":-0.114},"bear":{"n":298,"win":31.2,"gross":-0.08,"net":-1.19,"netpct":-0.126},"range":{"n":235,"win":35.3,"gross":0.07,"net":-1.13,"netpct":-0.083},"with":{"n":343,"win":36.2,"gross":0.01,"net":-1.08,"netpct":-0.106},"against":{"n":1149,"win":34.6,"gross":-0.01,"net":-0.92,"netpct":-0.113}},"dbl":{"all":{"n":655,"win":38.0,"gross":-0.04,"net":-0.37,"netpct":-0.099},"bull":{"n":408,"win":37.5,"gross":-0.08,"net":-0.38,"netpct":-0.105},"bear":{"n":131,"win":42.0,"gross":0.06,"net":-0.27,"netpct":-0.057},"range":{"n":116,"win":35.3,"gross":-0.02,"net":-0.46,"netpct":-0.124},"with":{"n":374,"win":39.3,"gross":-0.02,"net":-0.34,"netpct":-0.114},"against":{"n":281,"win":36.3,"gross":-0.08,"net":-0.41,"netpct":-0.078}},"app":{"all":{"n":1814,"win":32.4,"gross":-0.18,"net":-1.52,"netpct":-0.076},"bull":{"n":1159,"win":33.2,"gross":-0.16,"net":-1.5,"netpct":-0.075},"bear":{"n":384,"win":30.5,"gross":-0.24,"net":-1.59,"netpct":-0.08},"range":{"n":271,"win":31.7,"gross":-0.19,"net":-1.53,"netpct":-0.077},"with":{"n":1766,"win":32.5,"gross":-0.18,"net":-1.52,"netpct":-0.076},"against":{"n":48,"win":29.2,"gross":-0.27,"net":-1.64,"netpct":-0.082}}},"silver_15m":{"sr":{"all":{"n":1675,"win":36.9,"gross":0.0,"net":-0.51,"netpct":-0.13},"bull":{"n":563,"win":41.6,"gross":0.11,"net":-0.33,"netpct":-0.094},"bear":{"n":675,"win":35.3,"gross":-0.03,"net":-0.57,"netpct":-0.154},"range":{"n":437,"win":33.4,"gross":-0.07,"net":-0.66,"netpct":-0.138},"with":{"n":839,"win":37.7,"gross":0.02,"net":-0.48,"netpct":-0.123},"against":{"n":836,"win":36.1,"gross":-0.01,"net":-0.54,"netpct":-0.138}},"r24":{"all":{"n":713,"win":35.1,"gross":-0.06,"net":-0.53,"netpct":-0.129},"bull":{"n":208,"win":41.3,"gross":0.05,"net":-0.27,"netpct":-0.098},"bear":{"n":308,"win":33.4,"gross":-0.08,"net":-0.53,"netpct":-0.137},"range":{"n":197,"win":31.0,"gross":-0.13,"net":-0.8,"netpct":-0.151},"with":{"n":179,"win":31.8,"gross":-0.09,"net":-0.71,"netpct":-0.138},"against":{"n":534,"win":36.1,"gross":-0.04,"net":-0.47,"netpct":-0.127}},"dbl":{"all":{"n":302,"win":38.7,"gross":-0.06,"net":-0.2,"netpct":-0.177},"bull":{"n":106,"win":44.3,"gross":0.03,"net":-0.08,"netpct":-0.069},"bear":{"n":117,"win":41.9,"gross":0.02,"net":-0.11,"netpct":-0.062},"range":{"n":79,"win":26.6,"gross":-0.3,"net":-0.49,"netpct":-0.491},"with":{"n":166,"win":41.6,"gross":0.02,"net":-0.12,"netpct":-0.032},"against":{"n":136,"win":35.3,"gross":-0.16,"net":-0.3,"netpct":-0.353}},"app":{"all":{"n":914,"win":22.4,"gross":-0.44,"net":-1.86,"netpct":-0.093},"bull":{"n":288,"win":19.4,"gross":-0.51,"net":-1.95,"netpct":-0.098},"bear":{"n":359,"win":21.4,"gross":-0.46,"net":-1.89,"netpct":-0.095},"range":{"n":267,"win":27.0,"gross":-0.32,"net":-1.71,"netpct":-0.085},"with":{"n":885,"win":22.4,"gross":-0.44,"net":-1.86,"netpct":-0.093},"against":{"n":29,"win":24.1,"gross":-0.4,"net":-1.8,"netpct":-0.09}}},"gold_1h":{"sr":{"all":{"n":885,"win":39.8,"gross":-0.03,"net":-0.34,"netpct":-0.143},"bull":{"n":547,"win":40.8,"gross":-0.02,"net":-0.31,"netpct":-0.124},"bear":{"n":142,"win":33.8,"gross":-0.16,"net":-0.45,"netpct":-0.185},"range":{"n":196,"win":41.3,"gross":0.01,"net":-0.33,"netpct":-0.168},"with":{"n":453,"win":38.6,"gross":-0.08,"net":-0.37,"netpct":-0.193},"against":{"n":432,"win":41.0,"gross":0.02,"net":-0.31,"netpct":-0.091}},"r24":{"all":{"n":768,"win":40.4,"gross":-0.02,"net":-0.28,"netpct":-0.122},"bull":{"n":467,"win":40.7,"gross":-0.02,"net":-0.27,"netpct":-0.125},"bear":{"n":132,"win":34.8,"gross":-0.13,"net":-0.37,"netpct":-0.19},"range":{"n":169,"win":43.8,"gross":0.07,"net":-0.22,"netpct":-0.06},"with":{"n":311,"win":40.2,"gross":-0.04,"net":-0.29,"netpct":-0.179},"against":{"n":457,"win":40.5,"gross":-0.0,"net":-0.27,"netpct":-0.083}},"dbl":{"all":{"n":203,"win":43.8,"gross":-0.0,"net":-0.09,"netpct":-0.029},"bull":{"n":126,"win":44.4,"gross":-0.03,"net":-0.12,"netpct":-0.029},"bear":{"n":38,"win":44.7,"gross":0.01,"net":-0.07,"netpct":-0.003},"range":{"n":39,"win":41.0,"gross":0.08,"net":-0.0,"netpct":-0.053},"with":{"n":106,"win":48.1,"gross":0.1,"net":0.02,"netpct":0.003},"against":{"n":97,"win":39.2,"gross":-0.11,"net":-0.2,"netpct":-0.063}}}};
 const RRCURVE = {"XAUUSDT":[[1,53.5,56.5,-0.064],[1.5,44.0,45.6,-0.044],[2,36.5,38.2,-0.058],[3,27.9,28.9,-0.072]],"XAGUSDT":[[1,49.1,53.4,-0.085],[1.5,39.3,42.9,-0.091],[2,32.5,35.8,-0.109],[3,23.9,27.0,-0.145]],"AMDUSDT":[[1,40.5,51.3,-0.24],[1.5,33.3,41.1,-0.231],[2,30.8,34.3,-0.194],[3,26.2,25.8,-0.174]],"MUUSDT":[[1,44.8,51.4,-0.164],[1.5,35.9,41.2,-0.202],[2,30.1,34.4,-0.247],[3,25.1,25.8,-0.223]],"DELLUSDT":[[1,50.2,51.4,-0.008],[1.5,43.9,41.2,0.079],[2,38.0,34.4,0.057],[3,32.6,25.8,0.068]]};
+const HRANGE = {"XAUUSDT":{"med":0.12,"h":[0.096,0.144,0.135,0.137,0.129,0.114,0.108,0.129,0.178,0.235,0.215,0.168,0.124,0.114,0.101,0.102,0.073,0.051,0.086,0.096,0.156,0.186,0.144,0.109]},"XAGUSDT":{"med":0.24,"h":[0.186,0.3,0.265,0.279,0.254,0.217,0.211,0.245,0.368,0.476,0.432,0.308,0.262,0.233,0.201,0.212,0.142,0.103,0.154,0.165,0.295,0.407,0.298,0.226]},"AMDUSDT":{"med":0.287,"h":[0.226,0.242,0.235,0.257,0.352,0.27,0.244,0.318,0.33,0.655,0.817,0.542,0.432,0.358,0.339,0.41,0.18,0.15,0.188,0.183,0.385,0.313,0.262,0.229]},"MUUSDT":{"med":0.387,"h":[0.307,0.332,0.305,0.303,0.463,0.357,0.331,0.423,0.435,0.765,0.936,0.634,0.511,0.413,0.443,0.505,0.289,0.22,0.284,0.289,0.532,0.418,0.341,0.296]},"DELLUSDT":{"med":0.29,"h":[0.236,0.252,0.224,0.229,0.326,0.242,0.218,0.3,0.341,0.734,0.901,0.634,0.461,0.412,0.411,0.5,0.22,0.179,0.185,0.182,0.372,0.32,0.268,0.23]}};
+const REACH = { XAUUSDT: 1.11, XAGUSDT: 0.97, AMDUSDT: 0.68, MUUSDT: 0.73, DELLUSDT: 0.96 };
+let STRUCT = null;
 const SSTATS = {"gold":{"4h":{"up":54.2,"down":48.0,"acc":51.1,"base":53.1},"1h":{"up":52.5,"down":46.2,"acc":49.3,"base":53.1},"15m":{"up":52.8,"down":46.4,"acc":49.6,"base":53.2},"5m":{"up":53.1,"down":46.7,"acc":49.9,"base":53.2}},"silver":{"4h":{"up":50.5,"down":46.3,"acc":48.4,"base":51.9},"1h":{"up":51.5,"down":47.4,"acc":49.5,"base":52.0},"15m":{"up":51.0,"down":46.9,"acc":49.0,"base":52.0},"5m":{"up":51.0,"down":46.9,"acc":49.0,"base":52.0}},"stock":{"4h":{"up":50.5,"down":48.6,"acc":49.5,"base":50.8},"1h":{"up":49.6,"down":47.5,"acc":48.5,"base":50.8}}};
 const TSTATS = {"1d":{"gold":{"base_up":60.4,"base_mean":1.42,"up":{"n":689,"upProb":63.0,"mean":1.77,"excess":0.35},"flat":{"n":274,"upProb":66.8,"mean":2.0,"excess":0.58},"down":{"n":272,"upProb":47.4,"mean":-0.03,"excess":-1.46}},"silver":{"base_up":56.4,"base_mean":1.9,"up":{"n":507,"upProb":50.7,"mean":2.33,"excess":0.43},"flat":{"n":409,"upProb":54.8,"mean":0.92,"excess":-0.98},"down":{"n":319,"upProb":67.4,"mean":2.46,"excess":0.56}},"stock":{"base_up":54.2,"base_mean":2.03,"up":{"n":37951,"upProb":55.2,"mean":2.31,"excess":0.02},"flat":{"n":25389,"upProb":51.4,"mean":1.26,"excess":-0.78},"down":{"n":27451,"upProb":55.3,"mean":2.37,"excess":0.69}}},"4h":{"gold":{"base_up":53.8,"base_mean":0.07,"up":{"n":2819,"upProb":54.5,"mean":0.09,"excess":0.02},"flat":{"n":1950,"upProb":54.7,"mean":0.1,"excess":0.02},"down":{"n":1842,"upProb":51.7,"mean":0.02,"excess":-0.06}},"silver":{"base_up":50.6,"base_mean":-0.07,"up":{"n":502,"upProb":50.6,"mean":-0.19,"excess":-0.12},"flat":{"n":541,"upProb":51.0,"mean":0.06,"excess":0.13},"down":{"n":689,"upProb":50.2,"mean":-0.08,"excess":-0.01}},"stock":{"base_up":50.9,"base_mean":0.02,"up":{"n":24520,"upProb":50.7,"mean":-0.03,"excess":-0.09},"flat":{"n":25312,"upProb":49.7,"mean":-0.02,"excess":-0.04},"down":{"n":25174,"upProb":52.2,"mean":0.12,"excess":0.12}}},"1h":{"gold":{"base_up":53.5,"base_mean":0.08,"up":{"n":10225,"upProb":54.6,"mean":0.13,"excess":0.05},"flat":{"n":7232,"upProb":51.1,"mean":0.02,"excess":-0.05},"down":{"n":8020,"upProb":54.4,"mean":0.06,"excess":-0.02}},"silver":{"base_up":51.1,"base_mean":-0.07,"up":{"n":2602,"upProb":50.0,"mean":-0.15,"excess":-0.08},"flat":{"n":1985,"upProb":49.0,"mean":0.01,"excess":0.08},"down":{"n":2339,"upProb":54.1,"mean":-0.05,"excess":0.02}},"stock":{"base_up":50.9,"base_mean":0.02,"up":{"n":109683,"upProb":49.2,"mean":-0.08,"excess":-0.12},"flat":{"n":88668,"upProb":49.5,"mean":-0.05,"excess":-0.07},"down":{"n":101577,"upProb":53.9,"mean":0.19,"excess":0.18}}},"rules":{"regime":{"label":"均线趋势(大环境规则)","stockLongCagr":4.7,"stockLongDD":40.0,"stockShortAvg":-2.23,"stockShortWin":22.0,"qqqLong":24.0,"qqqLongDD":16.0,"qqqBoth":0.0,"qqqHold":87.0,"qqqHoldDD":37.0,"gldLong":68.0,"gldLongDD":21.0,"gldBoth":81.0,"gldHold":119.0,"gldHoldDD":29.0,"gold4hBoth":1.0},"ema":{"label":"双均线 20/50","stockLongCagr":6.0,"stockLongDD":47.0,"stockShortAvg":-5.93,"stockShortWin":16.0,"qqqLong":27.0,"qqqLongDD":27.0,"qqqBoth":-25.0,"qqqHold":87.0,"qqqHoldDD":37.0,"gldLong":121.0,"gldLongDD":24.0,"gldBoth":115.0,"gldHold":119.0,"gldHoldDD":29.0,"gold4hBoth":5.0},"dc20":{"label":"20日突破/10日离场","stockLongCagr":3.5,"stockLongDD":42.0,"stockShortAvg":-3.14,"stockShortWin":28.0,"qqqLong":50.0,"qqqLongDD":17.0,"qqqBoth":17.0,"qqqHold":87.0,"qqqHoldDD":37.0,"gldLong":25.0,"gldLongDD":23.0,"gldBoth":15.0,"gldHold":119.0,"gldHoldDD":29.0,"gold4hBoth":10.0},"dc55":{"label":"55日突破/20日离场","stockLongCagr":2.7,"stockLongDD":40.0,"stockShortAvg":-6.25,"stockShortWin":19.0,"qqqLong":55.0,"qqqLongDD":15.0,"qqqBoth":1.0,"qqqHold":87.0,"qqqHoldDD":37.0,"gldLong":79.0,"gldLongDD":21.0,"gldBoth":71.0,"gldHold":119.0,"gldHoldDD":29.0,"gold4hBoth":1.0}},"stockHold":{"cagr":13.2,"dd":55.0},"gold4hHold":34.0};
 const LWC = window.LightweightCharts;
@@ -735,6 +738,9 @@ const VLOG = [
   ["进场后的射程（打止损前最多走几 R）", "同上", "黄金中位 1.11R（随机 0.88R）；白银 0.97R；AMD 0.68R、美光 0.73R（比随机还短）；戴尔 0.96R", "warn", "黄金略好于随机，其余没有"],
   ["只在最强 5 只上做回调多单（4h 结构向上 + 1h 回调结束，1 小时触发）", "科技股 26 只 2021–2026；复核：非科技大盘股 23 只同期", "科技股：最强 +0.11R、全部 +0.07R、随机时点 +0.01R（p=0.09，通过）；复核：最强 +0.04R、最弱反而 +0.06R，前段为负、不显著", "bad", "复核没通过"],
   ["上涨结构里做 1 小时回调多单（不挑强弱）", "上面两组共 49 只股票", "科技股 +0.07R、非科技 +0.02R，比同股票随机时点多 0.03~0.05R，不够显著；同样规则做空两组都亏", "warn", "很小的优势，不可靠"],
+  ["黄金分时段：做多亚洲盘、做空伦敦盘", "现货黄金 5 分钟线，开发 2020–2023，检验 2024–2026；白银复核", "不算成本每笔 +0.03~0.04%，一来回成本 0.08%，扣费后每年都亏；亚洲盘的涨幅有一部分是每天重开时报价点差造成的假象", "bad", "没通过"],
+  ["美国数据发布后（纽约 8:30–9:00 大波动）顺势做到收盘", "同上", "开发期不算成本 +0.15R；检验期 −0.01R，扣费后 −0.20R，胜率 32%；白银也亏", "bad", "没通过"],
+  ["前一时段的涨跌预测下一时段（亚洲→伦敦→纽约→次日亚洲）", "同上", "6 种组合不算成本都在 ±0.03% 以内，扣费后全亏", "bad", "没通过"],
   ["震荡区间边缘假突破", "黄金 2021–2023", "不算成本 −0.2~0R，扣费后 −0.5R 以上", "bad", "没通过"],
   ["大跌后分批买（3 批，拿 10 天）", "ETF 日线，持有 10 天（不是合约周期）；发现：2021–26 年 8 只；检验：同期另 6 只 + 2016–21 年全部 14 只", "发现期 +0.91% vs 随机 +0.32%；检验：换品种 +0.07% vs 随机 +0.07%，换时间 −0.04% vs 随机 +0.22%", "bad", "没通过"],
   ["分批买 vs 一次买满", "同上（ETF 日线）", "分批让持有期最深浮亏平均减半（−1.6% vs −3.8%），但平均收益更低；最差一次仍 −31%（2020 年 3 月）", "warn", "能控风险，不增加收益"],
@@ -811,7 +817,7 @@ function swingStructure(rows, theta = 2) {
   const lH = H[H.length - 1], pH = H[H.length - 2], lL = L[L.length - 1], pL = L[L.length - 2];
   let pattern = 0;
   if (lH && pH && lL && pL) pattern = lH.p > pH.p && lL.p > pL.p ? 1 : (lH.p < pH.p && lL.p < pL.p ? -1 : 0);
-  return { trend, since, pattern, lastH: lH ? lH.p : null, lastL: lL ? lL.p : null, hh: lH && pH ? lH.p > pH.p : null, hl: lL && pL ? lL.p > pL.p : null };
+  return { trend, since, pattern, lastH: lH ? lH.p : null, lastL: lL ? lL.p : null, hh: lH && pH ? lH.p > pH.p : null, hl: lL && pL ? lL.p > pL.p : null, atr: a[n - 1] };
 }
 let trendBusy = false;
 async function renderTrend() {
@@ -833,6 +839,7 @@ async function renderTrend() {
       return `<div class="trow"><span class="tf">${NAME[tf]}</span><span class="chip ${up ? "up" : "down"}"><i></i>${up ? "上涨结构" : "下跌结构"}</span><span class="run">${pat}</span>
         <div class="hist">${fail} · ${hist}</div></div>`;
     }).join("");
+    STRUCT = { sym, at: Date.now(), h4: st["4h"], h1: st["1h"] };
     const a = st["4h"], b = st["1h"], c = st["15m"], combo = $("combo");
     if (a && b && c && a.trend && b.trend && c.trend) {
       const dir = a.trend === 1 ? "多" : "空";
@@ -982,6 +989,8 @@ function calc() {
     <dt>打到止损，扣费后净亏</dt><dd class="neg">${fmt(loss, dp)}</dd>
     <dt>扣费后盈亏比</dt><dd>${win > 0 ? (win / loss).toFixed(2) : "—"}</dd>
     <dt>保本需要的胜率</dt><dd><b>${(be * 100).toFixed(0)}%</b></dd>
+    <dt>止损时手续费折合</dt><dd class="${feeShare >= 0.15 ? "neg" : ""}">${feeShare.toFixed(2)} R${feeShare >= 0.15 ? "（太贵）" : ""}</dd>
+    ${swingLine(stopD / E * 100)}
     <div class="sep"></div>
     <dt>${isFinite(Lv) ? Lv : "—"} 倍满仓，打到止损亏保证金</dt><dd class="neg">${isFinite(allIn) ? (allIn * 100).toFixed(1) + "%" : "—"}</dd>
     <dt>按愿亏 ${isFinite(Rk) ? (Rk * 100).toFixed(1) : "—"}% 算的仓位</dt><dd>${isFinite(qty) ? fmt(qty, qty < 10 ? 3 : 1) + " 个" : "—"}</dd>
@@ -989,14 +998,31 @@ function calc() {
     ${capped ? `<dt style="grid-column:1/-1;color:var(--warn)">保证金不够按这个风险开仓，已按满仓算，止损实亏 ${fmt(riskAmt, 2)} USDT</dt>` : ""}
     ${histLine(tgtD / stopD, be)}`;
 }
+function nyHour() {
+  try { return +new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", hour: "numeric", hourCycle: "h23" }).format(new Date()) % 24; }
+  catch (e) { const d = new Date(); return (d.getUTCHours() + 19) % 24; }
+}
+function swingLine(stopPct) {
+  const H = HRANGE[state.sym]; if (!H || !isFinite(stopPct)) return "";
+  const h = nyHour(), r = H.h[h], peak = Math.max(...H.h), k = stopPct / r;
+  const bj = (new Date().getUTCHours() + 8) % 24;
+  const busy = r >= 1.5 * H.med ? `，是全天中位的 ${(r / H.med).toFixed(1)} 倍${h >= 8 && h <= 11 ? "（美股开盘前后）" : ""}` : "";
+  const warn = k < 2 ? `<dt style="grid-column:1/-1;color:var(--warn)">止损不到两根正常 15 分钟线的振幅，正常波动就可能扫到。要么放宽止损、减小仓位，要么等波动小的时段。</dt>` : "";
+  return `<div class="sep"></div><dt>现在（北京 ${bj} 点）15 分钟线正常振幅</dt><dd>${r.toFixed(2)}%${busy}</dd>
+    <dt>你的止损约等于</dt><dd class="${k < 2 ? "neg" : ""}">${k.toFixed(1)} 根正常 15 分钟振幅</dd>
+    <dt style="grid-column:1/-1;font-size:12px">全天最大是 ${peak.toFixed(2)}%（美股开盘前后），最小在凌晨。统计：币安合约最近半年 15 分钟线，振幅中位数。</dt>${warn}`;
+}
 function histLine(k, be) {
-  const cv = RRCURVE[state.sym]; if (!cv || !isFinite(k)) return "";
+  let cv = RRCURVE[state.sym]; if (!cv || !isFinite(k)) return "";
+  const rc0 = REACH[state.sym]; if (rc0 && rc0 < cv[0][0]) cv = [[rc0, 50]].concat(cv);
   const kk = Math.min(Math.max(k, cv[0][0]), cv[cv.length - 1][0]);
   let w = cv[0][1];
   for (let i = 1; i < cv.length; i++) if (kk <= cv[i][0]) { const [k0, w0] = cv[i - 1], [k1, w1] = cv[i]; w = w0 + (w1 - w0) * (kk - k0) / (k1 - k0); break; }
   const edge = w - be * 100, cls = edge >= 0 ? "pos" : "neg";
-  const out = k < cv[0][0] || k > cv[cv.length - 1][0] ? `（盈亏比超出 1~3 的统计范围，按 1:${kk} 估）` : "";
-  return `<div class="sep"></div><dt>如果这是"回调结束顺势"结构单：历史上 1:${k.toFixed(2)} 的胜率约${out}</dt><dd><b>${w.toFixed(0)}%</b></dd>
+  const out = k < cv[0][0] || k > cv[cv.length - 1][0] ? `（超出统计范围，按 1:${+kk.toFixed(2)} 估）` : "";
+  const rc = REACH[state.sym];
+  const reach = rc ? `<dt>这类单打止损前走到的距离（射程）中位</dt><dd>${rc.toFixed(2)} R${k > rc ? `<span class="neg">，你的止盈在射程外</span>` : ""}</dd>` : "";
+  return `<div class="sep"></div>${reach}<dt>如果这是"回调结束顺势"结构单：历史上 1:${k.toFixed(2)} 的胜率约${out}</dt><dd><b>${w.toFixed(0)}%</b></dd>
     <dt>和你这笔的保本胜率相比</dt><dd class="${cls}">${edge >= 0 ? "高" : "低"} ${Math.abs(edge).toFixed(0)} 个百分点</dd>
     <dt style="grid-column:1/-1;font-size:12px">统计：${NAMES[state.sym]} ${state.sym === "DELLUSDT" ? "2022" : "2021"}–2026，止损放在回调低点外；止盈放得越远，胜率越低。</dt>`;
 }
@@ -1010,6 +1036,23 @@ function fillFromSetup(s) {
   const entry = s.pending ? s.level : VIEW.last, risk = Math.abs(entry - s.stop);
   setFields(s.side, entry, s.stop, entry + s.side * 1.5 * risk, "taker");
   $("calcPanel").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+function fillFromStructure(side) {
+  const vd = $("verdict"), msg = (t, p) => { vd.className = "verdict warn"; vd.innerHTML = `<strong>${t}</strong>${p ? `<p>${p}</p>` : ""}`; $("calcOut").innerHTML = ""; $("exampleTag").hidden = true; };
+  const S = STRUCT && STRUCT.sym === state.sym ? STRUCT.h1 : null;
+  if (!VIEW || !S || !S.trend) return msg("1 小时结构还没载入，稍等几秒再点");
+  const dp = VIEW.dp, E = VIEW.last;
+  if (S.trend !== side) return msg(`1 小时现在是${S.trend === 1 ? "上涨" : "下跌"}结构，按结构规则不${side === 1 ? "做多" : "做空"}`,
+    `${side === 1 ? `等收盘站上 ${fmt(S.lastH, dp)}（最近的摆动高点）结构转涨` : `等收盘跌破 ${fmt(S.lastL, dp)}（最近的摆动低点）结构转跌`}，止损才有依据。`);
+  const lv = side === 1 ? S.lastL : S.lastH, stop = lv - side * 0.1 * S.atr;
+  if (!isFinite(stop) || side * (E - stop) <= 0) return msg("现价已经越过结构失效位，这笔没有止损依据");
+  const rc = REACH[state.sym] || 1, R = Math.abs(E - stop);
+  setFields(side, E, stop, E + side * rc * R, "maker");
+  const st4 = STRUCT.h4 && STRUCT.h4.trend ? (STRUCT.h4.trend === side ? "4 小时同向" : "4 小时反向") : "4 小时未成形";
+  const tag = $("exampleTag");
+  tag.innerHTML = `按 1 小时结构：止损在最近摆动${side === 1 ? "低" : "高"}点 ${fmt(lv, dp)} ${side === 1 ? "下" : "上"}方 0.1 个 ATR；止盈放在${REACH[state.sym] ? `历史射程中位 ${rc.toFixed(2)}R` : "1R（这个品种没有历史统计）"}。${st4}。` +
+    (groupOf(state.sym) === "stock" && side === -1 ? `<b>股票合约做空在每个回测版本里都是亏的。</b>` : "") + `这套做法回测扣费后不赚钱，这里只用来定止损和仓位。`;
+  tag.hidden = false;
 }
 function fillFromChart(side) {
   const V = VIEW; if (!V) return;
@@ -1061,8 +1104,8 @@ function wire() {
   $("sideSeg").querySelectorAll("button").forEach(b => b.addEventListener("click", () => { setSide(+b.dataset.side); calc(); }));
   ["fEntry", "fStop", "fTarget", "fMargin", "fLev", "fRisk", "fType"].forEach(id => $(id).addEventListener("input", calc));
   $("calc").addEventListener("submit", e => e.preventDefault());
-  $("useLong").addEventListener("click", () => fillFromChart(1));
-  $("useShort").addEventListener("click", () => fillFromChart(-1));
+  $("useLong").addEventListener("click", () => fillFromStructure(1));
+  $("useShort").addEventListener("click", () => fillFromStructure(-1));
   $("colorMode").addEventListener("click", () => { state.redUp = !state.redUp; store.set("redUp", state.redUp ? "1" : "0"); $("colorMode").textContent = state.redUp ? "红涨绿跌" : "绿涨红跌"; applyTheme(); renderPrice(); ORDER.forEach(paintChip); });
   $("colorMode").textContent = state.redUp ? "红涨绿跌" : "绿涨红跌";
   window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", applyTheme);
