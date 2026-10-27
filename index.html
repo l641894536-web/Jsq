@@ -156,6 +156,14 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px s
 .kv dd { margin: 0; text-align: right; font-family: var(--font-num); font-variant-numeric: tabular-nums; }
 .kv .sep { grid-column: 1 / -1; border-top: 1px dashed var(--line); margin: 2px 0; }
 .row-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+.loglist { display: grid; gap: 6px; }
+.logrow { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font-size: 12.5px; display: grid; gap: 6px; }
+.logrow .top { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; align-items: baseline; }
+.logrow .nums { color: var(--muted); font-family: var(--font-num); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.logrow .ctl { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.logrow select, .logrow input { font-size: 15px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--ink); padding: 3px 6px; max-width: 100%; }
+.logrow input[type=text] { flex: 1 1 140px; min-width: 0; }
+.logrow .del { color: var(--muted); background: none; border: 0; font-size: 12px; padding: 2px 4px; }
 .btn { border: 1px solid var(--line); background: var(--panel); border-radius: 7px; padding: 6px 12px; font-size: 13px; }
 .btn:hover { border-color: var(--muted); }
 
@@ -263,6 +271,8 @@ td.n { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
           <div class="row-btns">
             <button type="button" class="btn" id="useLong">按 1 小时结构做多</button>
             <button type="button" class="btn" id="useShort">按 1 小时结构做空</button>
+            <button type="button" class="btn" id="use24L">按 24 小时最低点止损做多</button>
+            <button type="button" class="btn" id="use24S">按 24 小时最高点止损做空</button>
           </div>
           <div class="example" id="exampleTag">示例：视频里那笔单（做空 3,997.01，止损 3,999.01，止盈 3,994.01）</div>
           <div class="fields">
@@ -285,6 +295,20 @@ td.n { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
           <div class="verdict" id="verdict"></div>
           <dl class="kv" id="calcOut"></dl>
         </form>
+      </section>
+
+      <section class="panel" id="logPanel">
+        <div class="panel-h"><h2>交易日志和今日风控</h2><span class="sub">只存在这台设备的浏览器里</span></div>
+        <div class="calc">
+          <div class="verdict" id="guard"></div>
+          <div class="row-btns">
+            <button type="button" class="btn" id="logTook">把上面这笔记为"开了"</button>
+            <button type="button" class="btn" id="logSkip">记为"看到了没开"</button>
+            <button type="button" class="btn" id="logExport">导出表格</button>
+          </div>
+          <dl class="kv" id="logStats"></dl>
+          <div class="loglist" id="logList"></div>
+        </div>
       </section>
     </div>
   </div>
@@ -729,7 +753,7 @@ const VLOG = [
   ["顺势 + 支撑阻力 + 分批平仓/保本/跟踪", "黄金 15 分 / 1 小时", "比随机进场多 0.05~0.1R，扣费后 15 分 −0.6R、1 小时 −0.15R；浮盈变浮亏从 16% 降到 4~6%", "warn", "管理有用，信号不够"],
   ["四种趋势规则（均线、双均线、20/55 日突破）", "科技股 74 只 + 指数 ETF，日线 2021-10~2026-10", "趋势状态不预测之后涨跌；只做多跑输一直拿着，做空每种都亏", "bad", "没通过（只能降回撤）"],
   ["黄金 4 小时：24h 区间 + 顺势 + 跟踪止损", "发现期 2025-03~2026-10；检验期 2021-01~2024-09（现货黄金）", "发现期挂单 +0.13R；检验期 −0.16R，四年全负，和随机进场一样", "bad", "没通过"],
-  ["结构判断方向（摆动高低点 / 突破结构）", "4 小时、1 小时、15 分、5 分；黄金白银 2021–2026，股票合约 2025–2026", "顺结构方向，之后 24 小时方向对 48~51%，和瞎猜一样", "bad", "没有预测力"],
+  ["结构判断方向（摆动高低点 / 突破结构）", "4 小时、1 小时、15 分、5 分；黄金白银 2021–2026，股票合约 2026 年以来", "按信号数加权，之后 24 小时方向对 49~51%；同期一直做多能对 52~53%，结构判断低 2~3 个百分点（审计更正：原来写的是“和瞎猜 50% 一样”）", "bad", "没有预测力"],
   ["完整结构体系：4h 结构 → 1h 回调 → 5 分钟转强 → 回调低点止损 → 前高平一半 + 结构持有", "开发 2021–2023；检验 2024–2026 黄金、2021–2026 白银", "开发期不算成本 +0.12R；检验期黄金 +0.01R、扣费 −0.18R，白银扣费 −0.19R；不如随机进场", "bad", "没通过"],
   ["上级周期过滤（必须顺 4 小时结构）", "同上", "开发期顺 4h 每天多走约 0.3 个 ATR、方向对 55%；检验期变回 50%", "bad", "没通过"],
   ["结构延续持有 vs 固定 2R vs 拿 24 小时", "同上", "差别都在 ±0.1R 以内，没有哪种稳定更好", "warn", "没区别"],
@@ -741,6 +765,11 @@ const VLOG = [
   ["黄金分时段：做多亚洲盘、做空伦敦盘", "现货黄金 5 分钟线，开发 2020–2023，检验 2024–2026；白银复核", "不算成本每笔 +0.03~0.04%，一来回成本 0.08%，扣费后每年都亏；亚洲盘的涨幅有一部分是每天重开时报价点差造成的假象", "bad", "没通过"],
   ["美国数据发布后（纽约 8:30–9:00 大波动）顺势做到收盘", "同上", "开发期不算成本 +0.15R；检验期 −0.01R，扣费后 −0.20R，胜率 32%；白银也亏", "bad", "没通过"],
   ["前一时段的涨跌预测下一时段（亚洲→伦敦→纽约→次日亚洲）", "同上", "6 种组合不算成本都在 ±0.03% 以内，扣费后全亏", "bad", "没通过"],
+  ["回测审计 V1.0（复核上面的结构类结果）", "原代码和同一份数据重跑，另做未来数据截断测试", "公布的数字都能精确复现，没有未来数据泄漏；黄金检验期是 339 笔（336 笔是修复跳空成交之前的版本）；“1:2 胜率 36.5%”用的是开发期和检验期混在一起、互相重叠的信号", "warn", "结论不变，表述已更正"],
+  ["Squeeze 挤压突破（LazyBear 默认参数）", "开发：黄金 2021–2023；参考：金银、AMD、美光、戴尔", "不算成本每笔 −0.08~+0.03R，不比随机进场好；扣费后全部为负", "bad", "没通过"],
+  ["SMC：FVG 回踩、扫流动性反转", "同上", "不算成本约 0；15 分钟止损只有价格的 0.04~0.08%，手续费每笔就要 1.7~2.1R；股票上看着赚钱的部分来自隔夜跳空，24 小时交易的合约不会这样成交", "bad", "没通过"],
+  ["你的做法：大环境定方向 + 24 小时高低点外止损 + 另一端止盈", "现货金银 2021–2026（约 1,400 笔）；币安 92 个股票合约（约 7,000 笔）", "胜率约 40%，目标约 1.3R（扣费后保本要约 52%）；不算成本约 0，扣费后每笔 −0.16~−0.23R，和随机时间进场一样", "bad", "没通过"],
+  ["Grok Bot 提示词：4 小时 EMA 定方向 + 1 小时四选二", "BTC、ETH 合约 2021–2026；另看金银、股票合约", "BTC+ETH 将近 6 年只有 168 笔，扣费后 +0.03R，不比随机好，BTC 单独为负；股票合约 −0.18~−0.21R", "bad", "没通过"],
   ["震荡区间边缘假突破", "黄金 2021–2023", "不算成本 −0.2~0R，扣费后 −0.5R 以上", "bad", "没通过"],
   ["大跌后分批买（3 批，拿 10 天）", "ETF 日线，持有 10 天（不是合约周期）；发现：2021–26 年 8 只；检验：同期另 6 只 + 2016–21 年全部 14 只", "发现期 +0.91% vs 随机 +0.32%；检验：换品种 +0.07% vs 随机 +0.07%，换时间 −0.04% vs 随机 +0.22%", "bad", "没通过"],
   ["分批买 vs 一次买满", "同上（ETF 日线）", "分批让持有期最深浮亏平均减半（−1.6% vs −3.8%），但平均收益更低；最差一次仍 −31%（2020 年 3 月）", "warn", "能控风险，不增加收益"],
@@ -835,7 +864,7 @@ async function renderTrend() {
       const pat = S.pattern === 1 ? "高点抬高、低点抬高" : S.pattern === -1 ? "高点降低、低点降低" : (S.hh && !S.hl ? "高点抬高但低点降低（扩散）" : (!S.hh && S.hl ? "高点降低但低点抬高（收敛）" : "高低点不一致"));
       const fail = up ? `跌破 <b>${fmt(S.lastL, dp)}</b> 结构失效` : `突破 <b>${fmt(S.lastH, dp)}</b> 转为上涨`;
       const ss = SSTATS[g] && SSTATS[g][tf];
-      const hist = ss ? `历史上顺这个方向，之后24小时方向对 <b>${up ? ss.up : ss.down}%</b>（瞎猜 50%）<span class="chip flat">没有预测力</span>` : `<span class="chip flat">这个周期没统计</span>`;
+      const hist = ss ? `历史上这个方向之后24小时${up ? "涨" : "跌"}的比例 <b>${up ? ss.up : ss.down}%</b>（同期任意时刻${up ? "涨" : "跌"}的比例约 ${up ? ss.base : (100 - ss.base).toFixed(1)}%）<span class="chip flat">没有预测力</span>` : `<span class="chip flat">这个周期没统计</span>`;
       return `<div class="trow"><span class="tf">${NAME[tf]}</span><span class="chip ${up ? "up" : "down"}"><i></i>${up ? "上涨结构" : "下跌结构"}</span><span class="run">${pat}</span>
         <div class="hist">${fail} · ${hist}</div></div>`;
     }).join("");
@@ -846,11 +875,11 @@ async function renderTrend() {
       let text, note;
       if (b.trend === -a.trend && c.trend === a.trend) { text = `4小时${a.trend === 1 ? "上涨" : "下跌"}，1小时${a.trend === 1 ? "回调" : "反弹"}中，15分钟已经转回顺势：这正是"${a.trend === 1 ? "回调结束顺势做多" : "反弹结束顺势做空"}"的样子`; note = "这套做法检验过：2024–2026 年黄金扣费后每笔 −0.18R，白银 −0.19R，不赚钱。"; }
       else if (b.trend === -a.trend) { text = `4小时${a.trend === 1 ? "上涨" : "下跌"}，1小时${a.trend === 1 ? "回调" : "反弹"}中，15分钟还没转回来`; note = "历史上等15分钟转回来再进场，也没有比随便进场更好。"; }
-      else if (b.trend === a.trend && c.trend === a.trend) { text = `三个周期都是${a.trend === 1 ? "上涨" : "下跌"}结构，方向一致`; note = "历史上三个周期同向时，之后24小时方向对的比例：黄金 50.0%，白银 47.5%，和瞎猜一样。"; }
+      else if (b.trend === a.trend && c.trend === a.trend) { text = `三个周期都是${a.trend === 1 ? "上涨" : "下跌"}结构，方向一致`; note = "历史上三个周期同向时，之后24小时方向对的比例：黄金 50.5%、白银 47.9%，还不如同期一直做多（53.3%、51.6%）。"; }
       else { text = "周期之间方向不一致，属于过渡或震荡阶段"; note = "震荡区间边缘的假突破也检验过，扣费后不赚钱。"; }
       combo.innerHTML = `<b>${text}</b><span>${note}</span>`; combo.hidden = false;
     } else combo.hidden = true;
-    const src = { gold: "黄金：2021–2026 年现货黄金", silver: "白银：2021–2026 年现货白银", stock: "股票：币安股票合约 2025–2026 年" }[g];
+    const src = { gold: "黄金：2021–2026 年现货黄金", silver: "白银：2021–2026 年现货白银", stock: "股票：币安股票合约 2026 年以来" }[g];
     $("trendSub").textContent = { gold: "黄金", silver: "白银", stock: "股票合约" }[g] + " · 4小时 · 1小时 · 15分钟";
     $("trendNote").innerHTML = `结构用摆动高低点判断：收盘突破最近确认的高点算上涨结构，跌破最近确认的低点算下跌结构（摆动 = 反向走出 2 倍平均波幅），和回测同一套规则。它准确描述了现在的结构和失效位置，但统计上不预测接下来往哪走（${src}）。`;
   } finally { trendBusy = false; }
@@ -958,7 +987,7 @@ function setSide(side) { state.side = side; $("sideSeg").querySelectorAll("butto
 function calc() {
   const side = state.side, E = num("fEntry"), S = num("fStop"), Tg = num("fTarget"), M = num("fMargin"), Lv = num("fLev"), Rk = num("fRisk") / 100;
   const out = $("calcOut"), vd = $("verdict");
-  const bad = (msg) => { vd.className = "verdict warn"; vd.innerHTML = `<strong>${msg}</strong>`; out.innerHTML = ""; };
+  const bad = (msg) => { vd.className = "verdict warn"; vd.innerHTML = `<strong>${msg}</strong>`; out.innerHTML = ""; state.lastCalc = null; };
   if (![E, S, Tg].every(isFinite) || E <= 0) return bad("请填入入场、止损、止盈价格");
   if (side === 1 && !(S < E && E < Tg)) return bad("做多时应该：止损 < 入场 < 止盈");
   if (side === -1 && !(Tg < E && E < S)) return bad("做空时应该：止盈 < 入场 < 止损");
@@ -974,8 +1003,13 @@ function calc() {
     if (marginUsed > M) { capped = true; qty = M * Lv / E; notional = M * Lv; marginUsed = M; riskAmt = qty * loss; }
   }
   const allIn = isFinite(Lv) ? Lv * (loss / E) : NaN;
+  const MMR = 0.005;                       // maintenance margin rate, first tier, estimate
+  const liq = isFinite(Lv) && Lv > 0 ? (side === 1 ? E * (1 - 1 / Lv + MMR) : E * (1 + 1 / Lv - MMR)) : NaN;
+  const liqOK = !isFinite(liq) || (side === 1 ? S > liq : S < liq);
+  state.lastCalc = { side, E, S, Tg, risk: riskAmt, k: tgtD / stopD };
   let cls, title, text;
-  if (win <= 0) { cls = "bad"; title = "止盈还不够付手续费"; text = "就算打到止盈，扣完手续费也是亏的。"; }
+  if (!liqOK) { cls = "bad"; title = "止损在强平价外面"; text = `按 ${Lv} 倍杠杆，价格到 ${fmt(liq, dp)} 附近就会被强平，止损根本等不到。降低杠杆，或者把止损收近。`; }
+  else if (win <= 0) { cls = "bad"; title = "止盈还不够付手续费"; text = "就算打到止盈，扣完手续费也是亏的。"; }
   else if (feeShare >= 0.5) { cls = "bad"; title = "止损太窄，手续费吃掉利润"; text = `手续费相当于止损的 ${(feeShare * 100).toFixed(0)}%，要 ${(be * 100).toFixed(0)}% 的胜率才保本。回测里这类单子实际胜率约三成。`; }
   else if (be > 0.55) { cls = "warn"; title = "需要很高的胜率才保本"; text = `保本胜率 ${(be * 100).toFixed(0)}%。可以把止盈放远一点，或者把止损放宽、仓位减小。`; }
   else { cls = "good"; title = "成本可控"; text = `保本胜率 ${(be * 100).toFixed(0)}%。成本这关过了，能不能赚钱还要看这个信号本身有没有优势。`; }
@@ -992,6 +1026,7 @@ function calc() {
     <dt>止损时手续费折合</dt><dd class="${feeShare >= 0.15 ? "neg" : ""}">${feeShare.toFixed(2)} R${feeShare >= 0.15 ? "（太贵）" : ""}</dd>
     ${swingLine(stopD / E * 100)}
     <div class="sep"></div>
+    <dt>强平价（逐仓粗估，以币安显示为准）</dt><dd class="${liqOK ? "" : "neg"}">${isFinite(liq) ? fmt(liq, dp) + (liqOK ? `，止损离强平还有 ${(Math.abs(S - liq) / E * 100).toFixed(2)}%` : "，止损在它外面") : "—"}</dd>
     <dt>${isFinite(Lv) ? Lv : "—"} 倍满仓，打到止损亏保证金</dt><dd class="neg">${isFinite(allIn) ? (allIn * 100).toFixed(1) + "%" : "—"}</dd>
     <dt>按愿亏 ${isFinite(Rk) ? (Rk * 100).toFixed(1) : "—"}% 算的仓位</dt><dd>${isFinite(qty) ? fmt(qty, qty < 10 ? 3 : 1) + " 个" : "—"}</dd>
     <dt>仓位价值 / 占用保证金</dt><dd>${isFinite(notional) ? fmt(notional, 0) + " / " + fmt(marginUsed, 0) : "—"}</dd>
@@ -1024,7 +1059,7 @@ function histLine(k, be) {
   const reach = rc ? `<dt>这类单打止损前走到的距离（射程）中位</dt><dd>${rc.toFixed(2)} R${k > rc ? `<span class="neg">，你的止盈在射程外</span>` : ""}</dd>` : "";
   return `<div class="sep"></div>${reach}<dt>如果这是"回调结束顺势"结构单：历史上 1:${k.toFixed(2)} 的胜率约${out}</dt><dd><b>${w.toFixed(0)}%</b></dd>
     <dt>和你这笔的保本胜率相比</dt><dd class="${cls}">${edge >= 0 ? "高" : "低"} ${Math.abs(edge).toFixed(0)} 个百分点</dd>
-    <dt style="grid-column:1/-1;font-size:12px">统计：${NAMES[state.sym]} ${state.sym === "DELLUSDT" ? "2022" : "2021"}–2026，止损放在回调低点外；止盈放得越远，胜率越低。</dt>`;
+    <dt style="grid-column:1/-1;font-size:12px">统计：${NAMES[state.sym]} ${state.sym === "DELLUSDT" ? "2022" : "2021"}–2026，止损放在回调低点外；止盈放得越远，胜率越低。开发期和检验期混在一起、信号互相重叠，数字偏乐观。</dt>`;
 }
 function setFields(side, entry, stop, target, type) {
   const dp = dpFor(entry);
@@ -1053,6 +1088,93 @@ function fillFromStructure(side) {
   tag.innerHTML = `按 1 小时结构：止损在最近摆动${side === 1 ? "低" : "高"}点 ${fmt(lv, dp)} ${side === 1 ? "下" : "上"}方 0.1 个 ATR；止盈放在${REACH[state.sym] ? `历史射程中位 ${rc.toFixed(2)}R` : "1R（这个品种没有历史统计）"}。${st4}。` +
     (groupOf(state.sym) === "stock" && side === -1 ? `<b>股票合约做空在每个回测版本里都是亏的。</b>` : "") + `这套做法回测扣费后不赚钱，这里只用来定止损和仓位。`;
   tag.hidden = false;
+}
+async function fillFrom24h(side) {
+  const vd = $("verdict"), msg = (t, p) => { vd.className = "verdict warn"; vd.innerHTML = `<strong>${t}</strong>${p ? `<p>${p}</p>` : ""}`; $("calcOut").innerHTML = ""; $("exampleTag").hidden = true; state.lastCalc = null; };
+  if (!VIEW) return msg("行情还没载入，稍等几秒再点");
+  const sym = state.sym, rows = await closedRows(sym, "1h");
+  if (sym !== state.sym) return;
+  if (!rows || rows.length < 40) return msg("1 小时数据不够，稍后再试");
+  const E = VIEW.last, last = rows.slice(-24);
+  const hi = Math.max(E, ...last.map(r => r.h)), lo = Math.min(E, ...last.map(r => r.l));
+  let a = null;
+  for (let i = 0; i < rows.length; i++) { const r = rows[i], pc = i ? rows[i - 1].c : r.c; const tr = Math.max(r.h - r.l, Math.abs(r.h - pc), Math.abs(r.l - pc)); a = a == null ? tr : a + (tr - a) / 14; }
+  const stop = side === 1 ? lo - 0.2 * a : hi + 0.2 * a, T = side === 1 ? hi : lo;
+  const R = side * (E - stop), rew = side * (T - E), dp = VIEW.dp;
+  if (!(R > 0)) return msg("现价已经越过 24 小时极值，这个止损没有意义");
+  if (!(rew > 0)) return msg(`现价就在 24 小时${side === 1 ? "最高" : "最低"}点，没有目标空间`);
+  setFields(side, E, stop, T, "maker");
+  const tag = $("exampleTag");
+  tag.innerHTML = `你的做法：止损在 24 小时${side === 1 ? "最低" : "最高"} ${fmt(side === 1 ? lo : hi, dp)} 外 0.2 个 ATR，目标是 24 小时${side === 1 ? "最高" : "最低"} ${fmt(T, dp)}（${(rew / R).toFixed(2)}R）。` +
+    (rew < R ? "<b>盈亏比不到 1。</b>" : "") + `回测（金银 2021–2026、92 个股票合约）：胜率约 40%，扣费后每笔约 −0.18R，和随机时间进场一样；这里只用来定止损和仓位。`;
+  tag.hidden = false;
+}
+
+// ------------------------------------------------------------ trade journal + daily guard (this device only)
+const JKEY = "journal";
+function jLoad() { try { const v = JSON.parse(store.get(JKEY, "[]")); return Array.isArray(v) ? v : []; } catch (e) { return []; } }
+function jSave(a) { store.set(JKEY, JSON.stringify(a)); }
+function jAdd(took) {
+  const c = state.lastCalc;
+  if (!c) { const g = $("guard"); g.className = "verdict warn"; g.innerHTML = "<strong>先在上面填好一笔有效的入场、止损、止盈</strong>"; return; }
+  const a = jLoad();
+  a.push({ id: Date.now() + "" + Math.floor(Math.random() * 1000), t: Date.now(), sym: state.sym, side: c.side, E: c.E, S: c.S, T: c.Tg, k: c.k,
+           risk: isFinite(c.risk) ? +c.risk.toFixed(2) : null, took, res: "", r: null, resAt: null, note: "" });
+  jSave(a); renderJournal();
+}
+function jSet(id, field, val) {
+  const a = jLoad(), x = a.find(z => z.id === id); if (!x) return;
+  if (field === "res") {
+    x.res = val; x.resAt = val ? Date.now() : null;
+    x.r = val === "tp" ? +(+x.k).toFixed(2) : val === "sl" ? -1 : val === "be" ? 0 : (val === "other" ? x.r : null);
+  } else if (field === "r") { x.r = isFinite(parseFloat(val)) ? parseFloat(val) : null; }
+  else if (field === "note") x.note = String(val).slice(0, 200);
+  else if (field === "del") { a.splice(a.indexOf(x), 1); }
+  jSave(a); renderJournal();
+}
+function dayKey(ms) { const d = new Date(ms); return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`; }
+function renderJournal() {
+  const a = jLoad(), now = Date.now();
+  const took = a.filter(x => x.took), closed = took.filter(x => x.r != null).sort((p, q) => (p.resAt || p.t) - (q.resAt || q.t));
+  const today = closed.filter(x => dayKey(x.resAt || x.t) === dayKey(now)), todayR = today.reduce((s_, x) => s_ + x.r, 0);
+  let streak = 0; for (let i = closed.length - 1; i >= 0 && closed[i].r < 0; i--) streak++;
+  const lastLoss = streak ? (closed[closed.length - 1].resAt || closed[closed.length - 1].t) : 0;
+  const pauseUntil = streak >= 2 ? lastLoss + 12 * 3600e3 : 0;
+  const g = $("guard");
+  if (todayR <= -3) { g.className = "verdict bad"; g.innerHTML = `<strong>今天已经亏了 ${(-todayR).toFixed(1)}R，到了 3R 的上限</strong><p>按规则今天停手，只复盘，不再开新单。</p>`; }
+  else if (pauseUntil > now) { const d = new Date(pauseUntil); g.className = "verdict warn"; g.innerHTML = `<strong>连亏 ${streak} 笔，按规则暂停到 ${d.getMonth() + 1}月${d.getDate()}日 ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}</strong><p>暂停期间只看不做，避免急着扳回来。</p>`; }
+  else { g.className = "verdict good"; g.innerHTML = `<strong>今天已平 ${today.length} 笔，合计 ${todayR >= 0 ? "+" : ""}${todayR.toFixed(1)}R</strong><p>规则：单日亏到 3R 停手；连亏 2 笔暂停 12 小时。结果按 R 记（1R = 一个止损的钱，未扣手续费）。</p>`; }
+  const wins = closed.filter(x => x.r > 0).length, sumR = closed.reduce((s_, x) => s_ + x.r, 0);
+  const skipped = a.filter(x => !x.took), skC = skipped.filter(x => x.r != null);
+  $("logStats").innerHTML = `
+    <dt>开了 / 已平</dt><dd>${took.length} / ${closed.length} 笔</dd>
+    <dt>已平的胜率 / 平均每笔</dt><dd>${closed.length ? (wins / closed.length * 100).toFixed(0) + "% / " + (sumR / closed.length >= 0 ? "+" : "") + (sumR / closed.length).toFixed(2) + "R" : "—"}</dd>
+    <dt>累计</dt><dd class="${sumR >= 0 ? "pos" : "neg"}">${closed.length ? (sumR >= 0 ? "+" : "") + sumR.toFixed(1) + "R" : "—"}</dd>
+    <dt>看到了没开</dt><dd>${skipped.length} 笔${skC.length ? `，其中后来到目标 ${skC.filter(x => x.r > 0).length}、到止损 ${skC.filter(x => x.r < 0).length}` : ""}</dd>
+    <dt style="grid-column:1/-1;font-size:12px">至少攒到几十上百笔再看胜率和平均 R；一两笔的输赢是运气，不要因此改规则。</dt>`;
+  const rows = a.slice().sort((p, q) => q.t - p.t).slice(0, 60);
+  $("logList").innerHTML = rows.length ? rows.map(x => {
+    const d = new Date(x.t), dp = Math.max(dpFor(x.E), 2);
+    const opt = (v, l) => `<option value="${v}"${x.res === v ? " selected" : ""}>${l}</option>`;
+    const rTxt_ = x.r != null ? `<b class="${x.r > 0 ? "pos" : x.r < 0 ? "neg" : ""}">${x.r > 0 ? "+" : ""}${(+x.r).toFixed(2)}R</b>` : "";
+    return `<div class="logrow" data-id="${x.id}">
+      <div class="top"><span><b>${NAMES[x.sym] || x.sym}</b> ${x.side === 1 ? "做多" : "做空"} · ${x.took ? "开了" : "没开"}</span><span class="nums">${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")} ${rTxt_}</span></div>
+      <div class="nums">入 ${fmt(x.E, dp)} · 损 ${fmt(x.S, dp)} · 目标 ${fmt(x.T, dp)}（${(+x.k).toFixed(2)}R）${x.risk != null ? ` · 风险 ${x.risk} USDT` : ""}</div>
+      <div class="ctl"><select data-f="res" aria-label="结果">${opt("", x.took ? "还没平" : "后来怎样？")}${opt("tp", x.took ? "止盈" : "后来到了目标")}${opt("sl", x.took ? "止损" : "后来到了止损")}${opt("be", "保本")}${opt("other", "其他（填 R）")}</select>
+        ${x.res === "other" ? `<input data-f="r" inputmode="decimal" size="5" placeholder="R" value="${x.r ?? ""}">` : ""}
+        <input type="text" data-f="note" placeholder="理由 / 当时的情绪" value="${String(x.note || "").replace(/"/g, "&quot;")}">
+        <button type="button" class="del" data-f="del">删除</button></div>
+    </div>`;
+  }).join("") : `<div class="empty">还没有记录。在上面算好一笔后点"开了"或"没开"。</div>`;
+}
+function jExport() {
+  const a = jLoad(); if (!a.length) return;
+  const head = ["时间", "品种", "方向", "开了吗", "入场", "止损", "目标", "目标R", "风险USDT", "结果", "R", "备注"];
+  const esc = v => `"${String(v ?? "").replace(/"/g, '""')}"`;
+  const lines = [head.join(",")].concat(a.map(x => [new Date(x.t).toLocaleString(), x.sym, x.side === 1 ? "多" : "空", x.took ? "开了" : "没开", x.E, x.S, x.T, (+x.k).toFixed(2), x.risk ?? "", x.res, x.r ?? "", x.note].map(esc).join(",")));
+  const url = URL.createObjectURL(new Blob(["﻿" + lines.join("\n")], { type: "text/csv" }));
+  const el = document.createElement("a"); el.href = url; el.download = `交易日志_${new Date().toISOString().slice(0, 10)}.csv`; document.body.appendChild(el); el.click(); el.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
 }
 function fillFromChart(side) {
   const V = VIEW; if (!V) return;
@@ -1106,6 +1228,13 @@ function wire() {
   $("calc").addEventListener("submit", e => e.preventDefault());
   $("useLong").addEventListener("click", () => fillFromStructure(1));
   $("useShort").addEventListener("click", () => fillFromStructure(-1));
+  $("use24L").addEventListener("click", () => fillFrom24h(1));
+  $("use24S").addEventListener("click", () => fillFrom24h(-1));
+  $("logTook").addEventListener("click", () => jAdd(true));
+  $("logSkip").addEventListener("click", () => jAdd(false));
+  $("logExport").addEventListener("click", jExport);
+  $("logList").addEventListener("change", (e) => { const f = e.target.dataset.f, row = e.target.closest(".logrow"); if (f && row && f !== "del") jSet(row.dataset.id, f, e.target.value); });
+  $("logList").addEventListener("click", (e) => { if (e.target.dataset.f === "del") { const row = e.target.closest(".logrow"); if (row) jSet(row.dataset.id, "del"); } });
   $("colorMode").addEventListener("click", () => { state.redUp = !state.redUp; store.set("redUp", state.redUp ? "1" : "0"); $("colorMode").textContent = state.redUp ? "红涨绿跌" : "绿涨红跌"; applyTheme(); renderPrice(); ORDER.forEach(paintChip); });
   $("colorMode").textContent = state.redUp ? "红涨绿跌" : "绿涨红跌";
   window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", applyTheme);
@@ -1126,7 +1255,7 @@ function wire() {
 
 function boot() {
   if (!LWC) { $("overlay").textContent = "画图组件没有载入成功，请刷新页面再试。"; return; }
-  renderSyms(); buildCharts(); wire(); renderReport(); setSide(-1); calc();
+  renderSyms(); buildCharts(); wire(); renderReport(); setSide(-1); calc(); renderJournal();
   load(); openTicker(); seedTickers();
 }
 boot();
