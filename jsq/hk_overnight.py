@@ -258,18 +258,20 @@ def _rule_text(rules: list[dict] | None, prefix: str, default: str) -> str:
     return default
 
 
-def advise_overnight(move: float, hm: int, rules: list[dict] | None = None) -> str:
+def advise_overnight(move: float, hm: int, rules: list[dict] | None = None, symbol: str = "") -> str:
     """move：合约相对昨天港股收盘的涨跌；hm：当前香港时间（分钟）。"""
     pre_open = 8 * 60 + 55 <= hm < 9 * 60 + 30
+    weak = "（该标的历史上开盘规则无效，仅供参考）" if symbol in hk.WEAK_SYMBOLS else ""
     if move > 0.01:
         big = move > 0.02
         stats = _rule_text(rules, "夜里涨 >2.0%：08:59 做空，11:59" if big else "夜里涨 1%~2%：08:59 做空，11:59",
                            "历史平均每次约 +1.2%，胜率约 6 成" if big else "历史平均每次约 +0.6%，胜率约 5 成半")
-        how = "08:59 做空，拿到 11:59 平（09:31 就平的版本 9 月以后变弱）；止损别设 1% 这种近的，最多设 3% 防极端行情"
+        how = ("08:59 做空，拿到 11:59～13:30 平（09:31 就平的版本 9 月以后变弱）；止损别设 1% 这种近的，最多设 3% 防极端行情；"
+               "同一天几个合约一起出信号时仓位要分摊")
         if pre_open:
             return (f"做空信号{'' if big else '（幅度一般）'}：合约比收盘已涨 {move:+.2%}，夜里涨的开盘后平均吐回一半。"
-                    f"{how}（{stats}）。千万别追多")
-        return f"合约比收盘涨 {move:+.2%}：若到 08:59 仍涨超过 1%，{how}（{stats}）"
+                    f"{how}（{stats}）。千万别追多{weak}")
+        return f"合约比收盘涨 {move:+.2%}：若到 08:59 仍涨超过 1%，{how}（{stats}）{weak}"
     if move < -0.01:
         stats = _rule_text(rules, "对照：夜里跌 >1%：08:59 追空", "08:59 追空到 09:31 历史 10 次亏 7 次")
         return (f"合约比收盘跌 {move:+.2%}：夜里跌的通常是真的，不要抄底；也别在开盘前追空，"

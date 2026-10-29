@@ -221,7 +221,7 @@ def advise_preopen(remaining: float, auction_chg: float, th: float = 0.003) -> s
 
 
 # 价差收敛规则在这些标的上历史无效（大盘蓝筹、定价已很有效），实时提示时标注出来
-WEAK_SYMBOLS = {"HK0700USDT", "TENCENTUSDT", "POPMARTUSDT"}
+WEAK_SYMBOLS = {"HK0700USDT", "TENCENTUSDT", "POPMARTUSDT", "BYDUSDT"}   # 两条开盘规则在这几个上都不赚
 
 
 def advise_open(basis: float, th: float = 0.003, symbol: str = "") -> str:
@@ -230,7 +230,8 @@ def advise_open(basis: float, th: float = 0.003, symbol: str = "") -> str:
         return (f"合约比正股贵 {basis:.2%}：可做空合约，持有到 11:59~13:30；只设 3~5% 的宽止损，"
                 f"靠仓位控制风险{weak}")
     if basis < -th:
-        return f"合约比正股便宜 {abs(basis):.2%}：可做多合约，持有到 11:59~13:30（这类日子较少）{weak}"
+        return (f"合约比正股便宜 {abs(basis):.2%}：做多这一边 9 月以后基本不赚（之前赚的主要是几次大行情），"
+                f"建议不做或很轻仓{weak}")
     return "合约与正股价差在 ±0.3% 内，无信号"
 
 

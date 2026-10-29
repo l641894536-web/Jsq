@@ -216,6 +216,50 @@ def hk_stop_grid(P: dict, O: pd.DataFrame, split: str, stops=(None, 0.01, 0.02, 
     return pd.DataFrame(rows)
 
 
+EXIT_TIMES = ["09:31", "10:00", "10:30", "11:00", "11:59", "13:30", "14:30", "15:59"]
+MAIN_RULES = ("夜里涨 >1%：08:59 做空", "09:31 合约偏离正股 >0.3%：反向做")
+
+
+def hk_exit_trades(P: dict, O: pd.DataFrame, exits=EXIT_TIMES, cost_rt: float = HK_COST_RT) -> pd.DataFrame:
+    """两条主规则的每笔交易：不同平仓时间的扣成本收益（列名即平仓时刻），move = 夜里涨跌或 09:31 偏离。"""
+    out = []
+    for s, p in P.items():
+        o = O[O["symbol"] == s]
+        sides = _hk_sides(p, o)
+        c = p["close"]
+        n859 = o.set_index("next_day")["pm_08:59"]
+        basis = c["09:31"] / p["index"]["09:31"] - 1 if "09:31" in c else pd.Series(dtype=float)
+        for rule, hm, move in ((MAIN_RULES[0], "08:59", n859), (MAIN_RULES[1], "09:31", basis)):
+            sd = sides[rule]
+            days = [d for d in sd.index if d in c.index]
+            if not days or hm not in c:
+                continue
+            entry = c.loc[days, hm]
+            t = pd.DataFrame({"symbol": s, "day": days, "rule": rule, "side": sd.loc[days].to_numpy(),
+                              "move": move.reindex(days).to_numpy()})
+            for T in exits:
+                if T > hm and T in c:
+                    t[T] = (t["side"].to_numpy() * (c.loc[days, T].to_numpy() / entry.to_numpy() - 1)) - cost_rt
+            out.append(t)
+    return pd.concat(out, ignore_index=True) if out else pd.DataFrame()
+
+
+def exit_curve(tr: pd.DataFrame, split: str, exits=EXIT_TIMES) -> pd.DataFrame:
+    """平仓时间 → 每笔平均、胜率、前后两段，以及按交易日合并后的 t（同一天多个标的同涨同跌，只算一次）。"""
+    rows = []
+    for rule, g in tr.groupby("rule", sort=False):
+        for T in exits:
+            if T not in g or g[T].isna().all():
+                continue
+            x = g[T].dropna()
+            day = g.loc[x.index, "day"]
+            dm = x.groupby(day).mean()
+            rows.append({"rule": rule, "exit": T, "n": len(x), "days": len(dm), "exp": x.mean(), "win": (x > 0).mean(),
+                         "sd": x.std(ddof=1), "first": x[day < split].mean(), "second": x[day >= split].mean(),
+                         "day_t": _t(dm.to_numpy())})
+    return pd.DataFrame(rows)
+
+
 # ----------------------------------------------------------------------------- 分类研究的策略（1 小时）
 
 def hourly_paths(p, ev: np.ndarray, H: int):

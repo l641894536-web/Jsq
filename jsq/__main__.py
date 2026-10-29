@@ -360,7 +360,7 @@ def _hk_now_once(a):
               f" | 合约自收盘 {move:+.2%}")
         in_session = (9 * 60 + 30 <= hm < 12 * 60) or (13 * 60 <= hm < 16 * 60 + 10)
         if not in_session:
-            print("  " + ho.advise_overnight(move, hm, rules))
+            print("  " + ho.advise_overnight(move, hm, rules, symbol=s))
         if s in auction:
             rem = hk.remaining_gap(auction[s], move)
             print(f"  竞价 {auction[s]:+.2%} → 合约还差 {rem:+.2%}：{hk.advise_preopen(rem, auction[s])}")
@@ -406,6 +406,35 @@ def cmd_excursion(a):
                   f"best_E / B1.0 = 扣费后每笔 R）：")
             print(cl.sort_values("right_t", ascending=False)[cols].round(2).to_string(index=False))
     print(f"\n结果目录: {out}")
+
+
+def cmd_us_weekend(a):
+    from . import hk
+    from . import us_weekend as uw
+    from .vision import make_session
+    d = Path(a.data_dir) / "us1m"
+    d.mkdir(parents=True, exist_ok=True)
+    syms = [x.strip() for x in a.symbols.split(",")] if a.symbols else uw.US_SYMBOLS
+    if not a.no_update:
+        sess = make_session(a.proxy)
+        for s in syms:
+            log.info("%s 1 分钟数据: %s", s, hk.update(sess, s, d))
+    t = uw.load_all(d, syms)
+    if not len(t):
+        sys.exit("没有美股合约 1 分钟数据")
+    f = uw.gap_fit(t)
+    print(f"{t['symbol'].nunique()} 个美股合约，{t['fri'].nunique()} 个周末（{t['fri'].min()} ~ {t['fri'].max()}）")
+    print(f"周末合约涨 >1% 的平均 {f['up_W']:+.2%}，周日晚开盘正股实际 {f['up_J']:+.2%}；"
+          f"跌 >1% 的平均 {f['dn_W']:+.2%}，正股实际 {f['dn_J']:+.2%}（斜率 {f['slope']:.2f}，≈1 = 合约定价准）")
+    r = uw.rules(t)
+    r = r[r["exit"].isin(["周日20:05", "周日22:00", "周一09:29", "周一15:59"])].copy()
+    for c in ("mean", "wk_mean"):
+        r[c] = (r[c] * 100).round(2)
+    r[["win", "wk_win"]] = (r[["win", "wk_win"]] * 100).round(0)
+    r["wk_t"] = r["wk_t"].round(1)
+    pd.set_option("display.width", 220)
+    print("\n周日 19:59（美东）开仓，扣来回 0.14% 成本，单位 %；wk_ 开头为按周末合并后的平均、胜率、t：")
+    print(r.to_string(index=False))
 
 
 def cmd_report(a):
@@ -519,7 +548,7 @@ def main(argv=None):
 
     sp = sub.add_parser("classlab", help="按资产类别研究：分类策略库 + 同类合并检验 + 行情状态 + 持仓时间曲线")
     common(sp, bt=True)
-    sp.add_argument("--exits", help="只用这些出场方式，例如 h48,h96,h168（可选: sig,sl2tp6,trail4,h12,h24,h48,h96,h168）")
+    sp.add_argument("--exits", help="只用这些出场方式，例如 h48,h96,h168（可选: sig,sl2tp6,trail4,h12,h24,h48,h96,h168,r2x1,r2x2,r4x1,r4x2,r4x3；r 开头为固定盈亏比）")
     sp.set_defaults(func=cmd_classlab, folds=3)
 
     sp = sub.add_parser("class-signal", help="用分类研究选出的配置给出各标的当前持仓状态")
@@ -569,6 +598,13 @@ def main(argv=None):
     sp.add_argument("--horizon", type=int, default=72, help="分类策略：开仓后最多看多少小时（默认 72）")
     sp.add_argument("--class-results", help="classlab 结果目录（默认最近一次）")
     sp.set_defaults(func=cmd_excursion)
+
+    sp = sub.add_parser("us-weekend", help="美股合约：周末只有合约在交易，周日晚夜盘开盘时是回落还是继续")
+    sp.add_argument("--symbols")
+    sp.add_argument("--data-dir", default=str(DATA_DIR))
+    sp.add_argument("--proxy")
+    sp.add_argument("--no-update", action="store_true")
+    sp.set_defaults(func=cmd_us_weekend)
 
     sp = sub.add_parser("report", help="重新生成 HTML 报告")
     sp.add_argument("--results", help="结果目录，默认最近一次")

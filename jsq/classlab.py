@@ -42,9 +42,17 @@ CLASS_EXITS = {
     "h48": dict(stop_atr=4.0, max_hold_h=48),
     "h96": dict(stop_atr=4.0, max_hold_h=96),
     "h168": dict(stop_atr=4.0, max_hold_h=168),
+    # 固定盈亏比：止损 = 1 份（R），止盈 = k 份，最长 72h
+    "r2x1": dict(stop_atr=2.0, tp_atr=2.0, max_hold_h=72),
+    "r2x2": dict(stop_atr=2.0, tp_atr=4.0, max_hold_h=72),
+    "r4x1": dict(stop_atr=4.0, tp_atr=4.0, max_hold_h=72),
+    "r4x2": dict(stop_atr=4.0, tp_atr=8.0, max_hold_h=72),
+    "r4x3": dict(stop_atr=4.0, tp_atr=12.0, max_hold_h=72),
 }
 EXIT_CN = {"sig": "信号进出", "sl2tp6": "2ATR止损/6ATR止盈", "trail4": "4ATR移动止损", "h12": "最长12h",
-           "h24": "最长24h", "h48": "最长48h", "h96": "最长4天", "h168": "最长7天"}
+           "h24": "最长24h", "h48": "最长48h", "h96": "最长4天", "h168": "最长7天",
+           "r2x1": "止损2ATR·盈亏比1:1", "r2x2": "止损2ATR·盈亏比1:2", "r4x1": "止损4ATR·盈亏比1:1",
+           "r4x2": "止损4ATR·盈亏比1:2", "r4x3": "止损4ATR·盈亏比1:3"}
 DECAY_H = [1, 2, 4, 8, 12, 24, 48, 72, 120, 168]
 MIN_TRADES = 30
 

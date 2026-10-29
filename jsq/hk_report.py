@@ -176,6 +176,28 @@ def build_data(data_dir: Path, symbols=None, slippage: float = 0.0005) -> dict:
                    "first": _r(r.first_bps / 100, 2), "second": _r(r.second_bps / 100, 2),
                    "worst": _r(r.worst_bps / 100, 1), "adv90": _r(r.adv90_bps / 100, 1)} for r in sgrid.itertuples()],
     }
+    # ---------- 拿到几点平 / 哪些合约有效 / 最近的信号
+    etr = xc.hk_exit_trades(P, O)
+    pc = lambda v: _r(v * 100, 2)
+    excursion["curve"] = [{"rule": r.rule, "exit": r.exit, "n": int(r.n), "days": int(r.days), "exp": pc(r.exp),
+                           "win": _r(r.win * 100, 0), "first": pc(r.first), "second": pc(r.second), "day_t": _r(r.day_t, 1)}
+                          for r in xc.exit_curve(etr, split).itertuples()]
+    bys = []
+    for (rule, s), g in etr.groupby(["rule", "symbol"], sort=False):
+        bys.append({"rule": rule, "name": NAMES.get(s, s), "n": len(g), "e1159": pc(g["11:59"].mean()),
+                    "w1159": _r((g["11:59"] > 0).mean() * 100, 0), "e1330": pc(g["13:30"].mean()),
+                    "second": pc(g.loc[g["day"] >= split, "11:59"].mean())})
+    excursion["bysym"] = sorted(bys, key=lambda r: (r["rule"], -(r["e1159"] if r["e1159"] is not None else -99)))
+    b2 = etr[etr["rule"] == xc.MAIN_RULES[1]]
+    excursion["basis_sides"] = [{"side": "空" if sd < 0 else "多", "n": len(g), "exp": pc(g["11:59"].mean()),
+                                 "first": pc(g.loc[g["day"] < split, "11:59"].mean()),
+                                 "second": pc(g.loc[g["day"] >= split, "11:59"].mean())}
+                                for sd, g in b2.groupby("side")]
+    last = sorted(etr["day"].unique())[-10:]
+    rec = etr[etr["day"].isin(last)].sort_values(["day", "rule", "symbol"], ascending=[False, True, True])
+    excursion["recent"] = [{"day": r["day"], "name": NAMES.get(r["symbol"], r["symbol"]), "rule": r["rule"],
+                            "side": "空" if r["side"] < 0 else "多", "move": pc(r["move"]),
+                            "r1159": pc(r["11:59"]), "r1330": pc(r["13:30"])} for r in rec.to_dict("records")]
 
     return {
         "overnight": overnight, "excursion": excursion,
@@ -303,7 +325,7 @@ pre{font:13px/1.55 var(--mono);background:var(--surface);border:1px solid var(--
 <h2>实盘规则（扣成本后）</h2>
 <p>每笔按一来一回 0.2% 扣成本（实测约 0.11%–0.20%）。“前段 / 后段”以 <span id="split-day"></span> 为界分别统计。</p>
 <div class="scroll" id="t-rules"></div>
-<div class="callout"><b>怎么用：</b>每天 08:55 左右看合约相对昨天收盘涨了多少。涨超过 1% 就在 08:59 做空，拿到 11:59 平；止损不要设 1% 这种近的，最多设 3%。夜里跌的不要抄底，也别在开盘前追空。</div>
+<div class="callout"><b>怎么用：</b>每天 08:55 左右看合约相对昨天收盘涨了多少。涨超过 1% 就在 08:59 做空，拿到 11:59 到 13:30 之间平（13:30 平均多一点，波动也大一点）；止损不要设 1% 这种近的，最多设 3%。同一天好几个合约都出信号时，它们基本同涨同跌，仓位要分摊。夜里跌的不要抄底，也别在开盘前追空。</div>
 
 <h2>止损和止盈怎么设：方向对不对 vs 能走多远</h2>
 <p>把每次开仓之后的价格路径拆开看。1R = 止损距离，这里取开仓价的 1%。<b>方向对</b> = 先走到 +1R（还没碰到 −1R），<b>方向错</b> = 先碰到 −1R，<b>没走出来</b> = 到平仓时两边都没碰到。<b>对照</b> = 同一时刻随机猜方向，波动完全一样：价格本身来回晃，随便开一单也有不少能先走到 +1R，比对照高出来的部分才是判断力。</p>
@@ -312,6 +334,15 @@ pre{font:13px/1.55 var(--mono);background:var(--surface);border:1px solid var(--
 <h3>止损设多宽：不设止盈，到点平仓</h3>
 <div class="scroll" id="t-stopgrid"></div>
 <div class="callout" id="stop-note"></div>
+
+<h3>拿到几点平</h3>
+<p>同一批单子换不同的平仓时间（不设止损）。“按天算的 t”把同一天的几笔合成一笔再算：同一天几个合约往往同涨同跌，等于只押了一注，大于 2 才算显著。</p>
+<div class="scroll" id="t-curve"></div>
+<h3>哪些合约有效</h3>
+<div class="scroll" id="t-bysym2"></div>
+<h3>最近 10 个交易日的信号</h3>
+<p class="mut">可以和自己的实盘单子对照。收益已扣 0.2% 来回成本；“夜里涨跌/偏离”对 08:59 规则是合约相对昨天收盘的涨跌，对 09:31 规则是合约比正股贵（+）或便宜（−）多少。</p>
+<div class="scroll tall" id="t-recent"></div>
 
 <h2>机制：合约在 09:20 就动了，正股要到 09:30 才动</h2>
 <p>每分钟的平均波动幅度。指数价格在港股交易时段跟随正股，休市时只缓慢跟随合约，所以它在 09:30 那一分钟一次性跳到开盘价；合约则在 09:20 竞价撮合那一分钟就明显放大，09:30 仍有一大段没走完。</p>
@@ -416,13 +447,13 @@ function relPos(fig, ev){const r=fig.getBoundingClientRect();return [ev.clientX-
         rm=R("夜里涨 1%~2%：08:59 做空，11:59"),rb=R("阿里美股"),
         cl=R("对照：夜里涨 >1%：08:59 追多"),cs=R("对照：夜里跌 >1%：08:59 追空");
   const X=D.excursion||{stops:[]},SG=s=>X.stops.find(r=>r.rule==="夜里涨 >1%：08:59 做空"&&r.exit==="11:59"&&r.stop===s)||{};
-  const s1=SG(1),s3=SG(3);
+  const s1=SG(1),s3=SG(3),c13=(X.curve||[]).find(r=>r.rule==="夜里涨 >1%：08:59 做空"&&r.exit==="13:30")||{};
   document.getElementById("split-day").textContent=m.split;
   const items=[
     `<b>收盘后：</b>白天大跌的，合约收盘后两小时平均小幅反弹；白天大涨的，小幅回落。幅度只有 0.2%–0.3%，不够交易成本，到第二天早上白天涨跌已经不影响合约走势。`,
     `<b>夜里涨的靠不住，夜里跌的是真的：</b>合约到 08:59 比收盘涨超过 1% 的，开盘时平均吐回一半；夜里跌超过 1% 的，09:30 开盘那一下反弹约 0.4%，到中午又回到低位。跌后反弹的那种夜里上涨最容易过头。所以开盘前顺着夜里方向追单两头都亏：夜里涨了 08:59 追多，每笔 ${fmt(cl.exp,0,true)} 基点、胜率 ${cl.win}%；夜里跌了 08:59 追空，每笔 ${fmt(cs.exp,0,true)} 基点、胜率 ${cs.win}%。`,
-    `<b>规则一：</b>08:59 合约比收盘涨 &gt;1% 就做空，拿到 11:59 平：每笔 ${fmt(r11.exp,0,true)} 基点，胜率 ${r11.win}%，后半段 ${fmt(r11.second,0,true)}；涨 &gt;2% 的每笔 ${fmt(r21.exp,0,true)}，涨 1%–2% 的 ${fmt(rm.exp,0,true)}。09:31 就平只有 ${fmt(r1.exp,0,true)}，后半段 ${fmt(r1.second,0,true)}：后来的回落多发生在开盘之后。止损别设近：1% 止损每笔降到 ${fmt(s1.exp*100,0,true)} 基点，3% 止损为 ${fmt(s3.exp*100,0,true)}。`,
-    `<b>规则二：</b>09:31 合约比正股贵 0.3% 以上做空、拿到 11:59：每笔约 ${fmt(t.exp_real,0,true)} 基点，胜率 ${t.win}%。在智谱、MiniMax、小米等散户关注度高的标的上有效，腾讯、泡泡玛特上无效。`,
+    `<b>规则一：</b>08:59 合约比收盘涨 &gt;1% 就做空，拿到 11:59 平：每笔 ${fmt(r11.exp,0,true)} 基点，胜率 ${r11.win}%，后半段 ${fmt(r11.second,0,true)}；涨 &gt;2% 的每笔 ${fmt(r21.exp,0,true)}，涨 1%–2% 的 ${fmt(rm.exp,0,true)}。09:31 就平只有 ${fmt(r1.exp,0,true)}，后半段 ${fmt(r1.second,0,true)}：后来的回落多发生在开盘之后；拿到下午 13:30 每笔 ${fmt(c13.exp*100,0,true)}。止损别设近：1% 止损每笔降到 ${fmt(s1.exp*100,0,true)} 基点，3% 止损为 ${fmt(s3.exp*100,0,true)}。同一天几个合约一起出信号时基本同涨同跌，仓位要分摊。`,
+    `<b>规则二：</b>09:31 合约比正股贵 0.3% 以上做空、拿到 11:59：每笔约 ${fmt(t.exp_real,0,true)} 基点，胜率 ${t.win}%。在智谱、MiniMax、小米等散户关注度高的标的上有效，腾讯、泡泡玛特、比亚迪上无效。${(()=>{const sd=(X.basis_sides||[]).find(r=>r.side==="多");return sd?`反过来合约比正股便宜去做多的 ${sd.n} 笔，前段每笔 ${fmt(sd.first,2,true)}%，后段只有 ${fmt(sd.second,2,true)}%，不建议做。`:"";})()}`,
     `<b>辅助：</b>阿里巴巴美股合约夜里涨（跌）超过 0.5%，开盘后顺着做到中午，每笔 ${fmt(rb.exp,0,true)} 基点，较弱。竞价阶段（09:00–09:29）合约平均回落约 0.15%：要买等竞价结束，要空在 09:00 前后。`,
   ];
   const ul=document.getElementById("summary");items.forEach(s=>{const li=document.createElement("li");li.innerHTML=s;ul.appendChild(li)});
@@ -474,6 +505,15 @@ function relPos(fig, ev){const r=fig.getBoundingClientRect();return [ev.clientX-
       return [rs[0].rule,rs[0].exit,...levels.map(s=>{const r=rs.find(x=>x.stop===s);
         return r?{t:`${fmt(r.exp,2,true)}% · 胜率 ${r.win}% · 后段 ${fmt(r.second,2,true)}%`,cls:r.exp>0?"posv":(r.exp<0?"negv":"")}:"–";})];}),2);
   const base=X.stops.find(r=>r.rule==="夜里涨 >1%：08:59 做空"&&r.exit==="11:59"&&r.stop==null);
+  const pc=v=>({t:fmt(v,2,true)+"%",cls:v>0?"posv":(v<0?"negv":"")});
+  if(X.curve){
+    table(document.getElementById("t-curve"),["规则","平仓","笔数","每笔平均","胜率","前段","后段","按天算的 t"],
+      X.curve.map(r=>[r.rule,r.exit,r.n,pc(r.exp),r.win+"%",pc(r.first),pc(r.second),fmt(r.day_t,1)]),2);
+    table(document.getElementById("t-bysym2"),["规则","合约","笔数","拿到 11:59","胜率","拿到 13:30","后段（11:59）"],
+      X.bysym.map(r=>[r.rule,r.name,r.n,pc(r.e1159),r.w1159+"%",pc(r.e1330),pc(r.second)]),2);
+    table(document.getElementById("t-recent"),["日期","合约","规则","方向","夜里涨跌/偏离","拿到 11:59","拿到 13:30"],
+      X.recent.map(r=>[r.day,r.name,r.rule,r.side,fmt(r.move,2,true)+"%",pc(r.r1159),pc(r.r1330)]),3);
+  }
   if(base)document.getElementById("stop-note").innerHTML=`<b>结论：</b>夜里涨的单子方向是对的，但开盘前后来回扫得很厉害，1% 的止损经常先被打掉、之后价格才往下走，所以止损越近赚得越少。不设止损最好，但风险大：最差一次亏 ${fmt(Math.abs(base.worst),1)}%，10% 的单子中途逆向超过 ${fmt(base.adv90,1)}%。实盘建议设 3% 左右的宽止损、杠杆别开大。`;
 })();
 function drawPaths(){
