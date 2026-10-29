@@ -18,7 +18,7 @@ import numpy as np
 import pandas as pd
 
 FAV = (0.5, 0.8, 1.0, 1.5, 2.0, 3.0)    # 浮盈档位（R），同时是目标网格
-ADV = (0.5, 1.0, 2.0)                   # 浮亏档位（R）
+ADV = (0.5, 1.0, 2.0, 3.0)              # 浮亏档位（R）
 HK_COST_RT = 0.002                      # 港股合约来回成本（与 hk_overnight 一致）
 
 
@@ -106,6 +106,54 @@ def profile(sig: pd.DataFrame, opp: pd.DataFrame, cost_r, half: np.ndarray | Non
         if g.mean() > best_e:
             best, best_e = k, g.mean()
     row["best_k"], row["best_E"] = best, float(best_e)
+    return row
+
+
+# 不设止损，看整条路怎么走：±2R 谁先到，到 -2R 之前有没有先往有利方向走过 0.8R
+PATHS = {"trend": "一路顺：先到 +2R",
+         "fake": "先顺后大逆：先到 +0.8R，没到 +2R 就跌到 -2R",
+         "direct": "直接逆：没到 +0.8R 就先到 -2R",
+         "flat": "没走出来：±2R 都没到"}
+END_BINS = [(-np.inf, -2.0, "le-2"), (-2.0, -0.5, "-2~-0.5"), (-0.5, 0.5, "flat"), (0.5, 2.0, "0.5~2"), (2.0, np.inf, "ge2")]
+
+
+def path_flags(t: pd.DataFrame) -> dict[str, np.ndarray]:
+    """四类互斥（trend/fake/direct/flat 加起来 = 1）；fake3/direct3 为跌到 -3R 的同类。同一根 K 线两边都碰到算先亏。"""
+    H = t.attrs["H"]
+    f8, f2 = t["f0.8"].to_numpy(), t["f2.0"].to_numpy()
+    a2, a3 = t["a2.0"].to_numpy(), t["a3.0"].to_numpy()
+    hit2 = (a2 <= f2) & (a2 < H)
+    hit3 = (a3 <= f2) & (a3 < H)
+    return {"trend": (f2 < a2) & (f2 < H), "fake": hit2 & (f8 < a2), "direct": hit2 & (a2 <= f8),
+            "flat": (a2 >= H) & (f2 >= H), "fake3": hit3 & (f8 < a3), "direct3": hit3 & (a3 <= f8)}
+
+
+def path_profile(sig: pd.DataFrame, opp: pd.DataFrame, cost_r, ends: dict | None = None) -> dict:
+    """路径分类与随机对照（同一时刻反方向的平均）；最后停在哪：窗口结束时盈亏的分布。
+    ends：{持有小时: 每笔信号方向的盈亏（R，未扣费）}，看 1 天 / 3 天 / 7 天后各自平均停在哪。"""
+    cost_r = np.broadcast_to(np.asarray(cost_r, float), (len(sig),))
+    ps, po = path_flags(sig), path_flags(opp)
+    row = {}
+    for k in ps:
+        row[f"p_{k}"] = float(ps[k].mean())
+        row[f"p_{k}_base"] = float((ps[k].mean() + po[k].mean()) / 2)
+    score = lambda f: f["trend"].astype(float) - f["fake"] - f["direct"]
+    row["path_t"] = _t(score(ps) - score(po))       # 好路径多、坏路径少，相对随机是否显著
+    e = sig["end"].to_numpy()
+    for lo, hi, lab in END_BINS:
+        sig_share = ((e > lo) & (e <= hi)).mean() if hi != np.inf else (e > lo).mean()
+        opp_share = ((-e > lo) & (-e <= hi)).mean() if hi != np.inf else (-e > lo).mean()
+        row[f"end_{lab}"], row[f"end_{lab}_base"] = float(sig_share), float((sig_share + opp_share) / 2)
+    for k in (2.0, 3.0):                            # 止损 2R、止盈 kR（窗口结束按收盘平）
+        o = outcome(sig, k, 2.0) - cost_r
+        row[f"b{k:g}x2"], row[f"b{k:g}x2_t"] = float(o.mean()), _t(o)
+    for h, x in (ends or {}).items():
+        x = np.asarray(x, float)
+        ok = np.isfinite(x)
+        net = x[ok] - cost_r[ok]
+        row[f"hold{h}"] = float(net.mean()) if ok.any() else np.nan
+        row[f"hold{h}_up"] = float((x[ok] > 0).mean()) if ok.any() else np.nan
+        row[f"hold{h}_t"] = _t(net)
     return row
 
 
@@ -270,9 +318,10 @@ def hourly_paths(p, ev: np.ndarray, H: int):
 
 
 def class_study(res_dir: Path, data_dir: Path, interval: str = "1h", horizon_h: int = 72,
-                r_atr: float = 4.0, cost: float = 0.0007, groups: list[str] | None = None) -> pd.DataFrame:
+                r_atr: float = 4.0, cost: float = 0.0007, groups: list[str] | None = None,
+                holds=(24, 72, 168)) -> pd.DataFrame:
     """用分类研究（classlab）滚动样本外每段选出的配置重新生成开仓点，只看样本外那段的开仓。
-    1R = r_atr × 开仓前 1 小时 ATR(14)；cost 为单边成本。"""
+    1R = r_atr × 开仓前 1 小时 ATR(14)；cost 为单边成本；holds：另看持有这些小时后停在哪。"""
     from . import backtest as bt
     from .classlab import groups_for
     from .config import load_symbols
@@ -326,8 +375,10 @@ def class_study(res_dir: Path, data_dir: Path, interval: str = "1h", horizon_h: 
                     ev, entry, hi, lo, endp = hourly_paths(p, ev, H)
                     r = r_atr * p.atr[ev]
                     ok = np.isfinite(r) & (r > 0)
+                    xs = np.column_stack([np.where(ev + h < len(p.c), p.c[np.minimum(ev + h, len(p.c) - 1)], np.nan)
+                                          for h in holds]) if len(ev) else np.empty((0, len(holds)))
                     if ok.any():
-                        acc.append((sg[ev][ok], entry[ok], hi[ok], lo[ok], endp[ok], r[ok], f.index[ev + 1][ok]))
+                        acc.append((sg[ev][ok], entry[ok], hi[ok], lo[ok], endp[ok], r[ok], f.index[ev + 1][ok], xs[ok]))
             if not acc:
                 continue
             side = np.concatenate([a[0] for a in acc]).astype(float)
@@ -335,12 +386,15 @@ def class_study(res_dir: Path, data_dir: Path, interval: str = "1h", horizon_h: 
             hi, lo = np.vstack([a[2] for a in acc]), np.vstack([a[3] for a in acc])
             endp, r = np.concatenate([a[4] for a in acc]), np.concatenate([a[5] for a in acc])
             when = np.concatenate([np.asarray(a[6]) for a in acc])
+            xs = np.vstack([a[7] for a in acc])
             if len(side) < 20:
                 continue
             sig = touches(hi, lo, entry, side, r, endp)
             opp = touches(hi, lo, entry, -side, r, endp)
             split = np.sort(when)[len(when) // 2]
+            cost_r = 2 * cost * entry / r
+            ends = {h: side * (xs[:, i] - entry) / r for i, h in enumerate(holds)}
             rows.append({"group": group, "strategy": strat, "label": st.label, "R_atr": r_atr,
                          "horizon_h": horizon_h, "R_pct_med": float(np.median(r / entry) * 100),
-                         **profile(sig, opp, 2 * cost * entry / r, half=when >= split)})
+                         **profile(sig, opp, cost_r, half=when >= split), **path_profile(sig, opp, cost_r, ends)})
     return pd.DataFrame(rows)

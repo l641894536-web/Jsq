@@ -103,7 +103,8 @@ python -m jsq signal
 - 参数、出场方式（含最长持有 12h~7 天，以及止损 2/4 ATR、盈亏比 1:1~1:3 的固定比例出场）、行情过滤（趋势/震荡/高波动/低波动）在同类所有标的上共用一套，只用过去的交易挑选
 - 核心指标：扣费后每笔期望（基点、R 倍数）、盈亏比、t 值、盈利标的占比；胜率只是参考
 - 持仓时间曲线：信号出现后持有 1 小时 ~ 7 天各自的平均收益，找优势最大的持有期
-- 结果：`class_oos.csv`、`class_regime.csv`、`class_decay.csv`、`class_best.json`、`class_report.html`
+- 方向与走向：样本外开仓不设止损，看 3 天内整条路是“一路顺 / 先顺后大逆 / 直接逆 / 没走出来”，以及 1、3、7 天后停在哪，全部与同一时刻随机开单比（`class_paths.csv`，报告里单独一节）
+- 结果：`class_oos.csv`、`class_regime.csv`、`class_decay.csv`、`class_best.json`、`class_paths.csv`、`class_report.html`
 
 ## 策略
 

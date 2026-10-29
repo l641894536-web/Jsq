@@ -63,3 +63,29 @@ def test_hourly_paths_start_after_signal_bar():
     assert list(ev) == [2]                       # 第 8 根之后不够 3 根，丢掉
     assert entry[0] == 3.0                       # 第 2 根收盘出信号，第 3 根开盘成交
     assert list(hi[0]) == [3.5, 4.5, 5.5] and end[0] == 5.2
+
+
+def test_path_classes_are_exclusive_and_match_the_story():
+    # 多单 100 进，1R = 1 元，窗口 4 根
+    cases = {
+        "trend": ([101.0, 102.5, 101.0, 100.0], [99.9, 100.5, 100.2, 99.5]),   # 先到 +2R
+        "fake": ([100.9, 100.5, 99.0, 98.0], [100.1, 99.5, 97.9, 96.5]),       # +0.9R 后跌到 -2R、-3R
+        "direct": ([100.3, 99.5, 99.0, 98.0], [99.5, 98.0, 97.5, 97.0]),       # 没到 +0.8R 就到 -2R
+        "flat": ([100.7, 101.5, 100.5, 100.2], [99.4, 99.0, 99.2, 99.8]),      # ±2R 都没到
+    }
+    for want, (hi, lo) in cases.items():
+        t = _one(hi, lo, end=lo[-1])
+        f = ex.path_flags(t)
+        got = [k for k in ("trend", "fake", "direct", "flat") if f[k][0]]
+        assert got == [want], (want, got)
+    t = _one(*cases["fake"], end=96.6)
+    assert ex.path_flags(t)["fake3"][0]           # 先顺后一路跌到 -3R
+
+
+def test_path_profile_baseline_is_mirror():
+    t = _one([100.9, 100.5, 99.0, 98.0], [100.1, 99.5, 97.9, 96.5], end=97.0)
+    o = _one([100.9, 100.5, 99.0, 98.0], [100.1, 99.5, 97.9, 96.5], side=-1, end=97.0)
+    p = ex.path_profile(t, o, 0.0, ends={72: [-3.0]})
+    assert p["p_fake"] == 1.0 and p["p_trend_base"] == 0.5    # 反方向是一路顺：随机猜方向一半一半
+    assert p["end_le-2"] == 1.0 and p["end_le-2_base"] == 0.5
+    assert p["hold72"] == -3.0 and p["hold72_up"] == 0.0

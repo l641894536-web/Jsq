@@ -168,6 +168,10 @@ def cmd_classlab(a):
     strategies = [x.strip() for x in a.strategies.split(",")] if a.strategies else None
     run_all(symbols, a.interval, Path(a.data_dir), cfg.cost, out, folds=a.folds, strategies=strategies,
             jobs=a.jobs or 4, exits=exits)
+    from .excursion import class_study
+    # 方向与走向：样本外开仓不设止损看整条路（1R = 2 倍 1 小时 ATR，看 3 天）
+    class_study(out, Path(a.data_dir), a.interval, horizon_h=72, r_atr=2.0, cost=cfg.cost).to_csv(
+        out / "class_paths.csv", index=False)
     print(f"\n结果目录: {out}\n报告: {build_class_report(out, fee=cfg.fee, slippage=cfg.slippage)}")
 
 

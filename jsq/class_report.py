@@ -27,6 +27,62 @@ def _cfg_text(s: str) -> str:
     return f"{EXIT_CN.get(e, e)} · {FILTER_CN.get(f, f)}"
 
 
+PATH_COLS = [("trend", "一路顺", True), ("fake", "先顺后大逆", False), ("direct", "直接逆", False)]
+
+
+def _verdict(t) -> str:
+    if t is None or not np.isfinite(t):
+        return "–"
+    return ("方向有用" if t >= 2 else "略好于随机" if t >= 1 else "方向反了" if t <= -2 else
+            "略差于随机" if t <= -1 else "跟随机差不多")
+
+
+def _path_section(pt: pd.DataFrame, groups: list[str]) -> tuple[str, list[str]]:
+    """方向与走向：不设止损，看开单后整条路怎么走、最后停在哪，与同一时刻随机开单比。"""
+    panes, notes = {}, []
+    r_atr = pt["R_atr"].iloc[0] if len(pt) else 2
+    hz = int(pt["horizon_h"].iloc[0]) if len(pt) else 72
+    for g in groups:
+        x = pt[pt["group"] == g].sort_values("path_t", ascending=False)
+        if not len(x):
+            continue
+        rows = []
+        for r in x.to_dict("records"):
+            row = [f'<td class="l">{_e(r["label"])} <span class="mut">{_e(r["strategy"])}</span></td>', f"<td>{int(r['n'])}</td>"]
+            for k, _, high in PATH_COLS:
+                v, b = r[f"p_{k}"], r[f"p_{k}_base"]
+                row.append(f'<td{_bg((v - b) if high else (b - v), 0.08)}>{pct(v, 0)} <span class="mut">({pct(b, 0)})</span></td>')
+            row.append(f"<td>{pct(r['p_flat'], 0)}</td>")
+            v, b = r["p_fake3"] + r["p_direct3"], r["p_fake3_base"] + r["p_direct3_base"]
+            row.append(f'<td{_bg(b - v, 0.08)}>{pct(v, 0)} <span class="mut">({pct(b, 0)})</span></td>')
+            row.append(f'<td>{pct(r["end_ge2"], 0)} / {pct(r["end_le-2"], 0)} '
+                       f'<span class="mut">({pct(r["end_ge2_base"], 0)} / {pct(r["end_le-2_base"], 0)})</span></td>')
+            v = r.get("b3x2", np.nan)
+            row.append(f'<td{_bg(v, 0.3)} title="止损 2 份、止盈 2 份：{num(r.get("b2x2", np.nan), 2)}">{num(v, 2)}</td>')
+            for h in (24, 72, 168):
+                v = r.get(f"hold{h}", np.nan)
+                row.append(f'<td{_bg(v, 0.3)} title="涨（对信号方向有利）的比例 {pct(r.get(f"hold{h}_up", np.nan), 0)}">{num(v, 2)}</td>')
+            row.append(f'<td class="l">{_verdict(r["path_t"])}</td>')
+            rows.append(row)
+        panes[g] = _table(["策略", "开单", "一路顺", "先顺后大逆", "直接逆", "没走出来", "途中跌到 −3R",
+                           f"{hz // 24} 天后 ≥+2R / ≤−2R", "止损2份·止盈3份", "持有 1 天", "持有 3 天", "持有 7 天", "判断"], rows)
+        good = [r["label"] for r in x.to_dict("records") if r["path_t"] >= 2]
+        bad = [r["label"] for r in x.to_dict("records") if r["path_t"] <= -2]
+        notes.append(f"<b>{_e(g)}</b>：方向有用的 {('、'.join(_e(v) for v in good)) or '没有'}；"
+                     f"方向反了的 {('、'.join(_e(v) for v in bad)) or '没有'}；其余跟随机差不多或只略好/略差。")
+    html = (f'<h2>方向与走向</h2><div class="card"><p>不设止损，看开单后 {hz // 24} 天内价格整条路怎么走。'
+            f"1 份（R）= {num(r_atr, 0)} 倍 1 小时 ATR，大约是常用止损的距离。</p><ul>"
+            "<li><b>一路顺</b>：先涨（空单是先跌）到 +2 份。</li>"
+            "<li><b>先顺后大逆</b>：先往对的方向走了 0.8 份，没到 2 份就掉头，到了 −2 份。</li>"
+            "<li><b>直接逆</b>：还没走出 0.8 份，就先到了 −2 份。</li>"
+            f"<li><b>没走出来</b>：{hz // 24} 天里 ±2 份都没碰到。</li></ul>"
+            '<p>括号里是同一时刻随机开单（波动完全一样）的比例。“先顺后大逆”和“直接逆”比随机还多，说明策略有问题；'
+            "“止损2份·止盈3份”是按这个出场每笔平均赚几份（3 天没碰到就按收盘平）；“持有 N 天”是不设止损拿 N 天的平均盈亏（份）；都已扣成本。判断依据：好路径（一路顺）减坏路径"
+            "（先顺后大逆、直接逆）相对随机的 t 值，≥2 算方向有用，≤−2 算方向反了。</p></div>"
+            + _tabs("path", panes))
+    return html, notes
+
+
 def build_class_report(run_dir: Path, fee: float = 0.0005, slippage: float = 0.0002, fragment: bool = False) -> Path:
     run_dir = Path(run_dir)
     oos = pd.read_csv(run_dir / "class_oos.csv")
@@ -64,9 +120,17 @@ def build_class_report(run_dir: Path, fee: float = 0.0005, slippage: float = 0.0
             a = a.iloc[0]
             items[-1] = items[-1][:-5] + (f" 每段自动挑训练期最好的策略：每笔 {num(a.exp_bps, 1)} 基点，"
                                          f"{int(a.trades)} 笔。</li>")
+    pt_p = run_dir / "class_paths.csv"
+    path_html = ""
+    if pt_p.exists() and pt_p.stat().st_size > 10:
+        path_html, notes = _path_section(pd.read_csv(pt_p), groups)
+        items.append("<li><b>方向与走向</b>（不设止损看整条路，与随机开单比）：" + " ".join(notes) + "</li>")
     parts.append('<h2>结论摘要</h2><div class="card"><ul>' + "".join(items) + "</ul>"
                  '<p class="mut">判定标准：样本外 ≥30 笔、按 R 倍数的 t&gt;1.5、过半标的盈利。胜率低不要紧，'
                  '盈亏比 × 胜率决定期望。</p></div>')
+
+    if path_html:
+        parts.append(path_html)
 
     # ---------- 每类一个标签页
     panes = {}
