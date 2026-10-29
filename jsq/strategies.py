@@ -125,6 +125,34 @@ def bb_revert(df, window=72, k=2.5):
     return hold_state(_cmp(z, "<", -k), _cmp(z, ">", 0), _cmp(z, ">", k), _cmp(z, "<", 0))
 
 
+def bb_break(df, window=72, k=2.0):
+    """布林带突破跟随（布林带反转的反面）：价格冲出均线 k 个标准差就顺着做，回到均线离场。"""
+    z = ind.zscore(df["close"], bars(df, window))
+    return hold_state(_cmp(z, ">", k), _cmp(z, "<", 0), _cmp(z, "<", -k), _cmp(z, ">", 0))
+
+
+def keltner_break(df, n=72, m=2.0):
+    """ATR 通道突破：收盘高于 n 小时均线 + m 倍 ATR 做多，跌回均线离场；空头对称。"""
+    mid = ind.ema(df["close"], bars(df, n))
+    a = ind.atr(df, bars(df, n))
+    c = df["close"]
+    return hold_state(_cmp(c, ">", mid + m * a), _cmp(c, "<", mid), _cmp(c, "<", mid - m * a), _cmp(c, ">", mid))
+
+
+def squeeze_break(df, window=72, q=0.2, n=24):
+    """收敛后突破：前一根时过去 window 小时的波动处在近 90 天最低的 q 分位（盘整），
+    收盘突破 n 小时高 / 低点就顺着做，跌破 n/2 小时的反向高低点离场。"""
+    c = df["close"]
+    bw = c.pct_change().rolling(bars(df, window)).std()
+    rank = bw.rolling(bars(df, 90 * 24), min_periods=bars(df, 30 * 24)).rank(pct=True)
+    tight = _cmp(rank.shift(1), "<", q)
+    hi = ind.highest(df["high"], bars(df, n)).shift(1)
+    lo = ind.lowest(df["low"], bars(df, n)).shift(1)
+    hx = ind.highest(df["high"], bars(df, n / 2)).shift(1)
+    lx = ind.lowest(df["low"], bars(df, n / 2)).shift(1)
+    return hold_state(_cmp(c, ">", hi) & tight, _cmp(c, "<", lx), _cmp(c, "<", lo) & tight, _cmp(c, ">", hx))
+
+
 def macd_trend(df, scale=1):
     """MACD 柱方向：柱>0 持多，<0 持空。scale 放大周期（1 = 12/26/9 根 K 线）。"""
     _, _, hist = ind.macd(df["close"], 12 * scale, 26 * scale, 9 * scale)
@@ -422,6 +450,9 @@ STRATEGIES: dict[str, Strategy] = {s.name: s for s in [
     Strategy("rsi_revert", "RSI 反转", rsi_revert,
              {"period": [14, 28], "lo": [20, 25, 30]}, (), "K线"),
     Strategy("bb_revert", "布林带反转", bb_revert, {"window": [24, 72, 168], "k": [2.0, 2.5, 3.0]}),
+    Strategy("bb_break", "布林带突破跟随", bb_break, {"window": [24, 72, 168], "k": [1.5, 2.0, 2.5]}),
+    Strategy("keltner_break", "ATR 通道突破", keltner_break, {"n": [24, 72, 168], "m": [1.5, 2.5]}),
+    Strategy("squeeze_break", "收敛后突破", squeeze_break, {"window": [24, 72], "q": [0.2, 0.35], "n": [24, 72]}),
     Strategy("macd_trend", "MACD 趋势", macd_trend, {"scale": [1, 2, 4, 8]}),
     Strategy("taker_flow", "主动买卖流", taker_flow,
              {"window": [4, 12, 24], "th": [1.0, 1.5, 2.0]}, ("taker_buy_base",), "K线"),

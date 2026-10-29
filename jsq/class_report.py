@@ -83,6 +83,40 @@ def _path_section(pt: pd.DataFrame, groups: list[str]) -> tuple[str, list[str]]:
     return html, notes
 
 
+def _screen_section(sc: pd.DataFrame, groups: list[str]) -> tuple[str, list[str]]:
+    """先看方向的滚动筛选：按路径得分挑参数，下一段检验；含新加的突破类指标。"""
+    from .path_screen import NEW_BREAKOUTS
+    panes, notes = {}, []
+    for g in groups:
+        x = sc[sc["group"] == g].sort_values("path_t", ascending=False)
+        if not len(x):
+            continue
+        rows = []
+        for r in x.to_dict("records"):
+            picks = json.loads(r["picks"]) if isinstance(r["picks"], str) else []
+            last = picks[-1] if picks else {}
+            same = len({json.dumps(p["params"], sort_keys=True) + p["filter"] for p in picks}) == 1 and len(picks) > 1
+            cfg = (f'{_e(json.dumps(last.get("params", {}), ensure_ascii=False))} {_e(FILTER_CN.get(last.get("filter", ""), ""))}'
+                   + ("（每段都选它）" if same else ""))
+            new = ' <span class="b">新</span>' if r["strategy"] in NEW_BREAKOUTS else ""
+            rows.append([f'<td class="l">{_e(r["label"])}{new} <span class="mut">{_e(r["strategy"])}</span></td>',
+                         f"<td>{int(r['n'])}</td>", f'<td{_bg(r["path_t"], 3)}><b>{num(r["path_t"], 1)}</b></td>',
+                         f'<td>{pct(r["trend"], 0)} <span class="mut">({pct(r["trend_b"], 0)})</span></td>',
+                         f'<td>{pct(r["direct"], 0)} <span class="mut">({pct(r["direct_b"], 0)})</span></td>',
+                         f'<td{_bg(r["bracket"], 0.3)}>{num(r["bracket"], 2)}</td>',
+                         f'<td>{num(r["bracket_1"], 2)} / {num(r["bracket_2"], 2)}</td>',
+                         f'<td{_bg(r["hold"], 0.3)}>{num(r["hold"], 2)}</td>', f'<td class="l">{cfg}</td>'])
+        panes[g] = _table(["策略", "开单", "方向 t", "一路顺", "直接逆", "止损2份·止盈3份", "前段 / 后段", "拿满 3 天",
+                           "最近一段选中的参数"], rows)
+        ok = [r["label"] for r in x.to_dict("records") if r["path_t"] >= 2 and r["bracket"] > 0]
+        notes.append(f"<b>{_e(g)}</b>：{('、'.join(_e(v) for v in ok)) or '没有过关的'}")
+    html = ('<h2>先看方向：滚动筛选（含新指标）</h2><div class="card"><p>每段开始前，只用此前已经走完整条路的开单，'
+            "按“一路顺多、先顺后大逆和直接逆少”（相对同一时刻随机开单）挑参数和行情过滤，再拿到下一段检验；"
+            "表里是三段拼起来的样本外结果，单位是份（1 份 = 2 倍 1 小时 ATR），已扣成本。"
+            "方向 t ≥ 2 且“止损2份·止盈3份”为正才算过关。标“新”的是这次新加的突破类指标。</p></div>" + _tabs("screen", panes))
+    return html, notes
+
+
 def build_class_report(run_dir: Path, fee: float = 0.0005, slippage: float = 0.0002, fragment: bool = False) -> Path:
     run_dir = Path(run_dir)
     oos = pd.read_csv(run_dir / "class_oos.csv")
@@ -131,6 +165,12 @@ def build_class_report(run_dir: Path, fee: float = 0.0005, slippage: float = 0.0
 
     if path_html:
         parts.append(path_html)
+    sc_p = run_dir / "class_screen.csv"
+    if sc_p.exists() and sc_p.stat().st_size > 10:
+        sc_html, sc_notes = _screen_section(pd.read_csv(sc_p), groups)
+        parts.append(sc_html)
+        parts[1] = parts[1].replace("</ul>", "<li><b>先看方向的滚动筛选</b>（过关 = 样本外方向 t≥2 且止损2份·止盈3份为正）："
+                                    + "；".join(sc_notes) + "。</li></ul>", 1)
 
     # ---------- 每类一个标签页
     panes = {}

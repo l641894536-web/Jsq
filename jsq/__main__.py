@@ -172,6 +172,9 @@ def cmd_classlab(a):
     # 方向与走向：样本外开仓不设止损看整条路（1R = 2 倍 1 小时 ATR，看 3 天）
     class_study(out, Path(a.data_dir), a.interval, horizon_h=72, r_atr=2.0, cost=cfg.cost).to_csv(
         out / "class_paths.csv", index=False)
+    from .path_screen import screen_all
+    # 先看方向的滚动筛选（按路径得分挑参数），含新加的突破类指标
+    screen_all(symbols, Path(a.data_dir), a.interval, cost=cfg.cost).to_csv(out / "class_screen.csv", index=False)
     print(f"\n结果目录: {out}\n报告: {build_class_report(out, fee=cfg.fee, slippage=cfg.slippage)}")
 
 
@@ -441,6 +444,83 @@ def cmd_us_weekend(a):
     print(r.to_string(index=False))
 
 
+def cmd_path_signal(a):
+    from . import live_paths as lp
+    from .data import load_frame, update_symbol
+    syms = sorted({s for c in lp.SIGNALS for s in c["symbols"]})
+    if not a.no_update:
+        client = _client(a)
+        for s in syms:
+            try:
+                update_symbol(client, s, "1h", a.start, Path(a.data_dir))
+            except Exception as e:  # noqa: BLE001
+                log.warning("%s 实时更新失败，使用本地数据: %s", s, str(e)[:120])
+    bj = lambda ts: ts.tz_convert("Asia/Shanghai").strftime("%m-%d %H:%M")
+    side_cn = {1: "做多", -1: "做空"}
+    for cfg in lp.SIGNALS:
+        tp_txt = f"止盈 {cfg['tp_R']:g} 份" if cfg.get("tp_R") else "不设止盈"
+        print(f"\n== {cfg['name']}：止损 {cfg['stop_R']:g} 份 / {tp_txt} / 最长 {cfg['max_h']} 小时"
+              f"（1 份 = {cfg['r_atr']:g} 倍 1 小时 ATR）；时间为北京时间")
+        allt = []
+        for s in cfg["symbols"]:
+            try:
+                df = load_frame(s, "1h", Path(a.data_dir))
+            except FileNotFoundError:
+                continue
+            tr = lp.virtual_trades(df, cfg, a.fee + a.slippage)
+            allt.append(tr)
+            sig, _ = lp._events(df, cfg)
+            weak = cfg["weak"].get(s, "")
+            print(f"\n{lp.NAMES.get(s, s)} {s}  最新收盘 {df['close'].iloc[-1]:.6g}"
+                  f"（{bj(df.index[-1] + pd.Timedelta(hours=1))}）" + (f"  注意：{weak}" if weak else ""))
+            op = tr[tr["status"] == "持仓中"] if len(tr) else tr
+            if len(op):
+                o = op.iloc[-1]
+                tgt = f"止盈 {o.target:.6g}" if np.isfinite(o.target) else "不设止盈"
+                print(f"  持仓中：{side_cn[o.side]} @ {o.entry:.6g}（{bj(o.entry_time)} 进场），止损 {o.stop:.6g}，"
+                      f"{tgt}，到期 {bj(o.expire)}，现在 {o.ret_R:+.2f} 份")
+            tg, st = lp.triggers(df, cfg), int(sig[-1])
+            if "up" in tg:
+                about = "约 " if cfg["strategy"] == "bb_break" else ""
+                gate = "" if tg["ok"] else f"（现在是{tg['regime']}，这条只在低波动行情开新仓，暂不做）"
+                if st == 0:
+                    print(f"  下一个信号：1 小时收盘高于 {about}{tg['up']:.6g} → 开多；低于 {about}{tg['down']:.6g} → 开空{gate}")
+                elif st == 1:
+                    print(f"  多头状态中：收盘低于 {about}{tg['down']:.6g} → 直接开空；新多单要等收盘低于 {about}{tg['long_exit']:.6g}"
+                          f" 状态结束后再突破{gate}")
+                else:
+                    print(f"  空头状态中：收盘高于 {about}{tg['up']:.6g} → 直接开多；新空单要等收盘高于 {about}{tg['short_exit']:.6g}"
+                          f" 状态结束后再跌破{gate}")
+            done = tr[tr["status"] != "持仓中"].tail(a.recent) if len(tr) else tr
+            for o in done.itertuples():
+                print(f"    {bj(o.entry_time)} {side_cn[o.side]} @ {o.entry:.6g} → {o.status} {o.ret_R:+.2f} 份")
+        if allt:
+            t = pd.concat(allt, ignore_index=True)
+            f, r = lp.summarize(t), lp.summarize(t, t["entry_time"].max() - pd.Timedelta(days=90))
+            if f["n"]:
+                print(f"\n历史虚拟单 {f['n']} 笔：每笔平均 {f['exp_R']:+.2f} 份，赚钱 {f['win']:.0%}，止盈 {f['tp']:.0%}，止损 {f['sl']:.0%}"
+                      + (f"；最近 90 天 {r['n']} 笔，每笔 {r['exp_R']:+.2f} 份" if r["n"] else ""))
+
+
+def cmd_path_screen(a):
+    from .path_screen import screen_all
+    from .pipeline import new_results_dir
+    symbols = _available(load_symbols(a.symbols), a)
+    out = new_results_dir()
+    res = screen_all(symbols, Path(a.data_dir), a.interval, r_atr=a.r_atr, horizon_h=a.horizon, cost=a.fee + a.slippage)
+    res.to_csv(out / "class_screen.csv", index=False)
+    pd.set_option("display.width", 220)
+    cols = ["group", "label", "n", "path_t", "trend", "trend_b", "direct", "direct_b", "bracket", "bracket_1", "bracket_2", "hold"]
+    x = res[cols].copy()
+    for c in cols[4:]:
+        x[c] = x[c].round(2)
+    x["path_t"] = x["path_t"].round(1)
+    print("方向 t = 样本外“一路顺多、坏路径少”相对随机开单的显著性；bracket = 止损2份·止盈3份每笔（份，已扣成本），"
+          "_1/_2 为前后两半；hold = 拿满观察窗口；_b 为同一时刻随机开单的比例")
+    print(x.sort_values(["group", "path_t"], ascending=[True, False]).to_string(index=False))
+    print(f"\n结果目录: {out}")
+
+
 def cmd_report(a):
     from .pipeline import latest_results_dir
     from .report import build_report
@@ -609,6 +689,22 @@ def main(argv=None):
     sp.add_argument("--proxy")
     sp.add_argument("--no-update", action="store_true")
     sp.set_defaults(func=cmd_us_weekend)
+
+    sp = sub.add_parser("path-signal", help="经“整条路”检验的信号（贵金属通道突破）：现在的持仓、止损止盈价、触发价")
+    common(sp, net=True)
+    sp.add_argument("--no-update", action="store_true", help="不联网，只用本地数据")
+    sp.add_argument("--recent", type=int, default=5, help="每个标的列出最近几笔")
+    sp.add_argument("--fee", type=float, default=0.0005, help="单边手续费，默认 0.0005")
+    sp.add_argument("--slippage", type=float, default=0.0002, help="单边滑点，默认 0.0002")
+    sp.set_defaults(func=cmd_path_signal)
+
+    sp = sub.add_parser("path-screen", help="先看方向的滚动筛选：按“整条路比随机好”挑参数，下一段检验（含新突破类指标）")
+    common(sp)
+    sp.add_argument("--r-atr", type=float, default=2.0, help="1 份 = 几倍 1 小时 ATR（默认 2）")
+    sp.add_argument("--horizon", type=int, default=72, help="开单后看多少小时（默认 72）")
+    sp.add_argument("--fee", type=float, default=0.0005)
+    sp.add_argument("--slippage", type=float, default=0.0002)
+    sp.set_defaults(func=cmd_path_screen)
 
     sp = sub.add_parser("report", help="重新生成 HTML 报告")
     sp.add_argument("--results", help="结果目录，默认最近一次")

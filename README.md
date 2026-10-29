@@ -70,6 +70,15 @@ python -m jsq excursion                  # --hk-r 1 2（港股 1R 取 1%、2%）
 #     看周日晚夜盘开盘时是回落还是继续。目前结论：合约周末定价基本准（斜率约 0.95），没有稳定赚钱的做法
 python -m jsq us-weekend                 # --no-update 只用本地数据
 
+# 3h. 先看方向的滚动筛选：按“整条路比随机好”挑参数和行情过滤，下一段检验（含新的突破类指标）
+#     classlab 也会顺带跑一遍，结果在分类报告“先看方向：滚动筛选”一节
+python -m jsq path-screen
+
+# 3i. 经整条路检验过关的信号，实时看：现在有没有单、开多开空、止损止盈价、到期时间、下一个触发价
+#     贵金属 72 小时通道突破（止损 2 份、止盈 3 份、最长 72 小时）
+#     加密 布林带突破跟随（72 小时 2.5 倍标准差、只在低波动行情；止损 2 份、不设止盈、拿满 72 小时）
+python -m jsq path-signal --proxy http://127.0.0.1:7890
+
 # 4. 用回测选出的参数看当前多空信号
 python -m jsq signal
 ```
@@ -116,6 +125,7 @@ python -m jsq signal
 | | `premium_fade` | 合约相对现货指数的溢价（资金费率的来源，每小时更新）极端时反向 |
 | K线 | `ema_cross` `tsmom` `macd_trend` `donchian` | 趋势 / 动量 / 突破 |
 | | `rsi_revert` `bb_revert` | 超买超卖均值回归 |
+| | `bb_break` `keltner_break` `squeeze_break` | 突破跟随：冲出布林带 / ATR 通道就顺着做；盘整收敛后的突破 |
 | | `taker_flow` | 主动买入占比异常 → 跟随 |
 | 组合 | `trend_funding` | 顺趋势，但费率拥挤时不追 |
 | | `breakout_funding` | 突破时资金费率不拥挤才进场 |
