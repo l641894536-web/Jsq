@@ -47,9 +47,10 @@ def test_overnight_table_values():
 
 
 def test_advice_and_reference_close():
-    assert ho.advise_overnight(0.025, 8 * 60 + 58).startswith("做空信号")
-    assert ho.advise_overnight(0.015, 8 * 60 + 58).startswith("弱做空信号")
-    assert "08:59 做空" in ho.advise_overnight(0.025, 22 * 60)
+    assert ho.advise_overnight(0.025, 8 * 60 + 58).startswith("做空信号：")
+    assert ho.advise_overnight(0.015, 8 * 60 + 58).startswith("做空信号（幅度一般）")
+    assert "拿到 11:59" in ho.advise_overnight(0.025, 8 * 60 + 58)
+    assert "08:59 做空" in ho.advise_overnight(0.015, 22 * 60)
     assert "不要抄底" in ho.advise_overnight(-0.02, 9 * 60)
     assert "别在开盘前追空" in ho.advise_overnight(-0.02, 9 * 60)
     assert "没有信号" in ho.advise_overnight(0.003, 9 * 60)

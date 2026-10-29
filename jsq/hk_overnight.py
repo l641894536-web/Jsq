@@ -230,6 +230,10 @@ def preopen_rules(t: pd.DataFrame, basis_0931: pd.Series | None, split: str, cos
     for th in (0.005, 0.01, 0.02):
         add(f"夜里涨 >{th:.1%}：08:59 做空，09:31 平", -1, t["s0859_0931"], n859 > th)
     add("夜里涨 1%~2%：08:59 做空，09:31 平", -1, t["s0859_0931"], (n859 > 0.01) & (n859 <= 0.02))
+    # 不在 09:31 平，直接拿到 11:59（9 月以后回落多发生在开盘之后）
+    for th in (0.01, 0.02):
+        add(f"夜里涨 >{th:.1%}：08:59 做空，11:59 平", -1, t["s0859_1159"], n859 > th)
+    add("夜里涨 1%~2%：08:59 做空，11:59 平", -1, t["s0859_1159"], (n859 > 0.01) & (n859 <= 0.02))
     if basis_0931 is not None:
         seq = pd.Series(np.where(basis_0931.reindex(t.index) > 0.003, t["s0859_1159"], t["s0859_0931"]), index=t.index)
         add("夜里涨 >1%：08:59 做空；09:31 合约仍比正股贵 >0.3% 就拿到 11:59", -1, seq, n859 > 0.01)
@@ -257,17 +261,15 @@ def _rule_text(rules: list[dict] | None, prefix: str, default: str) -> str:
 def advise_overnight(move: float, hm: int, rules: list[dict] | None = None) -> str:
     """move：合约相对昨天港股收盘的涨跌；hm：当前香港时间（分钟）。"""
     pre_open = 8 * 60 + 55 <= hm < 9 * 60 + 30
-    if move > 0.02:
-        stats = _rule_text(rules, "夜里涨 >2.0%", "历史平均每次约 +1.4%，胜率约 7 成")
-        if pre_open:
-            return (f"做空信号：合约比收盘已涨 {move:+.2%}，夜里涨的开盘时平均吐回一半。现在（08:59 前后）做空，"
-                    f"09:31 平；09:31 若合约仍比正股贵 0.3% 以上就拿到 11:59（{stats}）。千万别追多")
-        return f"合约比收盘涨 {move:+.2%}：若到 08:59 仍涨超过 2%，08:59 做空、09:31 平（{stats}）"
     if move > 0.01:
-        stats = _rule_text(rules, "夜里涨 1%~2%", "历史平均每次约 +0.3%，最近一个半月接近不赚")
+        big = move > 0.02
+        stats = _rule_text(rules, "夜里涨 >2.0%：08:59 做空，11:59" if big else "夜里涨 1%~2%：08:59 做空，11:59",
+                           "历史平均每次约 +1.2%，胜率约 6 成" if big else "历史平均每次约 +0.6%，胜率约 5 成半")
+        how = "08:59 做空，拿到 11:59 平（09:31 就平的版本 9 月以后变弱）；止损别设 1% 这种近的，最多设 3% 防极端行情"
         if pre_open:
-            return f"弱做空信号：合约比收盘涨 {move:+.2%}，1%~2% 这一档优势很薄（{stats}），轻仓或不做；别追多"
-        return f"合约比收盘涨 {move:+.2%}：到 08:59 涨超 2% 才是可靠的做空信号，1%~2% 优势很薄（{stats}）"
+            return (f"做空信号{'' if big else '（幅度一般）'}：合约比收盘已涨 {move:+.2%}，夜里涨的开盘后平均吐回一半。"
+                    f"{how}（{stats}）。千万别追多")
+        return f"合约比收盘涨 {move:+.2%}：若到 08:59 仍涨超过 1%，{how}（{stats}）"
     if move < -0.01:
         stats = _rule_text(rules, "对照：夜里跌 >1%：08:59 追空", "08:59 追空到 09:31 历史 10 次亏 7 次")
         return (f"合约比收盘跌 {move:+.2%}：夜里跌的通常是真的，不要抄底；也别在开盘前追空，"

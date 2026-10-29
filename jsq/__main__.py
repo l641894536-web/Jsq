@@ -369,6 +369,45 @@ def _hk_now_once(a):
             print(f"  合约/正股 {basis:+.2%}：{hk.advise_open(basis, symbol=s)}")
 
 
+def cmd_excursion(a):
+    from . import excursion as ex
+    from .pipeline import RESULTS_DIR, new_results_dir
+    pd.set_option("display.width", 220)
+    out = new_results_dir()
+    pct = lambda x: f"{x:.0%}"
+    print("方向对 = +1R 比 -1R 先到；对照 = 同一时刻随机猜方向（波动一样）。比对照高才说明方向判断有用。")
+    P, O, split = ex.hk_inputs(Path(a.data_dir))
+    g = ex._hk_gather(P, O)
+    hk_rows = pd.concat([ex.hk_study(P, O, split, r_pct=r / 100, gathered=g) for r in a.hk_r], ignore_index=True)
+    if len(hk_rows):
+        hk_rows.to_csv(out / "excursion_hk.csv", index=False)
+        print("\n港股合约规则（每笔期望 = 扣成本后平均赚多少，% ；止损 = 1R）：")
+        for r in hk_rows.to_dict("records"):
+            grid = "  ".join(f"止盈{k:g}R:{r[f'E{k}'] * r['R_pct']:+.2f}%" for k in ex.FAV)
+            print(f"  {r['rule']} → {r['exit']}平 | 止损 {r['R_pct']:g}% | {r['n']} 次 | 方向对 {pct(r['right'])}"
+                  f"（对照 {pct(r['right_base'])}） 方向错 {pct(r['wrong'])}（对照 {pct(r['wrong_base'])}）"
+                  f" 没走出来 {pct(r['none'])}\n      {grid}")
+        sg = ex.hk_stop_grid(P, O, split, gathered=g)
+        sg.to_csv(out / "excursion_hk_stops.csv", index=False)
+        print(f"\n不设止盈、到点平仓，只改止损宽度（每笔 % / 胜率；括号为 {split} 前后两段）：")
+        for (rule, ex_hm), gg in sg.groupby(["rule", "exit"], sort=False):
+            cells = [f"{'不设' if pd.isna(r.stop) else f'{r.stop:.0%}'} {r.exp_bps / 100:+.2f}%/{r.win:.0%}"
+                     f"({r.first_bps / 100:+.2f}/{r.second_bps / 100:+.2f})" for r in gg.itertuples()]
+            print(f"  {rule} → {ex_hm}平 | " + " | ".join(cells))
+    cands = sorted(Path(RESULTS_DIR).glob("*/class_folds.csv"))
+    cdir = Path(a.class_results) if a.class_results else (cands[-1].parent if cands else None)
+    if cdir is not None:
+        cl = ex.class_study(cdir, Path(a.data_dir), r_atr=a.r_atr, horizon_h=a.horizon)
+        if len(cl):
+            cl.to_csv(out / "excursion_class.csv", index=False)
+            cols = ["group", "strategy", "n", "right", "right_base", "right_t", "wrong", "wrong_base", "half",
+                    "half_base", "best_k", "best_E", "B1.0"]
+            print(f"\n分类研究的策略（样本外开仓，1R = {a.r_atr:g} 倍 1 小时 ATR，最长看 {a.horizon} 小时；"
+                  f"best_E / B1.0 = 扣费后每笔 R）：")
+            print(cl.sort_values("right_t", ascending=False)[cols].round(2).to_string(index=False))
+    print(f"\n结果目录: {out}")
+
+
 def cmd_report(a):
     from .pipeline import latest_results_dir
     from .report import build_report
@@ -522,6 +561,14 @@ def main(argv=None):
     sp.add_argument("--proxy")
     sp.add_argument("--watch", type=int, default=0, help="每 N 秒刷新一次（Ctrl+C 退出），如 --watch 30")
     sp.set_defaults(func=cmd_hk_now)
+
+    sp = sub.add_parser("excursion", help="方向对不对 vs 能走多远：开仓后最大浮盈/浮亏分析（港股规则 + 分类研究的策略）")
+    sp.add_argument("--data-dir", default=str(DATA_DIR))
+    sp.add_argument("--hk-r", type=float, nargs="+", default=[1.0, 2.0], help="港股：1R = 开仓价的百分之几，可给多个")
+    sp.add_argument("--r-atr", type=float, default=4.0, help="分类策略：1R = 几倍 1 小时 ATR（默认 4，与止损一致）")
+    sp.add_argument("--horizon", type=int, default=72, help="分类策略：开仓后最多看多少小时（默认 72）")
+    sp.add_argument("--class-results", help="classlab 结果目录（默认最近一次）")
+    sp.set_defaults(func=cmd_excursion)
 
     sp = sub.add_parser("report", help="重新生成 HTML 报告")
     sp.add_argument("--results", help="结果目录，默认最近一次")
