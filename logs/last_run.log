@@ -1,0 +1,1045 @@
+<frozen site>:107: RuntimeWarning: Unexpected value in sys.prefix, expected /home/runner/work/Jsq/Jsq/venv, got /home/runner/work/Jsq/Jsq/code/../venv
+<frozen site>:107: RuntimeWarning: Unexpected value in sys.exec_prefix, expected /home/runner/work/Jsq/Jsq/venv, got /home/runner/work/Jsq/Jsq/code/../venv
+[binance] 06:33:54 1080 USD-M symbols in archive
+[binance] 06:34:12 stock perps: ['AAPLUSDT', 'ABBVUSDT', 'ACNUSDT', 'ADBEUSDT', 'AKAMUSDT', 'AMATUSDT', 'AMCUSDT', 'AMDUSDT', 'AMGNUSDT', 'AMZNUSDT', 'ANETUSDT', 'APPUSDT', 'ARMUSDT', 'ASMLUSDT', 'AVGOUSDT', 'BABAUSDT', 'BACUSDT', 'BEUSDT', 'BXUSDT', 'CATUSDT', 'CEGUSDT', 'CIENUSDT', 'COHRUSDT', 'COINUSDT', 'COSTUSDT', 'CRCLUSDT', 'CRMUSDT', 'CRWDUSDT', 'CRWVUSDT', 'CSCOUSDT', 'CVNAUSDT', 'DDOGUSDT', 'DELLUSDT', 'DISUSDT', 'EBAYUSDT', 'EQTUSDT', 'FLEXUSDT', 'GDXUSDT', 'GEVUSDT', 'GLWUSDT', 'GMEUSDT', 'GOOGLUSDT', 'GSUSDT', 'HDUSDT', 'HOODUSDT', 'HPEUSDT', 'IBKRUSDT', 'IBMUSDT', 'INTCUSDT', 'IONQUSDT', 'IWMUSDT', 'JPMUSDT', 'KLACUSDT', 'KOUSDT', 'LITEUSDT', 'LLYUSDT', 'LRCXUSDT', 'MARAUSDT', 'MCDUSDT', 'MDBUSDT', 'MELIUSDT', 'METAUSDT', 'MRKUSDT', 'MRNAUSDT', 'MRVLUSDT', 'MSFTUSDT', 'MSTRUSDT', 'MUUSDT', 'NETUSDT', 'NFLXUSDT', 'NKEUSDT', 'NOWUSDT', 'NVDAUSDT', 'OKLOUSDT', 'ORCLUSDT', 'OXYUSDT', 'PANWUSDT', 'PDDUSDT', 'PFEUSDT', 'PLTRUSDT', 'PYPLUSDT', 'QCOMUSDT', 'QQQUSDT', 'RDDTUSDT', 'RKLBUSDT', 'SHOPUSDT', 'SMCIUSDT', 'SMHUSDT', 'SNDKUSDT', 'SNOWUSDT', 'SNPSUSDT', 'SOFIUSDT', 'SOXLUSDT', 'SPYUSDT', 'SQQQUSDT', 'TEAMUSDT', 'TERUSDT', 'TQQQUSDT', 'TSLAUSDT', 'TSMUSDT', 'TTWOUSDT', 'TXNUSDT', 'UBERUSDT', 'UNHUSDT', 'VRTUSDT', 'VSTUSDT', 'VUSDT', 'WDCUSDT', 'WMTUSDT', 'XLEUSDT', 'XOMUSDT', 'ZSUSDT']
+[binance] 06:34:12 planning 1190 symbol/interval jobs
+[binance] 06:34:19 5 archive files to download
+[binance] 06:34:19 1d: +0 rows
+[binance] 06:34:19 spot_15m: +96 rows
+[binance] 06:34:19 spot_1h: +24 rows
+[dukascopy] 06:35:39 946 symbol-months to fetch
+[dukascopy] ERROR METAUSUSD 2020-06: HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Read timed out. (read timeout=10)
+[dukascopy] ERROR METAUSUSD 2021-02: HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Read timed out. (read timeout=10)
+[dukascopy] ERROR METAUSUSD 2021-04: HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Max retries exceeded with url: /datafeed/METAUSUSD/2021/03/BID_candles_hour_1.bi5 (Caused by ConnectTimeoutError(<HTTPSConnection(host='datafeed.dukascopy.com', port=443) at 0x77ae26a54f50>, 'Connection to datafeed.dukascopy.com timed out. (connect timeout=10)'))
+[dukascopy] ERROR METAUSUSD 2021-06: HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Read timed out. (read timeout=20)
+[dukascopy] ERROR METAUSUSD 2021-09: 503 Server Error: Service Unavailable for url: https://datafeed.dukascopy.com/datafeed/METAUSUSD/2021/08/BID_candles_hour_1.bi5
+[dukascopy] ERROR METAUSUSD 2022-05: HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Read timed out. (read timeout=10)
+[dukascopy] ERROR METAUSUSD 2022-06: HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Max retries exceeded with url: /datafeed/METAUSUSD/2022/05/BID_candles_hour_1.bi5 (Caused by ConnectTimeoutError(<HTTPSConnection(host='datafeed.dukascopy.com', port=443) at 0x77ae26920e10>, 'Connection to datafeed.dukascopy.com timed out. (connect timeout=10)'))
+[dukascopy] ERROR METAUSUSD 2022-07: HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Read timed out. (read timeout=10)
+[dukascopy] ERROR METAUSUSD 2022-09: HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Read timed out. (read timeout=10)
+[dukascopy] ERROR KLACUSUSD 2024-01: HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Read timed out. (read timeout=10)
+[dukascopy] ERROR KLACUSUSD 2024-02: HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Max retries exceeded with url: /datafeed/KLACUSUSD/2024/01/BID_candles_hour_1.bi5 (Caused by ConnectTimeoutError(<HTTPSConnection(host='datafeed.dukascopy.com', port=443) at 0x77ae26951810>, 'Connection to datafeed.dukascopy.com timed out. (connect timeout=10)'))
+[dukascopy] ERROR DELLUSUSD 2021-06: ('Connection aborted.', ConnectionResetError(104, 'Connection reset by peer'))
+[dukascopy] ERROR DELLUSUSD 2021-07: HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Max retries exceeded with url: /datafeed/DELLUSUSD/2021/06/BID_candles_hour_1.bi5 (Caused by ConnectTimeoutError(<HTTPSConnection(host='datafeed.dukascopy.com', port=443) at 0x77ae269bd310>, 'Connection to datafeed.dukascopy.com timed out. (connect timeout=10)'))
+[dukascopy] ERROR DELLUSUSD 2021-09: 503 Server Error: Service Unavailable for url: https://datafeed.dukascopy.com/datafeed/DELLUSUSD/2021/08/BID_candles_hour_1.bi5
+[dukascopy] ERROR DELLUSUSD 2021-10: 503 Server Error: Service Unavailable for url: https://datafeed.dukascopy.com/datafeed/DELLUSUSD/2021/09/BID_candles_hour_1.bi5
+[dukascopy] ERROR NXPIUSUSD 2020-09: deadline
+[dukascopy] ERROR NXPIUSUSD 2020-10: deadline
+[dukascopy] ERROR NXPIUSUSD 2020-11: deadline
+[dukascopy] ERROR NXPIUSUSD 2020-12: deadline
+[dukascopy] ERROR NXPIUSUSD 2021-01: deadline
+[dukascopy] ERROR NXPIUSUSD 2021-02: deadline
+[dukascopy] ERROR NXPIUSUSD 2021-03: deadline
+[dukascopy] ERROR NXPIUSUSD 2021-04: deadline
+[dukascopy] ERROR NXPIUSUSD 2021-05: deadline
+[dukascopy] ERROR NXPIUSUSD 2021-06: deadline
+[dukascopy] ERROR NXPIUSUSD 2021-07: deadline
+[dukascopy] ERROR NXPIUSUSD 2021-08: deadline
+[dukascopy] ERROR NXPIUSUSD 2021-09: deadline
+[dukascopy] ERROR NXPIUSUSD 2021-10: deadline
+[dukascopy] ERROR NXPIUSUSD 2021-11: deadline
+[dukascopy] ERROR NXPIUSUSD 2021-12: deadline
+[dukascopy] ERROR NXPIUSUSD 2022-01: deadline
+[dukascopy] ERROR NXPIUSUSD 2022-02: deadline
+[dukascopy] ERROR NXPIUSUSD 2022-03: deadline
+[dukascopy] ERROR NXPIUSUSD 2022-04: deadline
+[dukascopy] ERROR NXPIUSUSD 2022-05: deadline
+[dukascopy] ERROR NXPIUSUSD 2022-06: deadline
+[dukascopy] ERROR NXPIUSUSD 2022-07: deadline
+[dukascopy] ERROR NXPIUSUSD 2022-08: deadline
+[dukascopy] ERROR NXPIUSUSD 2022-09: deadline
+[dukascopy] ERROR NXPIUSUSD 2022-10: deadline
+[dukascopy] ERROR NXPIUSUSD 2022-11: deadline
+[dukascopy] ERROR NXPIUSUSD 2022-12: deadline
+[dukascopy] ERROR NXPIUSUSD 2023-01: deadline
+[dukascopy] ERROR NXPIUSUSD 2023-02: deadline
+[dukascopy] ERROR NXPIUSUSD 2023-03: deadline
+[dukascopy] ERROR NXPIUSUSD 2023-04: deadline
+[dukascopy] ERROR NXPIUSUSD 2023-05: deadline
+[dukascopy] ERROR NXPIUSUSD 2023-06: deadline
+[dukascopy] ERROR NXPIUSUSD 2023-07: deadline
+[dukascopy] ERROR NXPIUSUSD 2023-08: deadline
+[dukascopy] ERROR NXPIUSUSD 2023-09: deadline
+[dukascopy] ERROR NXPIUSUSD 2023-10: deadline
+[dukascopy] ERROR NXPIUSUSD 2023-11: deadline
+[dukascopy] ERROR NXPIUSUSD 2023-12: deadline
+[dukascopy] ERROR NXPIUSUSD 2024-01: deadline
+[dukascopy] ERROR NXPIUSUSD 2024-02: deadline
+[dukascopy] ERROR NXPIUSUSD 2024-03: deadline
+[dukascopy] ERROR NXPIUSUSD 2024-04: deadline
+[dukascopy] ERROR NXPIUSUSD 2024-05: deadline
+[dukascopy] ERROR NXPIUSUSD 2024-06: deadline
+[dukascopy] ERROR NXPIUSUSD 2024-07: deadline
+[dukascopy] ERROR NXPIUSUSD 2024-08: deadline
+[dukascopy] ERROR NXPIUSUSD 2024-09: deadline
+[dukascopy] ERROR NXPIUSUSD 2024-10: deadline
+[dukascopy] ERROR NXPIUSUSD 2024-11: deadline
+[dukascopy] ERROR NXPIUSUSD 2024-12: deadline
+[dukascopy] ERROR NXPIUSUSD 2025-01: deadline
+[dukascopy] ERROR NXPIUSUSD 2025-02: deadline
+[dukascopy] ERROR NXPIUSUSD 2025-03: deadline
+[dukascopy] ERROR NXPIUSUSD 2025-04: deadline
+[dukascopy] ERROR NXPIUSUSD 2025-05: deadline
+[dukascopy] ERROR NXPIUSUSD 2025-06: deadline
+[dukascopy] ERROR NXPIUSUSD 2025-07: deadline
+[dukascopy] ERROR NXPIUSUSD 2025-08: deadline
+[dukascopy] ERROR NXPIUSUSD 2025-09: deadline
+[dukascopy] ERROR NXPIUSUSD 2025-10: deadline
+[dukascopy] ERROR NXPIUSUSD 2025-11: deadline
+[dukascopy] ERROR NXPIUSUSD 2025-12: deadline
+[dukascopy] ERROR NXPIUSUSD 2026-01: deadline
+[dukascopy] ERROR NXPIUSUSD 2026-02: deadline
+[dukascopy] ERROR NXPIUSUSD 2026-03: deadline
+[dukascopy] ERROR NXPIUSUSD 2026-04: deadline
+[dukascopy] ERROR NXPIUSUSD 2026-05: deadline
+[dukascopy] ERROR NXPIUSUSD 2026-06: deadline
+[dukascopy] ERROR NXPIUSUSD 2026-07: deadline
+[dukascopy] ERROR NXPIUSUSD 2026-08: deadline
+[dukascopy] ERROR NXPIUSUSD 2026-09: deadline
+[dukascopy] ERROR NXPIUSUSD 2026-10: deadline
+[dukascopy] ERROR JPMUSUSD 2026-10: deadline
+[dukascopy] ERROR BACUSUSD 2026-10: deadline
+[dukascopy] ERROR WFCUSUSD 2026-10: deadline
+[dukascopy] ERROR GSUSUSD 2026-10: deadline
+[dukascopy] ERROR VUSUSD 2026-10: deadline
+[dukascopy] ERROR MAUSUSD 2026-10: deadline
+[dukascopy] ERROR JNJUSUSD 2026-10: deadline
+[dukascopy] ERROR UNHUSUSD 2020-05: deadline
+[dukascopy] ERROR UNHUSUSD 2026-10: deadline
+[dukascopy] ERROR PFEUSUSD 2026-10: deadline
+[dukascopy] ERROR MRKUSUSD 2026-10: deadline
+[dukascopy] ERROR ABBVUSUSD 2020-01: deadline
+[dukascopy] ERROR ABBVUSUSD 2020-02: deadline
+[dukascopy] ERROR ABBVUSUSD 2020-03: deadline
+[dukascopy] ERROR ABBVUSUSD 2020-04: deadline
+[dukascopy] ERROR ABBVUSUSD 2020-05: deadline
+[dukascopy] ERROR ABBVUSUSD 2020-06: deadline
+[dukascopy] ERROR ABBVUSUSD 2020-07: deadline
+[dukascopy] ERROR ABBVUSUSD 2020-08: deadline
+[dukascopy] ERROR ABBVUSUSD 2020-09: deadline
+[dukascopy] ERROR ABBVUSUSD 2020-10: deadline
+[dukascopy] ERROR ABBVUSUSD 2020-11: deadline
+[dukascopy] ERROR ABBVUSUSD 2020-12: deadline
+[dukascopy] ERROR ABBVUSUSD 2021-01: deadline
+[dukascopy] ERROR ABBVUSUSD 2021-02: deadline
+[dukascopy] ERROR ABBVUSUSD 2021-03: deadline
+[dukascopy] ERROR ABBVUSUSD 2021-04: deadline
+[dukascopy] ERROR ABBVUSUSD 2021-05: deadline
+[dukascopy] ERROR ABBVUSUSD 2021-06: deadline
+[dukascopy] ERROR ABBVUSUSD 2021-07: deadline
+[dukascopy] ERROR ABBVUSUSD 2021-08: deadline
+[dukascopy] ERROR ABBVUSUSD 2021-09: deadline
+[dukascopy] ERROR ABBVUSUSD 2021-10: deadline
+[dukascopy] ERROR ABBVUSUSD 2021-11: deadline
+[dukascopy] ERROR ABBVUSUSD 2021-12: deadline
+[dukascopy] ERROR ABBVUSUSD 2022-01: deadline
+[dukascopy] ERROR ABBVUSUSD 2022-02: deadline
+[dukascopy] ERROR ABBVUSUSD 2022-03: deadline
+[dukascopy] ERROR ABBVUSUSD 2022-04: deadline
+[dukascopy] ERROR ABBVUSUSD 2022-05: deadline
+[dukascopy] ERROR ABBVUSUSD 2022-06: deadline
+[dukascopy] ERROR ABBVUSUSD 2022-07: deadline
+[dukascopy] ERROR ABBVUSUSD 2022-08: deadline
+[dukascopy] ERROR ABBVUSUSD 2022-09: deadline
+[dukascopy] ERROR ABBVUSUSD 2022-10: deadline
+[dukascopy] ERROR ABBVUSUSD 2022-11: deadline
+[dukascopy] ERROR ABBVUSUSD 2022-12: deadline
+[dukascopy] ERROR ABBVUSUSD 2023-01: deadline
+[dukascopy] ERROR ABBVUSUSD 2023-02: deadline
+[dukascopy] ERROR ABBVUSUSD 2023-03: deadline
+[dukascopy] ERROR ABBVUSUSD 2023-04: deadline
+[dukascopy] ERROR ABBVUSUSD 2023-05: deadline
+[dukascopy] ERROR ABBVUSUSD 2023-06: deadline
+[dukascopy] ERROR ABBVUSUSD 2023-07: deadline
+[dukascopy] ERROR ABBVUSUSD 2023-08: deadline
+[dukascopy] ERROR ABBVUSUSD 2023-09: deadline
+[dukascopy] ERROR ABBVUSUSD 2023-10: deadline
+[dukascopy] ERROR ABBVUSUSD 2023-11: deadline
+[dukascopy] ERROR ABBVUSUSD 2023-12: deadline
+[dukascopy] ERROR ABBVUSUSD 2024-01: deadline
+[dukascopy] ERROR ABBVUSUSD 2024-02: deadline
+[dukascopy] ERROR ABBVUSUSD 2024-03: deadline
+[dukascopy] ERROR ABBVUSUSD 2024-04: deadline
+[dukascopy] ERROR ABBVUSUSD 2024-05: deadline
+[dukascopy] ERROR ABBVUSUSD 2024-06: deadline
+[dukascopy] ERROR ABBVUSUSD 2024-07: deadline
+[dukascopy] ERROR ABBVUSUSD 2024-08: deadline
+[dukascopy] ERROR ABBVUSUSD 2024-09: deadline
+[dukascopy] ERROR ABBVUSUSD 2024-10: deadline
+[dukascopy] ERROR ABBVUSUSD 2024-11: deadline
+[dukascopy] ERROR ABBVUSUSD 2024-12: deadline
+[dukascopy] ERROR ABBVUSUSD 2025-01: deadline
+[dukascopy] ERROR ABBVUSUSD 2025-02: deadline
+[dukascopy] ERROR ABBVUSUSD 2025-03: deadline
+[dukascopy] ERROR ABBVUSUSD 2025-04: deadline
+[dukascopy] ERROR ABBVUSUSD 2025-05: deadline
+[dukascopy] ERROR ABBVUSUSD 2025-06: deadline
+[dukascopy] ERROR ABBVUSUSD 2025-07: deadline
+[dukascopy] ERROR ABBVUSUSD 2025-08: deadline
+[dukascopy] ERROR ABBVUSUSD 2025-09: deadline
+[dukascopy] ERROR ABBVUSUSD 2025-10: deadline
+[dukascopy] ERROR ABBVUSUSD 2025-11: deadline
+[dukascopy] ERROR ABBVUSUSD 2025-12: deadline
+[dukascopy] ERROR ABBVUSUSD 2026-01: deadline
+[dukascopy] ERROR ABBVUSUSD 2026-02: deadline
+[dukascopy] ERROR ABBVUSUSD 2026-03: deadline
+[dukascopy] ERROR ABBVUSUSD 2026-04: deadline
+[dukascopy] ERROR ABBVUSUSD 2026-05: deadline
+[dukascopy] ERROR ABBVUSUSD 2026-06: deadline
+[dukascopy] ERROR ABBVUSUSD 2026-07: deadline
+[dukascopy] ERROR ABBVUSUSD 2026-08: deadline
+[dukascopy] ERROR ABBVUSUSD 2026-09: deadline
+[dukascopy] ERROR ABBVUSUSD 2026-10: deadline
+[dukascopy] ERROR LLYUSUSD 2026-10: deadline
+[dukascopy] ERROR PGUSUSD 2026-10: deadline
+[dukascopy] ERROR KOUSUSD 2026-10: deadline
+[dukascopy] ERROR PEPUSUSD 2026-10: deadline
+[dukascopy] ERROR WMTUSUSD 2026-10: deadline
+[dukascopy] ERROR COSTUSUSD 2026-10: deadline
+[dukascopy] ERROR HDUSUSD 2026-10: deadline
+[dukascopy] ERROR MCDUSUSD 2026-10: deadline
+[dukascopy] ERROR NKEUSUSD 2026-10: deadline
+[dukascopy] ERROR DISUSUSD 2026-10: deadline
+[dukascopy] ERROR XOMUSUSD 2026-10: deadline
+[dukascopy] ERROR CVXUSUSD 2026-10: deadline
+[dukascopy] ERROR BAUSUSD 2023-08: deadline
+[dukascopy] ERROR BAUSUSD 2023-09: deadline
+[dukascopy] ERROR BAUSUSD 2023-10: deadline
+[dukascopy] ERROR BAUSUSD 2023-11: deadline
+[dukascopy] ERROR BAUSUSD 2023-12: deadline
+[dukascopy] ERROR BAUSUSD 2024-01: deadline
+[dukascopy] ERROR BAUSUSD 2024-02: deadline
+[dukascopy] ERROR BAUSUSD 2024-03: deadline
+[dukascopy] ERROR BAUSUSD 2024-04: deadline
+[dukascopy] ERROR BAUSUSD 2024-05: deadline
+[dukascopy] ERROR BAUSUSD 2024-06: deadline
+[dukascopy] ERROR BAUSUSD 2024-07: deadline
+[dukascopy] ERROR BAUSUSD 2024-08: deadline
+[dukascopy] ERROR BAUSUSD 2024-09: deadline
+[dukascopy] ERROR BAUSUSD 2024-10: deadline
+[dukascopy] ERROR BAUSUSD 2024-11: deadline
+[dukascopy] ERROR BAUSUSD 2024-12: deadline
+[dukascopy] ERROR BAUSUSD 2025-01: deadline
+[dukascopy] ERROR BAUSUSD 2025-02: deadline
+[dukascopy] ERROR BAUSUSD 2025-03: deadline
+[dukascopy] ERROR BAUSUSD 2025-04: deadline
+[dukascopy] ERROR BAUSUSD 2025-05: deadline
+[dukascopy] ERROR BAUSUSD 2025-06: deadline
+[dukascopy] ERROR BAUSUSD 2025-07: deadline
+[dukascopy] ERROR BAUSUSD 2025-08: deadline
+[dukascopy] ERROR BAUSUSD 2025-09: deadline
+[dukascopy] ERROR BAUSUSD 2025-10: deadline
+[dukascopy] ERROR BAUSUSD 2025-11: deadline
+[dukascopy] ERROR BAUSUSD 2025-12: deadline
+[dukascopy] ERROR BAUSUSD 2026-01: deadline
+[dukascopy] ERROR BAUSUSD 2026-02: deadline
+[dukascopy] ERROR BAUSUSD 2026-03: deadline
+[dukascopy] ERROR BAUSUSD 2026-04: deadline
+[dukascopy] ERROR BAUSUSD 2026-05: deadline
+[dukascopy] ERROR BAUSUSD 2026-06: deadline
+[dukascopy] ERROR BAUSUSD 2026-07: deadline
+[dukascopy] ERROR BAUSUSD 2026-08: deadline
+[dukascopy] ERROR BAUSUSD 2026-09: deadline
+[dukascopy] ERROR BAUSUSD 2026-10: deadline
+[dukascopy] ERROR CATUSUSD 2020-01: deadline
+[dukascopy] ERROR CATUSUSD 2020-02: deadline
+[dukascopy] ERROR CATUSUSD 2020-03: deadline
+[dukascopy] ERROR CATUSUSD 2020-04: deadline
+[dukascopy] ERROR CATUSUSD 2020-05: deadline
+[dukascopy] ERROR CATUSUSD 2020-06: deadline
+[dukascopy] ERROR CATUSUSD 2020-07: deadline
+[dukascopy] ERROR CATUSUSD 2020-08: deadline
+[dukascopy] ERROR CATUSUSD 2020-09: deadline
+[dukascopy] ERROR CATUSUSD 2020-10: deadline
+[dukascopy] ERROR CATUSUSD 2020-11: deadline
+[dukascopy] ERROR CATUSUSD 2020-12: deadline
+[dukascopy] ERROR CATUSUSD 2021-01: deadline
+[dukascopy] ERROR CATUSUSD 2021-02: deadline
+[dukascopy] ERROR CATUSUSD 2021-03: deadline
+[dukascopy] ERROR CATUSUSD 2021-04: deadline
+[dukascopy] ERROR CATUSUSD 2021-05: deadline
+[dukascopy] ERROR CATUSUSD 2021-06: deadline
+[dukascopy] ERROR CATUSUSD 2021-07: deadline
+[dukascopy] ERROR CATUSUSD 2021-08: deadline
+[dukascopy] ERROR CATUSUSD 2021-09: deadline
+[dukascopy] ERROR CATUSUSD 2021-10: deadline
+[dukascopy] ERROR CATUSUSD 2021-11: deadline
+[dukascopy] ERROR CATUSUSD 2021-12: deadline
+[dukascopy] ERROR CATUSUSD 2022-01: deadline
+[dukascopy] ERROR CATUSUSD 2022-02: deadline
+[dukascopy] ERROR CATUSUSD 2022-03: deadline
+[dukascopy] ERROR CATUSUSD 2022-04: deadline
+[dukascopy] ERROR CATUSUSD 2022-05: deadline
+[dukascopy] ERROR CATUSUSD 2022-06: deadline
+[dukascopy] ERROR CATUSUSD 2022-07: deadline
+[dukascopy] ERROR CATUSUSD 2022-08: deadline
+[dukascopy] ERROR CATUSUSD 2022-09: deadline
+[dukascopy] ERROR CATUSUSD 2022-10: deadline
+[dukascopy] ERROR CATUSUSD 2022-11: deadline
+[dukascopy] ERROR CATUSUSD 2022-12: deadline
+[dukascopy] ERROR CATUSUSD 2023-01: deadline
+[dukascopy] ERROR CATUSUSD 2023-02: deadline
+[dukascopy] ERROR CATUSUSD 2023-03: deadline
+[dukascopy] ERROR CATUSUSD 2023-04: deadline
+[dukascopy] ERROR CATUSUSD 2023-05: deadline
+[dukascopy] ERROR CATUSUSD 2023-06: deadline
+[dukascopy] ERROR CATUSUSD 2023-07: deadline
+[dukascopy] ERROR CATUSUSD 2023-08: deadline
+[dukascopy] ERROR CATUSUSD 2023-09: deadline
+[dukascopy] ERROR CATUSUSD 2023-10: deadline
+[dukascopy] ERROR CATUSUSD 2023-11: deadline
+[dukascopy] ERROR CATUSUSD 2023-12: deadline
+[dukascopy] ERROR CATUSUSD 2024-01: deadline
+[dukascopy] ERROR CATUSUSD 2024-02: deadline
+[dukascopy] ERROR CATUSUSD 2024-03: deadline
+[dukascopy] ERROR CATUSUSD 2024-04: deadline
+[dukascopy] ERROR CATUSUSD 2024-05: deadline
+[dukascopy] ERROR CATUSUSD 2024-06: deadline
+[dukascopy] ERROR CATUSUSD 2024-07: deadline
+[dukascopy] ERROR CATUSUSD 2024-08: deadline
+[dukascopy] ERROR CATUSUSD 2024-09: deadline
+[dukascopy] ERROR CATUSUSD 2024-10: deadline
+[dukascopy] ERROR CATUSUSD 2024-11: deadline
+[dukascopy] ERROR CATUSUSD 2024-12: deadline
+[dukascopy] ERROR CATUSUSD 2025-01: deadline
+[dukascopy] ERROR CATUSUSD 2025-02: deadline
+[dukascopy] ERROR CATUSUSD 2025-03: deadline
+[dukascopy] ERROR CATUSUSD 2025-04: deadline
+[dukascopy] ERROR CATUSUSD 2025-05: deadline
+[dukascopy] ERROR CATUSUSD 2025-06: deadline
+[dukascopy] ERROR CATUSUSD 2025-07: deadline
+[dukascopy] ERROR CATUSUSD 2025-08: deadline
+[dukascopy] ERROR CATUSUSD 2025-09: deadline
+[dukascopy] ERROR CATUSUSD 2025-10: deadline
+[dukascopy] ERROR CATUSUSD 2025-11: deadline
+[dukascopy] ERROR CATUSUSD 2025-12: deadline
+[dukascopy] ERROR CATUSUSD 2026-01: deadline
+[dukascopy] ERROR CATUSUSD 2026-02: deadline
+[dukascopy] ERROR CATUSUSD 2026-03: deadline
+[dukascopy] ERROR CATUSUSD 2026-04: deadline
+[dukascopy] ERROR CATUSUSD 2026-05: deadline
+[dukascopy] ERROR CATUSUSD 2026-06: deadline
+[dukascopy] ERROR CATUSUSD 2026-07: deadline
+[dukascopy] ERROR CATUSUSD 2026-08: deadline
+[dukascopy] ERROR CATUSUSD 2026-09: deadline
+[dukascopy] ERROR CATUSUSD 2026-10: deadline
+[dukascopy] ERROR HONUSUSD 2020-01: deadline
+[dukascopy] ERROR HONUSUSD 2020-02: deadline
+[dukascopy] ERROR HONUSUSD 2020-03: deadline
+[dukascopy] ERROR HONUSUSD 2020-04: deadline
+[dukascopy] ERROR HONUSUSD 2020-05: deadline
+[dukascopy] ERROR HONUSUSD 2020-06: deadline
+[dukascopy] ERROR HONUSUSD 2020-07: deadline
+[dukascopy] ERROR HONUSUSD 2020-08: deadline
+[dukascopy] ERROR HONUSUSD 2020-09: deadline
+[dukascopy] ERROR HONUSUSD 2020-10: deadline
+[dukascopy] ERROR HONUSUSD 2020-11: deadline
+[dukascopy] ERROR HONUSUSD 2020-12: deadline
+[dukascopy] ERROR HONUSUSD 2021-01: deadline
+[dukascopy] ERROR HONUSUSD 2021-02: deadline
+[dukascopy] ERROR HONUSUSD 2021-03: deadline
+[dukascopy] ERROR HONUSUSD 2021-04: deadline
+[dukascopy] ERROR HONUSUSD 2021-05: deadline
+[dukascopy] ERROR HONUSUSD 2021-06: deadline
+[dukascopy] ERROR HONUSUSD 2021-07: deadline
+[dukascopy] ERROR HONUSUSD 2021-08: deadline
+[dukascopy] ERROR HONUSUSD 2021-09: deadline
+[dukascopy] ERROR HONUSUSD 2021-10: deadline
+[dukascopy] ERROR HONUSUSD 2021-11: deadline
+[dukascopy] ERROR HONUSUSD 2021-12: deadline
+[dukascopy] ERROR HONUSUSD 2022-01: deadline
+[dukascopy] ERROR HONUSUSD 2022-02: deadline
+[dukascopy] ERROR HONUSUSD 2022-03: deadline
+[dukascopy] ERROR HONUSUSD 2022-04: deadline
+[dukascopy] ERROR HONUSUSD 2022-05: deadline
+[dukascopy] ERROR HONUSUSD 2022-06: deadline
+[dukascopy] ERROR HONUSUSD 2022-07: deadline
+[dukascopy] ERROR HONUSUSD 2022-08: deadline
+[dukascopy] ERROR HONUSUSD 2022-09: deadline
+[dukascopy] ERROR HONUSUSD 2022-10: deadline
+[dukascopy] ERROR HONUSUSD 2022-11: deadline
+[dukascopy] ERROR HONUSUSD 2022-12: deadline
+[dukascopy] ERROR HONUSUSD 2023-01: deadline
+[dukascopy] ERROR HONUSUSD 2023-02: deadline
+[dukascopy] ERROR HONUSUSD 2023-03: deadline
+[dukascopy] ERROR HONUSUSD 2023-04: deadline
+[dukascopy] ERROR HONUSUSD 2023-05: deadline
+[dukascopy] ERROR HONUSUSD 2023-06: deadline
+[dukascopy] ERROR HONUSUSD 2023-07: deadline
+[dukascopy] ERROR HONUSUSD 2023-08: deadline
+[dukascopy] ERROR HONUSUSD 2023-09: deadline
+[dukascopy] ERROR HONUSUSD 2023-10: deadline
+[dukascopy] ERROR HONUSUSD 2023-11: deadline
+[dukascopy] ERROR HONUSUSD 2023-12: deadline
+[dukascopy] ERROR HONUSUSD 2024-01: deadline
+[dukascopy] ERROR HONUSUSD 2024-02: deadline
+[dukascopy] ERROR HONUSUSD 2024-03: deadline
+[dukascopy] ERROR HONUSUSD 2024-04: deadline
+[dukascopy] ERROR HONUSUSD 2024-05: deadline
+[dukascopy] ERROR HONUSUSD 2024-06: deadline
+[dukascopy] ERROR HONUSUSD 2024-07: deadline
+[dukascopy] ERROR HONUSUSD 2024-08: deadline
+[dukascopy] ERROR HONUSUSD 2024-09: deadline
+[dukascopy] ERROR HONUSUSD 2024-10: deadline
+[dukascopy] ERROR HONUSUSD 2024-11: deadline
+[dukascopy] ERROR HONUSUSD 2024-12: deadline
+[dukascopy] ERROR HONUSUSD 2025-01: deadline
+[dukascopy] ERROR HONUSUSD 2025-02: deadline
+[dukascopy] ERROR HONUSUSD 2025-03: deadline
+[dukascopy] ERROR HONUSUSD 2025-04: deadline
+[dukascopy] ERROR HONUSUSD 2025-05: deadline
+[dukascopy] ERROR HONUSUSD 2025-06: deadline
+[dukascopy] ERROR HONUSUSD 2025-07: deadline
+[dukascopy] ERROR HONUSUSD 2025-08: deadline
+[dukascopy] ERROR HONUSUSD 2025-09: deadline
+[dukascopy] ERROR HONUSUSD 2025-10: deadline
+[dukascopy] ERROR HONUSUSD 2025-11: deadline
+[dukascopy] ERROR HONUSUSD 2025-12: deadline
+[dukascopy] ERROR HONUSUSD 2026-01: deadline
+[dukascopy] ERROR HONUSUSD 2026-02: deadline
+[dukascopy] ERROR HONUSUSD 2026-03: deadline
+[dukascopy] ERROR HONUSUSD 2026-04: deadline
+[dukascopy] ERROR HONUSUSD 2026-05: deadline
+[dukascopy] ERROR HONUSUSD 2026-06: deadline
+[dukascopy] ERROR HONUSUSD 2026-07: deadline
+[dukascopy] ERROR HONUSUSD 2026-08: deadline
+[dukascopy] ERROR HONUSUSD 2026-09: deadline
+[dukascopy] ERROR HONUSUSD 2026-10: deadline
+[dukascopy] ERROR UNPUSUSD 2020-01: deadline
+[dukascopy] ERROR UNPUSUSD 2020-02: deadline
+[dukascopy] ERROR UNPUSUSD 2020-03: deadline
+[dukascopy] ERROR UNPUSUSD 2020-04: deadline
+[dukascopy] ERROR UNPUSUSD 2020-05: deadline
+[dukascopy] ERROR UNPUSUSD 2020-06: deadline
+[dukascopy] ERROR UNPUSUSD 2020-07: deadline
+[dukascopy] ERROR UNPUSUSD 2020-08: deadline
+[dukascopy] ERROR UNPUSUSD 2020-09: deadline
+[dukascopy] ERROR UNPUSUSD 2020-10: deadline
+[dukascopy] ERROR UNPUSUSD 2020-11: deadline
+[dukascopy] ERROR UNPUSUSD 2020-12: deadline
+[dukascopy] ERROR UNPUSUSD 2021-01: deadline
+[dukascopy] ERROR UNPUSUSD 2021-02: deadline
+[dukascopy] ERROR UNPUSUSD 2021-03: deadline
+[dukascopy] ERROR UNPUSUSD 2021-04: deadline
+[dukascopy] ERROR UNPUSUSD 2021-05: deadline
+[dukascopy] ERROR UNPUSUSD 2021-06: deadline
+[dukascopy] ERROR UNPUSUSD 2021-07: deadline
+[dukascopy] ERROR UNPUSUSD 2021-08: deadline
+[dukascopy] ERROR UNPUSUSD 2021-09: deadline
+[dukascopy] ERROR UNPUSUSD 2021-10: deadline
+[dukascopy] ERROR UNPUSUSD 2021-11: deadline
+[dukascopy] ERROR UNPUSUSD 2021-12: deadline
+[dukascopy] ERROR UNPUSUSD 2022-01: deadline
+[dukascopy] ERROR UNPUSUSD 2022-02: deadline
+[dukascopy] ERROR UNPUSUSD 2022-03: deadline
+[dukascopy] ERROR UNPUSUSD 2022-04: deadline
+[dukascopy] ERROR UNPUSUSD 2022-05: deadline
+[dukascopy] ERROR UNPUSUSD 2022-06: deadline
+[dukascopy] ERROR UNPUSUSD 2022-07: deadline
+[dukascopy] ERROR UNPUSUSD 2022-08: deadline
+[dukascopy] ERROR UNPUSUSD 2022-09: deadline
+[dukascopy] ERROR UNPUSUSD 2022-10: deadline
+[dukascopy] ERROR UNPUSUSD 2022-11: deadline
+[dukascopy] ERROR UNPUSUSD 2022-12: deadline
+[dukascopy] ERROR UNPUSUSD 2023-01: deadline
+[dukascopy] ERROR UNPUSUSD 2023-02: deadline
+[dukascopy] ERROR UNPUSUSD 2023-03: deadline
+[dukascopy] ERROR UNPUSUSD 2023-04: deadline
+[dukascopy] ERROR UNPUSUSD 2023-05: deadline
+[dukascopy] ERROR UNPUSUSD 2023-06: deadline
+[dukascopy] ERROR UNPUSUSD 2023-07: deadline
+[dukascopy] ERROR UNPUSUSD 2023-08: deadline
+[dukascopy] ERROR UNPUSUSD 2023-09: deadline
+[dukascopy] ERROR UNPUSUSD 2023-10: deadline
+[dukascopy] ERROR UNPUSUSD 2023-11: deadline
+[dukascopy] ERROR UNPUSUSD 2023-12: deadline
+[dukascopy] ERROR UNPUSUSD 2024-01: deadline
+[dukascopy] ERROR UNPUSUSD 2024-02: deadline
+[dukascopy] ERROR UNPUSUSD 2024-03: deadline
+[dukascopy] ERROR UNPUSUSD 2024-04: deadline
+[dukascopy] ERROR UNPUSUSD 2024-05: deadline
+[dukascopy] ERROR UNPUSUSD 2024-06: deadline
+[dukascopy] ERROR UNPUSUSD 2024-07: deadline
+[dukascopy] ERROR UNPUSUSD 2024-08: deadline
+[dukascopy] ERROR UNPUSUSD 2024-09: deadline
+[dukascopy] ERROR UNPUSUSD 2024-10: deadline
+[dukascopy] ERROR UNPUSUSD 2024-11: deadline
+[dukascopy] ERROR UNPUSUSD 2024-12: deadline
+[dukascopy] ERROR UNPUSUSD 2025-01: deadline
+[dukascopy] ERROR UNPUSUSD 2025-02: deadline
+[dukascopy] ERROR UNPUSUSD 2025-03: deadline
+[dukascopy] ERROR UNPUSUSD 2025-04: deadline
+[dukascopy] ERROR UNPUSUSD 2025-05: deadline
+[dukascopy] ERROR UNPUSUSD 2025-06: deadline
+[dukascopy] ERROR UNPUSUSD 2025-07: deadline
+[dukascopy] ERROR UNPUSUSD 2025-08: deadline
+[dukascopy] ERROR UNPUSUSD 2025-09: deadline
+[dukascopy] ERROR UNPUSUSD 2025-10: deadline
+[dukascopy] ERROR UNPUSUSD 2025-11: deadline
+[dukascopy] ERROR UNPUSUSD 2025-12: deadline
+[dukascopy] ERROR UNPUSUSD 2026-01: deadline
+[dukascopy] ERROR UNPUSUSD 2026-02: deadline
+[dukascopy] ERROR UNPUSUSD 2026-03: deadline
+[dukascopy] ERROR UNPUSUSD 2026-04: deadline
+[dukascopy] ERROR UNPUSUSD 2026-05: deadline
+[dukascopy] ERROR UNPUSUSD 2026-06: deadline
+[dukascopy] ERROR UNPUSUSD 2026-07: deadline
+[dukascopy] ERROR UNPUSUSD 2026-08: deadline
+[dukascopy] ERROR UNPUSUSD 2026-09: deadline
+[dukascopy] ERROR UNPUSUSD 2026-10: deadline
+[dukascopy] ERROR TUSUSD 2020-01: deadline
+[dukascopy] ERROR TUSUSD 2020-02: deadline
+[dukascopy] ERROR TUSUSD 2020-03: deadline
+[dukascopy] ERROR TUSUSD 2020-04: deadline
+[dukascopy] ERROR TUSUSD 2020-05: deadline
+[dukascopy] ERROR TUSUSD 2020-06: deadline
+[dukascopy] ERROR TUSUSD 2020-07: deadline
+[dukascopy] ERROR TUSUSD 2020-08: deadline
+[dukascopy] ERROR TUSUSD 2020-09: deadline
+[dukascopy] ERROR TUSUSD 2020-10: deadline
+[dukascopy] ERROR TUSUSD 2020-11: deadline
+[dukascopy] ERROR TUSUSD 2020-12: deadline
+[dukascopy] ERROR TUSUSD 2021-01: deadline
+[dukascopy] ERROR TUSUSD 2021-02: deadline
+[dukascopy] ERROR TUSUSD 2021-03: deadline
+[dukascopy] ERROR TUSUSD 2021-04: deadline
+[dukascopy] ERROR TUSUSD 2021-05: deadline
+[dukascopy] ERROR TUSUSD 2021-06: deadline
+[dukascopy] ERROR TUSUSD 2021-07: deadline
+[dukascopy] ERROR TUSUSD 2021-08: deadline
+[dukascopy] ERROR TUSUSD 2021-09: deadline
+[dukascopy] ERROR TUSUSD 2021-10: deadline
+[dukascopy] ERROR TUSUSD 2021-11: deadline
+[dukascopy] ERROR TUSUSD 2021-12: deadline
+[dukascopy] ERROR TUSUSD 2022-01: deadline
+[dukascopy] ERROR TUSUSD 2022-02: deadline
+[dukascopy] ERROR TUSUSD 2022-03: deadline
+[dukascopy] ERROR TUSUSD 2022-04: deadline
+[dukascopy] ERROR TUSUSD 2022-05: deadline
+[dukascopy] ERROR TUSUSD 2022-06: deadline
+[dukascopy] ERROR TUSUSD 2022-07: deadline
+[dukascopy] ERROR TUSUSD 2022-08: deadline
+[dukascopy] ERROR TUSUSD 2022-09: deadline
+[dukascopy] ERROR TUSUSD 2022-10: deadline
+[dukascopy] ERROR TUSUSD 2022-11: deadline
+[dukascopy] ERROR TUSUSD 2022-12: deadline
+[dukascopy] ERROR TUSUSD 2023-01: deadline
+[dukascopy] ERROR TUSUSD 2023-02: deadline
+[dukascopy] ERROR TUSUSD 2023-03: deadline
+[dukascopy] ERROR TUSUSD 2023-04: deadline
+[dukascopy] ERROR TUSUSD 2023-05: deadline
+[dukascopy] ERROR TUSUSD 2023-06: deadline
+[dukascopy] ERROR TUSUSD 2023-07: deadline
+[dukascopy] ERROR TUSUSD 2023-08: deadline
+[dukascopy] ERROR TUSUSD 2023-09: deadline
+[dukascopy] ERROR TUSUSD 2023-10: deadline
+[dukascopy] ERROR TUSUSD 2023-11: deadline
+[dukascopy] ERROR TUSUSD 2023-12: deadline
+[dukascopy] ERROR TUSUSD 2024-01: deadline
+[dukascopy] ERROR TUSUSD 2024-02: deadline
+[dukascopy] ERROR TUSUSD 2024-03: deadline
+[dukascopy] ERROR TUSUSD 2024-04: deadline
+[dukascopy] ERROR TUSUSD 2024-05: deadline
+[dukascopy] ERROR TUSUSD 2024-06: deadline
+[dukascopy] ERROR TUSUSD 2024-07: deadline
+[dukascopy] ERROR TUSUSD 2024-08: deadline
+[dukascopy] ERROR TUSUSD 2024-09: deadline
+[dukascopy] ERROR TUSUSD 2024-10: deadline
+[dukascopy] ERROR TUSUSD 2024-11: deadline
+[dukascopy] ERROR TUSUSD 2024-12: deadline
+[dukascopy] ERROR TUSUSD 2025-01: deadline
+[dukascopy] ERROR TUSUSD 2025-02: deadline
+[dukascopy] ERROR TUSUSD 2025-03: deadline
+[dukascopy] ERROR TUSUSD 2025-04: deadline
+[dukascopy] ERROR TUSUSD 2025-05: deadline
+[dukascopy] ERROR TUSUSD 2025-06: deadline
+[dukascopy] ERROR TUSUSD 2025-07: deadline
+[dukascopy] ERROR TUSUSD 2025-08: deadline
+[dukascopy] ERROR TUSUSD 2025-09: deadline
+[dukascopy] ERROR TUSUSD 2025-10: deadline
+[dukascopy] ERROR TUSUSD 2025-11: deadline
+[dukascopy] ERROR TUSUSD 2025-12: deadline
+[dukascopy] ERROR TUSUSD 2026-01: deadline
+[dukascopy] ERROR TUSUSD 2026-02: deadline
+[dukascopy] ERROR TUSUSD 2026-03: deadline
+[dukascopy] ERROR TUSUSD 2026-04: deadline
+[dukascopy] ERROR TUSUSD 2026-05: deadline
+[dukascopy] ERROR TUSUSD 2026-06: deadline
+[dukascopy] ERROR TUSUSD 2026-07: deadline
+[dukascopy] ERROR TUSUSD 2026-08: deadline
+[dukascopy] ERROR TUSUSD 2026-09: deadline
+[dukascopy] ERROR TUSUSD 2026-10: deadline
+[dukascopy] ERROR VZUSUSD 2020-01: deadline
+[dukascopy] ERROR VZUSUSD 2020-02: deadline
+[dukascopy] ERROR VZUSUSD 2020-03: deadline
+[dukascopy] ERROR VZUSUSD 2020-04: deadline
+[dukascopy] ERROR VZUSUSD 2020-05: deadline
+[dukascopy] ERROR VZUSUSD 2020-06: deadline
+[dukascopy] ERROR VZUSUSD 2020-07: deadline
+[dukascopy] ERROR VZUSUSD 2020-08: deadline
+[dukascopy] ERROR VZUSUSD 2020-09: deadline
+[dukascopy] ERROR VZUSUSD 2020-10: deadline
+[dukascopy] ERROR VZUSUSD 2020-11: deadline
+[dukascopy] ERROR VZUSUSD 2020-12: deadline
+[dukascopy] ERROR VZUSUSD 2021-01: deadline
+[dukascopy] ERROR VZUSUSD 2021-02: deadline
+[dukascopy] ERROR VZUSUSD 2021-03: deadline
+[dukascopy] ERROR VZUSUSD 2021-04: deadline
+[dukascopy] ERROR VZUSUSD 2021-05: deadline
+[dukascopy] ERROR VZUSUSD 2021-06: deadline
+[dukascopy] ERROR VZUSUSD 2021-07: deadline
+[dukascopy] ERROR VZUSUSD 2021-08: deadline
+[dukascopy] ERROR VZUSUSD 2021-09: deadline
+[dukascopy] ERROR VZUSUSD 2021-10: deadline
+[dukascopy] ERROR VZUSUSD 2021-11: deadline
+[dukascopy] ERROR VZUSUSD 2021-12: deadline
+[dukascopy] ERROR VZUSUSD 2022-01: deadline
+[dukascopy] ERROR VZUSUSD 2022-02: deadline
+[dukascopy] ERROR VZUSUSD 2022-03: deadline
+[dukascopy] ERROR VZUSUSD 2022-04: deadline
+[dukascopy] ERROR VZUSUSD 2022-05: deadline
+[dukascopy] ERROR VZUSUSD 2022-06: deadline
+[dukascopy] ERROR VZUSUSD 2022-07: deadline
+[dukascopy] ERROR VZUSUSD 2022-08: deadline
+[dukascopy] ERROR VZUSUSD 2022-09: deadline
+[dukascopy] ERROR VZUSUSD 2022-10: deadline
+[dukascopy] ERROR VZUSUSD 2022-11: deadline
+[dukascopy] ERROR VZUSUSD 2022-12: deadline
+[dukascopy] ERROR VZUSUSD 2023-01: deadline
+[dukascopy] ERROR VZUSUSD 2023-02: deadline
+[dukascopy] ERROR VZUSUSD 2023-03: deadline
+[dukascopy] ERROR VZUSUSD 2023-04: deadline
+[dukascopy] ERROR VZUSUSD 2023-05: deadline
+[dukascopy] ERROR VZUSUSD 2023-06: deadline
+[dukascopy] ERROR VZUSUSD 2023-07: deadline
+[dukascopy] ERROR VZUSUSD 2023-08: deadline
+[dukascopy] ERROR VZUSUSD 2023-09: deadline
+[dukascopy] ERROR VZUSUSD 2023-10: deadline
+[dukascopy] ERROR VZUSUSD 2023-11: deadline
+[dukascopy] ERROR VZUSUSD 2023-12: deadline
+[dukascopy] ERROR VZUSUSD 2024-01: deadline
+[dukascopy] ERROR VZUSUSD 2024-02: deadline
+[dukascopy] ERROR VZUSUSD 2024-03: deadline
+[dukascopy] ERROR VZUSUSD 2024-04: deadline
+[dukascopy] ERROR VZUSUSD 2024-05: deadline
+[dukascopy] ERROR VZUSUSD 2024-06: deadline
+[dukascopy] ERROR VZUSUSD 2024-07: deadline
+[dukascopy] ERROR VZUSUSD 2024-08: deadline
+[dukascopy] ERROR VZUSUSD 2024-09: deadline
+[dukascopy] ERROR VZUSUSD 2024-10: deadline
+[dukascopy] ERROR VZUSUSD 2024-11: deadline
+[dukascopy] ERROR VZUSUSD 2024-12: deadline
+[dukascopy] ERROR VZUSUSD 2025-01: deadline
+[dukascopy] ERROR VZUSUSD 2025-02: deadline
+[dukascopy] ERROR VZUSUSD 2025-03: deadline
+[dukascopy] ERROR VZUSUSD 2025-04: deadline
+[dukascopy] ERROR VZUSUSD 2025-05: deadline
+[dukascopy] ERROR VZUSUSD 2025-06: deadline
+[dukascopy] ERROR VZUSUSD 2025-07: deadline
+[dukascopy] ERROR VZUSUSD 2025-08: deadline
+[dukascopy] ERROR VZUSUSD 2025-09: deadline
+[dukascopy] ERROR VZUSUSD 2025-10: deadline
+[dukascopy] ERROR VZUSUSD 2025-11: deadline
+[dukascopy] ERROR VZUSUSD 2025-12: deadline
+[dukascopy] ERROR VZUSUSD 2026-01: deadline
+[dukascopy] ERROR VZUSUSD 2026-02: deadline
+[dukascopy] ERROR VZUSUSD 2026-03: deadline
+[dukascopy] ERROR VZUSUSD 2026-04: deadline
+[dukascopy] ERROR VZUSUSD 2026-05: deadline
+[dukascopy] ERROR VZUSUSD 2026-06: deadline
+[dukascopy] ERROR VZUSUSD 2026-07: deadline
+[dukascopy] ERROR VZUSUSD 2026-08: deadline
+[dukascopy] ERROR VZUSUSD 2026-09: deadline
+[dukascopy] ERROR VZUSUSD 2026-10: deadline
+[dukascopy] ERROR CMCSAUSUSD 2020-01: deadline
+[dukascopy] ERROR CMCSAUSUSD 2020-02: deadline
+[dukascopy] ERROR CMCSAUSUSD 2020-03: deadline
+[dukascopy] ERROR CMCSAUSUSD 2020-04: deadline
+[dukascopy] ERROR CMCSAUSUSD 2020-05: deadline
+[dukascopy] ERROR CMCSAUSUSD 2020-06: deadline
+[dukascopy] ERROR CMCSAUSUSD 2020-07: deadline
+[dukascopy] ERROR CMCSAUSUSD 2020-08: deadline
+[dukascopy] ERROR CMCSAUSUSD 2020-09: deadline
+[dukascopy] ERROR CMCSAUSUSD 2020-10: deadline
+[dukascopy] ERROR CMCSAUSUSD 2020-11: deadline
+[dukascopy] ERROR CMCSAUSUSD 2020-12: deadline
+[dukascopy] ERROR CMCSAUSUSD 2021-01: deadline
+[dukascopy] ERROR CMCSAUSUSD 2021-02: deadline
+[dukascopy] ERROR CMCSAUSUSD 2021-03: deadline
+[dukascopy] ERROR CMCSAUSUSD 2021-04: deadline
+[dukascopy] ERROR CMCSAUSUSD 2021-05: deadline
+[dukascopy] ERROR CMCSAUSUSD 2021-06: deadline
+[dukascopy] ERROR CMCSAUSUSD 2021-07: deadline
+[dukascopy] ERROR CMCSAUSUSD 2021-08: deadline
+[dukascopy] ERROR CMCSAUSUSD 2021-09: deadline
+[dukascopy] ERROR CMCSAUSUSD 2021-10: deadline
+[dukascopy] ERROR CMCSAUSUSD 2021-11: deadline
+[dukascopy] ERROR CMCSAUSUSD 2021-12: deadline
+[dukascopy] ERROR CMCSAUSUSD 2022-01: deadline
+[dukascopy] ERROR CMCSAUSUSD 2022-02: deadline
+[dukascopy] ERROR CMCSAUSUSD 2022-03: deadline
+[dukascopy] ERROR CMCSAUSUSD 2022-04: deadline
+[dukascopy] ERROR CMCSAUSUSD 2022-05: deadline
+[dukascopy] ERROR CMCSAUSUSD 2022-06: deadline
+[dukascopy] ERROR CMCSAUSUSD 2022-07: deadline
+[dukascopy] ERROR CMCSAUSUSD 2022-08: deadline
+[dukascopy] ERROR CMCSAUSUSD 2022-09: deadline
+[dukascopy] ERROR CMCSAUSUSD 2022-10: deadline
+[dukascopy] ERROR CMCSAUSUSD 2022-11: deadline
+[dukascopy] ERROR CMCSAUSUSD 2022-12: deadline
+[dukascopy] ERROR CMCSAUSUSD 2023-01: deadline
+[dukascopy] ERROR CMCSAUSUSD 2023-02: deadline
+[dukascopy] ERROR CMCSAUSUSD 2023-03: deadline
+[dukascopy] ERROR CMCSAUSUSD 2023-04: deadline
+[dukascopy] ERROR CMCSAUSUSD 2023-05: deadline
+[dukascopy] ERROR CMCSAUSUSD 2023-06: deadline
+[dukascopy] ERROR CMCSAUSUSD 2023-07: deadline
+[dukascopy] ERROR CMCSAUSUSD 2023-08: deadline
+[dukascopy] ERROR CMCSAUSUSD 2023-09: deadline
+[dukascopy] ERROR CMCSAUSUSD 2023-10: deadline
+[dukascopy] ERROR CMCSAUSUSD 2023-11: deadline
+[dukascopy] ERROR CMCSAUSUSD 2023-12: deadline
+[dukascopy] ERROR CMCSAUSUSD 2024-01: deadline
+[dukascopy] ERROR CMCSAUSUSD 2024-02: deadline
+[dukascopy] ERROR CMCSAUSUSD 2024-03: deadline
+[dukascopy] ERROR CMCSAUSUSD 2024-04: deadline
+[dukascopy] ERROR CMCSAUSUSD 2024-05: deadline
+[dukascopy] ERROR CMCSAUSUSD 2024-06: deadline
+[dukascopy] ERROR CMCSAUSUSD 2024-07: deadline
+[dukascopy] ERROR CMCSAUSUSD 2024-08: deadline
+[dukascopy] ERROR CMCSAUSUSD 2024-09: deadline
+[dukascopy] ERROR CMCSAUSUSD 2024-10: deadline
+[dukascopy] ERROR CMCSAUSUSD 2024-11: deadline
+[dukascopy] ERROR CMCSAUSUSD 2024-12: deadline
+[dukascopy] ERROR CMCSAUSUSD 2025-01: deadline
+[dukascopy] ERROR CMCSAUSUSD 2025-02: deadline
+[dukascopy] ERROR CMCSAUSUSD 2025-03: deadline
+[dukascopy] ERROR CMCSAUSUSD 2025-04: deadline
+[dukascopy] ERROR CMCSAUSUSD 2025-05: deadline
+[dukascopy] ERROR CMCSAUSUSD 2025-06: deadline
+[dukascopy] ERROR CMCSAUSUSD 2025-07: deadline
+[dukascopy] ERROR CMCSAUSUSD 2025-08: deadline
+[dukascopy] ERROR CMCSAUSUSD 2025-09: deadline
+[dukascopy] ERROR CMCSAUSUSD 2025-10: deadline
+[dukascopy] ERROR CMCSAUSUSD 2025-11: deadline
+[dukascopy] ERROR CMCSAUSUSD 2025-12: deadline
+[dukascopy] ERROR CMCSAUSUSD 2026-01: deadline
+[dukascopy] ERROR CMCSAUSUSD 2026-02: deadline
+[dukascopy] ERROR CMCSAUSUSD 2026-03: deadline
+[dukascopy] ERROR CMCSAUSUSD 2026-04: deadline
+[dukascopy] ERROR CMCSAUSUSD 2026-05: deadline
+[dukascopy] ERROR CMCSAUSUSD 2026-06: deadline
+[dukascopy] ERROR CMCSAUSUSD 2026-07: deadline
+[dukascopy] ERROR CMCSAUSUSD 2026-08: deadline
+[dukascopy] ERROR CMCSAUSUSD 2026-09: deadline
+[dukascopy] ERROR CMCSAUSUSD 2026-10: deadline
+[dukascopy] 07:19:38 1h: +1232 rows from 8 files
+[dukascopy] 07:19:49 5m: 33 symbol-months to fetch
+[dukascopy] 07:20:00 5m: +0 rows from 0 months, 33 months still missing
+[us] 07:21:10 daily ok 583/583, +0 rows
+[a_share] 07:21:52 target end date 2026-11-06
+[a_share] 07:28:12 1366 stocks to fetch (5540 in universe)
+[a_share] 07:28:29 bars 250/1366  0.07s/stock
+[a_share] 07:28:45 bars 500/1366  0.07s/stock
+[a_share] 07:29:03 bars 750/1366  0.07s/stock
+[a_share] 07:29:18 bars 1000/1366  0.07s/stock
+[a_share] 07:29:35 bars 1250/1366  0.07s/stock
+[a_share] ERROR factor sz.301206: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301203: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301207: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301208: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301209: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301205: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301210: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301213: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301211: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301212: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301216: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301215: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301217: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301218: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301219: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301221: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301220: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301222: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301223: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301225: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301226: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301227: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301228: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301229: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301230: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301231: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301233: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301232: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301234: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301235: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301236: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301237: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301238: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301239: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301246: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301248: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301251: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301255: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301252: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301256: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301257: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301258: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301259: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301260: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301262: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301263: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301261: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301265: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301266: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301267: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301268: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301269: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301270: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301272: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301275: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301273: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301277: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301278: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301276: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301279: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301280: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301281: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301282: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301283: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301285: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301286: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301288: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301287: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301289: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301291: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301292: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301290: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301293: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301295: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301296: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301298: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301297: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301299: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301300: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301301: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301302: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301305: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301303: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301306: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301307: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301308: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301309: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301310: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301311: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301312: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301313: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301314: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301316: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301315: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301317: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301318: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301319: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301320: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301321: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301322: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301323: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301325: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301327: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301326: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301328: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301330: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301329: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301331: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301333: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301332: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301335: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301336: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301337: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301338: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301339: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301345: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301348: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301349: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301353: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301355: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301356: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301358: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301357: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301359: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301360: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301361: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301362: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301365: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301363: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301366: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301367: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301368: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301369: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301371: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301370: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301372: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301376: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301377: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301373: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301379: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301378: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301380: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301381: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301383: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301386: baostock 10002007: 网络接收错误。
+[a_share] ERROR factor sz.301387: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301382: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301389: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301388: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301390: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301391: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301393: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301395: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301392: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301396: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301397: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301399: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301408: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301413: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301419: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301418: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301398: baostock 10002007: 网络接收错误。
+[a_share] ERROR factor sz.301421: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301428: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301429: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301439: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301448: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301446: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301456: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301458: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301449: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301459: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301469: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301468: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301479: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301487: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301486: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301488: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301489: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301491: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301498: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301499: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301500: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301501: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301502: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301503: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301505: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301508: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301507: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301509: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301510: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301511: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301513: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301512: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301515: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301516: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301517: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301518: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301519: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301522: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301520: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301525: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301526: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301528: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301531: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301529: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301533: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301535: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301536: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301538: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301548: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301550: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301539: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301551: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301552: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301555: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301558: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301557: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301556: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301559: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301560: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301563: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301565: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301566: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301567: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301568: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301569: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301571: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301575: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301577: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301578: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301580: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301581: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301583: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301584: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301585: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301586: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301587: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301588: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301589: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301591: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301590: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301592: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301595: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301596: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301598: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301599: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301600: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301601: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301602: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301603: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301606: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301607: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301608: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301609: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301611: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301613: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301616: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301617: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301618: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301622: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301626: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301628: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301629: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301630: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301631: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301632: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301633: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301636: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301638: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301655: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301656: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301658: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301660: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301662: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301665: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301666: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301667: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301668: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301669: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301677: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301678: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301682: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301680: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301683: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301686: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301688: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301687: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301696: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301689: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301697: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301699: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301707: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301716: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301717: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.301718: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] ERROR factor sz.302132: baostock 10001011: 黑名单用户，请与管理员联系
+[a_share] 09:57:39 writing 9,732 bar rows
+{"us_universe": [true, 0], "binance": [true, 0], "us": [true, 0], "a_share": [true, 297], "dukascopy": [false, 725]}
