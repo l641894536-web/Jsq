@@ -21,7 +21,7 @@ US_ETFS = ["SPY", "QQQ", "IWM", "DIA", "TLT", "IEF", "HYG", "GLD", "SLV", "GDX",
            "USO", "UUP", "SMH", "SOXX", "XLK", "XLF", "XLE", "XLV", "ARKK", "TQQQ", "SQQQ",
            "SOXL", "KWEB", "FXI", "EEM", "IBIT", "ETHA"]
 US_INDICES = ["^GSPC", "^NDX", "^DJI", "^RUT", "^VIX", "^TNX", "DX-Y.NYB"]
-US_FUTURES = ["GC=F", "SI=F", "HG=F", "PL=F", "CL=F", "ES=F", "NQ=F"]
+US_FUTURES = ["GC=F", "SI=F", "HG=F", "PL=F", "PA=F", "NG=F", "CL=F", "ES=F", "NQ=F"]
 US_EXTRA_STOCKS = ["MSTR", "COIN", "HOOD", "CRCL", "TSM", "ASML", "BABA", "PDD", "JD", "BIDU",
                    "NIO", "LI", "XPEV", "BILI", "FUTU", "SMCI", "ARM", "MARA", "RIOT", "CLSK",
                    "CRWV", "SNOW", "SHOP", "RDDT", "NET", "SOFI", "RKLB", "IONQ", "OKLO",

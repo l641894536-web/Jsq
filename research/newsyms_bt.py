@@ -12,7 +12,7 @@ from contract_bt import simulate
 START = pd.Timestamp("2021-11-01", tz="UTC")
 MID = pd.Timestamp("2024-05-01", tz="UTC")
 END = pd.Timestamp("2026-11-01", tz="UTC")
-CRYPTO = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT", "DOGEUSDT"]
+CRYPTO = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT", "DOGEUSDT", "ADAUSDT"]
 
 
 def bull_series(close):
@@ -113,7 +113,7 @@ def qqq_check(t):
 
 if __name__ == "__main__":
     c = crypto(); c.to_csv("crypto_trades.csv", index=False)
-    show(c, "加密 6 币 · 比特币200日线定牛熊 · 2021-11→2026-10")
+    show(c, "加密 7 币 · 比特币200日线定牛熊 · 2021-11→2026-10")
     s = c[(c.entry_rule == "breakout") & (c.variant == "E")]
     print("\n--- 加密 breakout|E 分币种 平均R")
     print(s.groupby(["sym", "env", "dir"]).r.mean().unstack(["env", "dir"]).round(3).to_string())

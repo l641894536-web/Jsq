@@ -9,7 +9,7 @@ MID = pd.Timestamp("2024-05-01", tz="UTC")
 
 def norm(t, env):
     t = t.copy()
-    t["env"] = env
+    t["env"] = np.asarray(env, dtype=object)
     t["dir"] = t.side.map({1: "long", -1: "short"})
     t["h"] = np.where(pd.to_datetime(t.ts, utc=True) < MID, "h1", "h2")
     return t[t.env.notna()]
@@ -48,8 +48,10 @@ def main():
     n = pd.read_csv("nontech_trades.csv"); out["stock_nontech"] = stats(norm(n, n.env.where(n.env.notna(), None)))
     try:
         m = pd.read_csv("commod_trades.csv")
+        m = norm(m, m.env.where(m.env.notna(), None))
+        out["commod"] = stats(m)                      # 铂/钯/铜/天然气合起来（单个品种每格多数不到100笔）
         for sym, x in m.groupby("sym"):
-            out[sym] = stats(norm(x, x.env.where(x.env.notna(), None)))
+            out[sym] = stats(x)
     except FileNotFoundError:
         pass
     return out

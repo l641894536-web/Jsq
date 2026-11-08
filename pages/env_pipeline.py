@@ -256,7 +256,18 @@ for t in ["QQQ", "SPY"]:
                       sum199=r(px.iloc[-199:].sum(), 2), hi252=r(px.iloc[-252:].max(), 2))
 qq = load.us_daily("QQQ").set_index("date")["close"]
 live_us["QQQ"]["stop_line"] = r(qq.loc[n.index[t0]] * 0.85, 2)
-live = dict(a=live_a, us=live_us)
+# 币安上市不满200个交易日的大宗合约，大方向用美国期货日线的200日线（上个收盘）
+live_fut = {}
+for sym, tk in {"XPTUSDT": "PL=F", "XPDUSDT": "PA=F", "COPPERUSDT": "HG=F", "NATGASUSDT": "NG=F"}.items():
+    try:
+        px = load.us_daily(tk).set_index("date")["close"].dropna()
+    except Exception:
+        continue
+    if len(px) < 200:
+        continue
+    ma = px.iloc[-200:].mean()
+    live_fut[sym] = dict(ticker=tk, date=str(px.index[-1].date()), close=r(px.iloc[-1], 4), ma200=r(ma, 4), vs=r(px.iloc[-1] / ma - 1, 4))
+live = dict(a=live_a, us=live_us, fut=live_fut)
 static = json.load(open(args.static, encoding="utf-8"))
 findings = static["findings"]
 earn = {}

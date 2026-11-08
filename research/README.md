@@ -8,12 +8,12 @@
 | `contract_bt.py` | 合约短线规则模拟器：突破/均线交叉进场，前 L 根高低点止损，A=死拿、E=浮盈1R挪保本等出场，扣0.1%来回成本 |
 | `regime.py`, `contract_regime.py` | 美股环境（纳指200日线 × VIX）；AMD/美光/戴尔 + 25只科技股分环境回测 |
 | `gold_env.py` | 黄金白银：日线环境变量 + 小时线短线规则分牛熊 |
-| `newsyms_bt.py` | 加密6币（比特币200日线）、23只非科技蓝筹（标普200日线） |
+| `newsyms_bt.py` | 加密7币（比特币200日线）、23只非科技蓝筹（标普200日线） |
 | `commod_bt.py` | 铂金、钯金、铜、天然气（Dukascopy 商品CFD，自身200日线） |
 | `build_contract_stats.py` | 汇总成 gh-pages `env_static.json` 的 `contract_stats`（含前后两段 h1/h2） |
 | `bear.py` | 美股跌破200日线：长熊还是短恐慌，认错线 |
 | `build_panel.py`, `sentiment.py`, `test_sent.py`, `build_env.py` | A股情绪温度（11个指标） |
 | `ashare_vs_us.py`, `stock_bt.py`, `stock_split.py`, `stock_signals.py`, `trendstart.py` | 抄底、个股信号、趋势起点 |
 
-页面怎么用这些统计：合约结论卡按 `breakout|E|环境|方向` 取统计，平均≥0.08R 且前后两段都赚 = 稳定优势；
+页面怎么用这些统计：合约结论卡按 `breakout|E|环境|方向` 取统计，平均≥0.08R 且前后两段都≥0.03R = 稳定优势；
 ≥0.08R 但有一段不赚 = 时灵时不灵（轻仓）；−0.03～0.08R = 基本不赚；更低 = 亏；不足100笔 = 样本少。
