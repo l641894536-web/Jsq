@@ -211,7 +211,8 @@ live = dict(a=live_a, us=live_us)
 static = json.load(open(args.static, encoding="utf-8"))
 findings = static["findings"]
 env = dict(asof=max(a_today["date"], us_today["date"]), a=dict(today=a_today, stats=stats, series=a_series),
-           us=dict(today=us_today, series=us_series), live=live, findings=findings)
+           us=dict(today=us_today, series=us_series), live=live, findings=findings,
+           contract_stats=static.get("contract_stats"), contract_stats_note=static.get("contract_stats_note"))
 json.dump(env, open(args.out, "w"), ensure_ascii=False, separators=(",", ":"))
 
 # ============================================================ 变化摘要
