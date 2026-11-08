@@ -223,7 +223,7 @@ td.n { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
 .schip b { font-weight: 600; font-variant-numeric: tabular-nums; }
 .schip.good b { color: var(--good); } .schip.warn b { color: var(--warn); } .schip.bad b { color: var(--bad); }
 .tabs button { min-width: 64px; }
-.tab { display: grid; gap: 14px; }
+.tab { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; min-width: 0; }
 .tab[hidden] { display: none; }
 .check-body { padding: 10px 14px 14px; display: grid; gap: 10px; }
 .check-verdict { font-size: 14px; border-radius: 8px; padding: 9px 12px; background: var(--sunk); }
@@ -234,6 +234,9 @@ td.n { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
 .ck-b { font-size: 13px; overflow-wrap: anywhere; }
 .ck-stat { margin: 2px 0; } .ck-stat.pos b { color: var(--good); } .ck-stat.neg b { color: var(--bad); }
 .ck-src { margin: 4px 0 0; font-size: 11.5px; color: var(--muted); }
+#mainTable { min-width: 0; width: 100%; }
+#mainTable th, #mainTable td { padding-left: 6px; padding-right: 6px; white-space: nowrap; }
+#mainTable td:first-child { white-space: normal; }
 </style>
 </head>
 <body>
@@ -435,7 +438,7 @@ td.n { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
     <div class="panel-h"><h2 id="mainTitle">今天的主线：钱往哪些行业走</h2><span class="sub" id="mainSub">正在载入…</span></div>
     <div class="report">
       <div class="tablewrap"><table id="mainTable"></table></div>
-      <p class="note">按证监会行业分类，只算15只股票以上的行业。排序看"成交占比比平时多了多少"：占比放大，说明资金在往这个行业集中。这是描述，不是买卖信号。</p>
+      <p class="note">按证监会行业分类，只算15只股票以上、成交占全市场0.5%以上的行业。"比平时"是今天的成交占比除以近20天平均占比，按它排序：数字越大，说明资金越往这个行业集中。这是描述，不是买卖信号。</p>
     </div>
   </section>
   </div>
@@ -1638,6 +1641,16 @@ function estTemp(L, raw) {
 
 function renderA(q) {
   const L = E.live.a, box = $("aLive");
+  // 行情日期不晚于收盘基准日（周末、收盘数据已更新后）：上面的收盘数据就是最新的，不再重复估算
+  if (q.stamp && q.stamp.slice(0, 8) <= String(L.date).replace(/-/g, "")) {
+    $("aLiveTime").textContent = "现在没有新的盘中行情";
+    $("aLiveKv").replaceChildren();
+    $("aLiveNote").textContent = `上面已经是 ${+L.date.slice(5, 7)}月${+L.date.slice(8, 10)}日收盘的正式数据。A股开盘后（北京时间9:15起）这里会每2分钟更新一次。`;
+    box.hidden = false;
+    window.JSQ_LIVE_A = null;
+    window.JSQ_renderMainClose();
+    return;
+  }
   const raw = { "涨停占比": q.zt / q.n, "跌停占比": q.dt / q.n, "涨跌停差占比": (q.zt - q.dt) / q.n, "上涨占比": q.up / q.n };
   const t = estTemp(L, raw);
   const ewLive = L.ew_last * (1 + q.ew), ma = (L.ew_sum199 + ewLive) / 200;
@@ -1673,20 +1686,21 @@ function renderMain(rows, when) {
   const tb = $("mainTable"); if (!tb) return;
   $("mainSub").textContent = when;
   tb.replaceChildren();
-  const head = el("tr"); ["行业", "成交占比（平时）", "平均涨跌", "涨停"].forEach((h) => head.append(el("th", null, h)));
+  const head = el("tr"); ["行业", "成交占比", "比平时", "涨跌", "涨停"].forEach((h) => head.append(el("th", null, h)));
   const th = el("thead"); th.append(head);
   const body = el("tbody");
   for (const r of rows) {
     const tr = el("tr");
     const ratio = r.share20 ? r.share / r.share20 : NaN;
-    tr.append(el("td", null, `${r.name}（${r.n}只）`),
-      el("td", "n", `${(r.share * 100).toFixed(1)}%（${(r.share20 * 100).toFixed(1)}%）${isFinite(ratio) ? " ×" + ratio.toFixed(2) : ""}`),
-      el("td", "n", pct(r.avg, 2)), el("td", "n", String(r.zt)));
+    tr.append(el("td", null, r.name),
+      el("td", "n", `${(r.share * 100).toFixed(1)}%`),
+      el("td", "n", isFinite(ratio) ? "×" + ratio.toFixed(2) : "—"),
+      el("td", "n", pct(r.avg, 1)), el("td", "n", String(r.zt)));
     body.append(tr);
   }
   tb.append(th, body);
 }
-window.JSQ_renderMainClose = () => { if (E && E.a.today.top_ind) renderMain(E.a.today.top_ind, `上个收盘（${E.a.today.date.slice(5).replace("-", "月")}日）`); };
+window.JSQ_renderMainClose = () => { if (E && E.a.today.top_ind) { const d = E.a.today.date; renderMain(E.a.today.top_ind, `上个收盘（${+d.slice(5, 7)}月${+d.slice(8, 10)}日）`); } };
 
 async function tickA() {
   if (aBusy || document.hidden || $("tab-stock").hidden) return;
