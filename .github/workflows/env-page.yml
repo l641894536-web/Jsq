@@ -1,0 +1,72 @@
+name: env-page
+
+# 交易台（GitHub Pages）"市场环境"：数据管线 market-data 每次跑完后，重算 env.json 并提交到 gh-pages。
+on:
+  workflow_run:
+    workflows: [market-data]
+    types: [completed]
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "pages/**"
+      - ".github/workflows/env-page.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: env-page
+  cancel-in-progress: false
+
+jobs:
+  build:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      REPO_URL: https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Get code, site and data
+        run: |
+          git clone -q --depth 1 "$REPO_URL" code
+          git clone -q --depth 1 --branch gh-pages "$REPO_URL" site
+          git clone -q --depth 1 --filter=blob:none --sparse --branch data "$REPO_URL" data
+          pats="/status.json /us/meta /us/daily /a_share/meta"
+          for y in $(seq 2014 $(date -u +%Y)); do pats="$pats /a_share/daily/$y"; done
+          git -C data sparse-checkout set --no-cone $pats
+          du -sh data
+
+      - name: Install
+        run: |
+          python -m venv venv
+          venv/bin/pip install -q "pandas==3.0.5" "numpy==2.5.3"
+
+      - name: Build env.json
+        run: |
+          cp site/env.json prev_env.json
+          venv/bin/python -u code/pages/env_indicators.py --data data --jsq code \
+            --static site/env_static.json --out site/env.json --prev prev_env.json | tee build.log
+          venv/bin/python - <<'PY'
+          import json
+          a = json.load(open("site/env.json")); o = json.load(open("prev_env.json"))
+          t, u = a["a"]["today"], a["us"]["today"]
+          assert 0 <= t["temp"] <= 100, t["temp"]
+          assert len(a["a"]["series"]) >= 450 and len(a["us"]["series"]) >= 450
+          assert t["date"] >= o["a"]["today"]["date"] and u["date"] >= o["us"]["today"]["date"]
+          print("check ok", t["date"], u["date"])
+          PY
+
+      - name: Publish to gh-pages
+        working-directory: site
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add env.json
+          if git diff --cached --quiet; then echo "env.json unchanged"; exit 0; fi
+          git commit -q -m "env: $(head -2 ../build.log | tail -1)"
+          git push -q origin HEAD:gh-pages
