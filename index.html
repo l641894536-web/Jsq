@@ -1965,16 +1965,23 @@ async function needDMA(sym) {
   try { await fetchDMA(sym); } catch (e) {}
 }
 // 一个品种的"大方向"
+// 非科技蓝筹（回测样本：23只金融/医药/消费/能源/工业大盘股）——大方向看标普，不看纳指
+const NONTECH = ["JPMUSDT", "GSUSDT", "BACUSDT", "BXUSDT", "VUSDT", "LLYUSDT", "UNHUSDT", "ABBVUSDT", "MRKUSDT", "PFEUSDT", "AMGNUSDT",
+  "COSTUSDT", "WMTUSDT", "HDUSDT", "MCDUSDT", "KOUSDT", "NKEUSDT", "DISUSDT", "XOMUSDT", "OXYUSDT", "CATUSDT", "ACNUSDT", "XLEUSDT", "SPYUSDT"];
 function envFor(sym) {
   const g = U.groupOfSym(sym);
   if (g === "stock") {
     const u = usNow(); if (!u) return null;
-    return { bull: u.bull, what: `纳指在200日线${u.bull ? "上方" : "下方"}（${pct(u.vs)}）`, src: u.live ? "币安QQQ合约实时" : "上个美股收盘", tested: true };
+    if (NONTECH.includes(sym)) {
+      const b = u.spxVs > 0;
+      return { bull: b, what: `标普在200日线${b ? "上方" : "下方"}（${pct(u.spxVs)}）`, src: u.live ? "币安SPY合约实时" : "上个美股收盘" };
+    }
+    return { bull: u.bull, what: `纳指在200日线${u.bull ? "上方" : "下方"}（${pct(u.vs)}）`, src: u.live ? "币安QQQ合约实时" : "上个美股收盘" };
   }
   const ref = g === "crypto" ? "BTCUSDT" : sym, d = DMA[ref];
   if (!d) return null;
   const nm = U.names[ref] || ref;
-  return { bull: d.bull, what: `${nm}在200日线${d.bull ? "上方" : "下方"}（${pct(d.vs)}）`, src: "币安日线实时", tested: sym === "XAUUSDT" || sym === "XAGUSDT" };
+  return { bull: d.bull, what: `${nm}在200日线${d.bull ? "上方" : "下方"}（${pct(d.vs)}）`, src: "币安日线实时" };
 }
 
 // ================================================================ 状态栏
@@ -2035,19 +2042,38 @@ function tech(V, tf) {
 }
 
 // ================================================================ 结论卡
+const STATKEY = { XAUUSDT: "XAUUSD", XAGUSDT: "XAGUSD", XPTUSDT: "XPTCMDUSD", XPDUSDT: "XPDCMDUSD", COPPERUSDT: "COPPERCMDUSD", NATGASUSDT: "GASCMDUSD" };
+function statKey(sym) {
+  const g = U.groupOfSym(sym);
+  if (STATKEY[sym]) return STATKEY[sym];
+  if (g === "crypto") return "crypto";
+  if (["AMDUSDT", "MUUSDT", "DELLUSDT", "SPCXUSDT"].includes(sym)) return "stock_main";
+  if (NONTECH.includes(sym)) return "stock_nontech";
+  return g === "stock" ? "stock_other" : null;
+}
 function statFor(sym, bull, side) {
   const E = window.JSQ_ENV; if (!E || !E.contract_stats) return null;
-  const g = U.groupOfSym(sym);
-  const key = sym === "XAUUSDT" ? "XAUUSD" : sym === "XAGUSDT" ? "XAGUSD" : (["AMDUSDT", "MUUSDT", "DELLUSDT", "SPCXUSDT"].includes(sym) ? "stock_main" : (g === "stock" ? "stock_other" : null));
+  const key = statKey(sym);
   if (!key || !E.contract_stats[key]) return null;
   const s = E.contract_stats[key][`breakout|E|${bull ? "bull" : "bear"}|${side}`];
   return s ? { key, s } : null;
 }
-const SAMPLE = { stock_main: "AMD/美光/戴尔近5年", stock_other: "25只大型科技股近5年", XAUUSD: "黄金近5年", XAGUSD: "白银近5年" };
+const SAMPLE = { stock_main: "AMD/美光/戴尔近5年", stock_other: "25只大型科技股近5年", stock_nontech: "23只非科技蓝筹近5年", crypto: "6个主流币近5年",
+  XAUUSD: "黄金近5年", XAGUSD: "白银近5年", XPTCMDUSD: "铂金近5年", XPDCMDUSD: "钯金近5年", COPPERCMDUSD: "铜近5年", GASCMDUSD: "天然气近5年" };
+// 回测评级：样本少 / 稳定赚 / 时灵时不灵 / 基本不赚 / 亏
+function grade(st) {
+  if (!st) return "none";
+  const s = st.s;
+  if (s.n < 100) return "few";
+  if (s.avg >= 0.08) return (s.h1 > 0 && s.h2 > 0) ? "edge" : "unstable";
+  return s.avg > -0.03 ? "flat" : "lose";
+}
+const rTxt = (x) => `${x >= 0 ? "赚" : "亏"}${Math.abs(x).toFixed(2)}份止损`;
+const halfTxt = (s) => `2021-11到2024-04平均每笔${rTxt(s.h1)}，2024-05以后${rTxt(s.h2)}`;
 function histLine(st, label) {
   if (!st) return "";
   const s = st.s, w = Math.round(s.win * 10), net = s.avg;
-  return `${label}：10笔里赚${w}笔，平均每笔${net >= 0 ? "净赚" : "净亏"} ${Math.abs(net).toFixed(2)} 份止损（${SAMPLE[st.key]}，${s.n}笔）`;
+  return `${label}：10笔里赚${w}笔，平均每笔${net >= 0 ? "净赚" : "净亏"} ${Math.abs(net).toFixed(2)} 份止损（${SAMPLE[st.key] || st.key}，${s.n}笔）`;
 }
 function usMarketClosed() {
   const p = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", weekday: "short", hour: "2-digit", minute: "2-digit", hour12: false }).formatToParts(new Date());
@@ -2055,19 +2081,20 @@ function usMarketClosed() {
   const wd = g("weekday"), hm = (+g("hour") % 24) * 60 + +g("minute");
   return wd === "Sat" || wd === "Sun" || hm < 9 * 60 + 30 || hm >= 16 * 60;
 }
-function plan(V, side, tf) {
-  const E0 = V.last, dp = V.dp, day = tf === "1d" ? "20日" : "24小时";
+function plan(V, side, tf, at) {
+  const E0 = at || V.last, dp = V.dp, day = tf === "1d" ? "20日" : "24小时";
   const stop = side === 1 ? V.L * 0.999 : V.H * 1.001, R = side * (E0 - stop);
   if (!(R > 0) || !isFinite(R)) return `现价已经越过${day}${side === 1 ? "最低" : "最高"}点，按你的规则没法放止损。`;
   const cands = [];
-  const lv = side === 1 ? V.res[0] : V.sup[0];
-  if (lv && side * (lv.p - E0) >= 0.5 * R) cands.push({ p: lv.p, w: side === 1 ? "阻力" : "支撑" });
+  const lv = ((side === 1 ? V.res : V.sup) || []).find((x) => side * (x.p - E0) >= 0.5 * R);
+  if (lv) cands.push({ p: lv.p, w: side === 1 ? "阻力" : "支撑" });
   const ext = side === 1 ? V.H : V.L;
   if (isFinite(ext) && side * (ext - E0) >= 0.5 * R) cands.push({ p: ext, w: `${day}${side === 1 ? "最高" : "最低"}` });
   cands.sort((a, b) => side * (a.p - b.p));
   const tg = cands[0] || { p: E0 + side * 2 * R, w: "两倍止损距离" };
   const rr = side * (tg.p - E0) / R;
-  return `${side === 1 ? "做多" : "做空"}参考：止损 <b>${fmt(stop, dp)}</b>（亏 ${pabs(R / E0, 2)}）→ 目标 <b>${fmt(tg.p, dp)}</b>（${esc(tg.w)}，赚 ${pabs((tg.p - E0) / E0, 2)}），盈亏比 1:${rr.toFixed(1)}${rr < 1 ? "，<b>不划算</b>" : ""}。浮盈到 ${fmt(E0 + side * R, dp)} 就把止损挪到开仓价。`;
+  const head = at ? `${side === 1 ? "站上" : "跌破"} ${fmt(at, dp)} 之后${side === 1 ? "做多" : "做空"}参考` : `${side === 1 ? "做多" : "做空"}参考`;
+  return `${head}：止损 <b>${fmt(stop, dp)}</b>（亏 ${pabs(R / E0, 2)}）→ 目标 <b>${fmt(tg.p, dp)}</b>（${esc(tg.w)}，赚 ${pabs((tg.p - E0) / E0, 2)}），盈亏比 1:${rr.toFixed(1)}${rr < 1 ? "，<b>不划算</b>" : ""}。浮盈到 ${fmt(E0 + side * R, dp)} 就把止损挪到开仓价。`;
 }
 function setDir(text, cls) { const d = $("cardDir"); d.textContent = text; d.className = "card-dir " + cls; }
 function renderCard(force) {
@@ -2084,30 +2111,48 @@ function renderCard(force) {
   // 技术面一行一行
   $("cardTech").innerHTML = T.items.map((x) => `<li><span class="lean ${x.lean === "多" ? "up" : x.lean === "空" ? "down" : "flat"}">${x.lean}</span><b>${x.k}</b>${esc(x.txt)}</li>`).join("");
   // 结论
-  let dir, cls, why, side = 0;
+  let dir, cls, why, side = 0, noPlan = "", planAt = 0;
   const leanTxt = `技术面${T.lean}（${T.items.filter((x) => x.lean === "多").length}项偏多、${T.items.filter((x) => x.lean === "空").length}项偏空）`;
+  const stL = env ? statFor(sym, env.bull, "long") : null, stS = env ? statFor(sym, env.bull, "short") : null;
+  const gL = grade(stL), gS = grade(stS), envWord = env ? (env.bull ? "牛市" : "熊市") : "";
+  const ok = (x) => x === "edge" || x === "unstable";
+  const H = fmt(V.H, V.dp), Lw = fmt(V.L, V.dp), dayW = tf === "1d" ? "20日" : "24小时";
   if (!env) { dir = T.lean === "多空分歧" ? "看不清" : `技术面${T.lean}`; cls = "flat"; why = `大方向还没算出来。${leanTxt}。`; side = T.lean === "偏多" ? 1 : T.lean === "偏空" ? -1 : 0; }
-  else if (!env.tested) {
+  else if (gL === "none" && gS === "none") {
     dir = T.lean === "偏多" ? "技术面偏多" : T.lean === "偏空" ? "技术面偏空" : "看不清"; cls = T.lean === "偏多" ? "up" : T.lean === "偏空" ? "down" : "flat";
-    why = `大方向：${env.what}。${leanTxt}。<b>这个品种没回测过</b>，只能参考技术面。`; side = T.lean === "偏多" ? 1 : T.lean === "偏空" ? -1 : 0;
-  } else if (env.bull) {
-    if (T.lean === "偏多") { dir = "可以做多"; cls = "up"; side = 1; why = `大方向牛市（${env.what}），${leanTxt}，顺势。`; }
-    else if (T.lean === "偏空") { dir = "别做空，等回调结束"; cls = "warn"; side = 0; why = `大方向牛市（${env.what}），短线在回调。回测里牛市做空基本都亏，等短线重新转强再做多。`; }
-    else { dir = "等突破再做多"; cls = "warn"; side = 1; why = `大方向牛市（${env.what}），短线方向不明。等价格站上${tf === "1d" ? "20日" : "24小时"}最高点 ${fmt(V.H, V.dp)} 再考虑做多，不做空。`; }
+    why = `大方向：${env.what}。${leanTxt}。<b>这个品种还没回测过</b>，只能参考技术面。`; side = T.lean === "偏多" ? 1 : T.lean === "偏空" ? -1 : 0;
+  } else if (["flat", "lose"].includes(gL) && ["flat", "lose"].includes(gS)) {
+    dir = "不适合做短线"; cls = "flat"; side = 0; noPlan = "回测不支持，不给参考价位。";
+    why = `大方向${envWord}（${env.what}），${leanTxt}。但这类品种在这种环境里，突破做多平均每笔${stL.s.avg > 0 ? "只" : ""}${rTxt(stL.s.avg)}、跌破做空${stS.s.avg > 0 ? "只" : ""}${rTxt(stS.s.avg)}，用这套短线规则做不出优势。`;
+  } else if (T.lean !== "多空分歧") {
+    const up = T.lean === "偏多", g1 = up ? gL : gS, st = up ? stL : stS, w = up ? "做多" : "做空";
+    side = up ? 1 : -1;
+    const head = `大方向${envWord}（${env.what}），${leanTxt}。`;
+    if (g1 === "edge") { dir = `可以${w}`; cls = up ? "up" : "down"; why = head + `回测里这种环境${w}前后两段都赚钱。`; }
+    else if (g1 === "unstable") { dir = `可以${w}（轻仓）`; cls = up ? "up" : "down"; why = head + `回测${w}整体赚钱，但时灵时不灵：${halfTxt(st.s)}。`; }
+    else if (g1 === "few") { dir = `技术面${T.lean}`; cls = "warn"; why = head + `这种环境回测样本太少（${st.s.n}笔），结论不可靠，只能参考技术面、轻仓。`; }
+    else {
+      const avoid = g1 === "lose" ? `回测里这种环境${w}是亏的（平均每笔${rTxt(st.s.avg)}）` : `回测里这种环境${w}基本不赚（平均每笔${rTxt(st.s.avg)}，扣完手续费白忙）`;
+      side = 0; noPlan = "回测不支持这个方向，不给参考价位。";
+      if (!up && env.bull) { dir = "别做空，等回调结束"; cls = "warn"; why = head + avoid + (ok(gL) ? "。等短线重新转强再做多。" : "。"); }
+      else { dir = up ? "不追多" : "不追空"; cls = "warn"; why = head + avoid + "。"; }
+    }
   } else {
-    if (T.lean === "偏空") { dir = "观望（偏空）"; cls = "down"; side = -1; why = `大方向熊市（${env.what}），${leanTxt}。但历史上熊市做空也基本不赚钱，要做只能轻仓、快进快出。`; }
-    else if (T.lean === "偏多") { dir = "观望（在反弹）"; cls = "warn"; side = 1; why = `大方向熊市（${env.what}），短线在反弹。熊市里的反弹靠不住，历史上做多也不稳定，不追。`; }
-    else { dir = "观望"; cls = "flat"; side = 0; why = `大方向熊市（${env.what}），${leanTxt}。多空都没有优势。`; }
+    const head = `大方向${envWord}（${env.what}），短线方向不明（${leanTxt}）。`;
+    if (ok(gL) && ok(gS)) { dir = "等方向出来"; cls = "flat"; side = 0; why = head + `站上${dayW}最高点 ${H} 做多、跌破最低点 ${Lw} 做空，回测这种环境两边都赚。`; }
+    else if (ok(gL)) { dir = "等突破再做多"; cls = "warn"; side = 1; planAt = V.H; why = head + `等价格站上${dayW}最高点 ${H} 再做多${gS === "lose" || gS === "flat" ? "，不做空（回测这种环境做空不赚）" : ""}。`; }
+    else if (ok(gS)) { dir = "等跌破再做空"; cls = "warn"; side = -1; planAt = V.L; why = head + `等价格跌破${dayW}最低点 ${Lw} 再做空${gL === "lose" || gL === "flat" ? "，不做多（回测这种环境做多不赚）" : ""}。`; }
+    else { dir = "观望"; cls = "flat"; side = 0; why = head + (gL === "few" || gS === "few" ? "这种环境回测样本太少，多空都没有可靠优势。" : "回测里这种环境多空都不赚钱。"); }
   }
   setDir(dir, cls);
   $("cardWhy").innerHTML = why + (env ? `<span class="src">（${esc(env.src)}）</span>` : "");
   // 价位
-  $("cardPlan").innerHTML = side ? plan(V, side, tf) : "方向不明，不给参考价位。想做的话点下面按钮，按24小时高低点自动算。";
+  $("cardPlan").innerHTML = side ? plan(V, side, tf, planAt && isFinite(planAt) && side * (planAt - V.last) > 0 ? planAt : 0) : (noPlan || "方向不明，不给参考价位。") + "想做的话用下面的计算器，按24小时高低点自动算。";
   // 历史
   const hl = [];
-  if (env && env.tested) {
-    hl.push(histLine(statFor(sym, env.bull, "long"), env.bull ? "牛市里突破做多" : "熊市里突破做多"));
-    hl.push(histLine(statFor(sym, env.bull, "short"), env.bull ? "牛市里跌破做空" : "熊市里跌破做空"));
+  if (env) {
+    hl.push(histLine(stL, `${envWord}里突破做多`));
+    hl.push(histLine(stS, `${envWord}里跌破做空`));
   }
   $("cardHist").innerHTML = hl.filter(Boolean).map(esc).join("<br>");
   // 提醒
@@ -2121,7 +2166,7 @@ function renderCard(force) {
   if (["SOXLUSDT", "TQQQUSDT", "SQQQUSDT"].includes(sym)) warns.push("这是三倍杠杆ETF，波动是普通股票的三倍。");
   warns.push("每笔最多亏本金的1%（仓位用下面计算器算）。");
   $("cardWarn").textContent = warns.join(" ");
-  $("ckShort").hidden = !!(env && env.tested && env.bull);
+  $("ckShort").hidden = gS === "lose";
 }
 
 // ================================================================ 选品种
