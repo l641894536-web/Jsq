@@ -217,6 +217,8 @@ td.n { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
   padding: 8px 0; background: color-mix(in srgb, var(--bg) 90%, transparent); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); }
 .sbar-chips { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; min-width: 0; flex: 1 1 auto; }
 .sbar-chips::-webkit-scrollbar { display: none; }
+.foot { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.top .tabs button { min-width: 56px; }
 .schip { display: inline-flex; align-items: baseline; gap: 6px; white-space: nowrap; border: 1px solid var(--line); border-radius: 999px; padding: 4px 10px;
   background: var(--panel); color: var(--ink); font: inherit; font-size: 12px; cursor: pointer; }
 .schip span { color: var(--muted); }
@@ -234,6 +236,57 @@ td.n { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
 .ck-b { font-size: 13px; overflow-wrap: anywhere; }
 .ck-stat { margin: 2px 0; } .ck-stat.pos b { color: var(--good); } .ck-stat.neg b { color: var(--bad); }
 .ck-src { margin: 4px 0 0; font-size: 11.5px; color: var(--muted); }
+
+/* ---- 合约结论卡、选品种、折叠、正股一眼看懂 ---- */
+.controls { flex-wrap: nowrap; }
+.pick-open { flex: none; white-space: nowrap; }
+.card { padding: 12px 14px 14px; display: grid; gap: 10px; }
+.card-top { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; }
+.card-top h2 { margin: 0; font-size: 15px; font-weight: 600; }
+.card-top .px { font-size: 22px; font-weight: 600; }
+.card-top .fund { font-size: 12px; color: var(--muted); width: 100%; }
+.card-dir { font-size: 22px; font-weight: 700; letter-spacing: .02em; padding: 8px 12px; border-radius: 8px; background: var(--sunk); }
+.card-dir.up { color: var(--up); background: color-mix(in srgb, var(--up) 12%, transparent); }
+.card-dir.down { color: var(--down); background: color-mix(in srgb, var(--down) 12%, transparent); }
+.card-dir.warn { color: var(--warn); background: var(--warn-soft); }
+.card-dir.flat { color: var(--ink); }
+.card-why { margin: 0; font-size: 14px; }
+.card-why .src { color: var(--muted); font-size: 12px; }
+.card-tech { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; font-size: 13px; }
+.card-tech li { display: grid; grid-template-columns: 26px 40px minmax(0, 1fr); gap: 6px; align-items: baseline; }
+.card-tech b { font-weight: 600; color: var(--muted); }
+.lean { font-size: 12px; font-weight: 700; text-align: center; border-radius: 4px; padding: 0 2px; }
+.lean.up { color: var(--up); background: color-mix(in srgb, var(--up) 12%, transparent); }
+.lean.down { color: var(--down); background: color-mix(in srgb, var(--down) 12%, transparent); }
+.lean.flat { color: var(--muted); background: var(--sunk); }
+.card-plan { margin: 0; font-size: 13.5px; background: var(--sunk); border-radius: 8px; padding: 8px 10px; }
+.card-hist { margin: 0; font-size: 12.5px; color: var(--muted); }
+.card-warn { margin: 0; font-size: 12.5px; color: var(--warn); }
+.chart-h { display: flex; justify-content: flex-end; padding: 8px 10px 0; }
+details.fold { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); }
+details.fold > summary { cursor: pointer; padding: 12px 14px; font-weight: 600; font-size: 14px; list-style: none; display: flex; justify-content: space-between; gap: 8px; }
+details.fold > summary::-webkit-details-marker { display: none; }
+details.fold > summary::after { content: "展开"; color: var(--muted); font-weight: 400; font-size: 12px; flex: none; }
+details.fold[open] > summary::after { content: "收起"; }
+details.fold > .panel { border: 0; border-top: 1px solid var(--line); border-radius: 0; background: transparent; }
+details.fold-in > summary { cursor: pointer; font-size: 13px; font-weight: 600; padding: 6px 0; }
+.picker { position: fixed; inset: 0; z-index: 100; background: rgba(0,0,0,.45); display: flex; align-items: flex-end; justify-content: center; }
+.picker[hidden] { display: none; }
+.picker-box { background: var(--panel); width: min(560px, 100%); max-height: 86vh; border-radius: 14px 14px 0 0; padding: 12px 14px max(14px, env(safe-area-inset-bottom, 0px)); display: grid; gap: 10px; grid-template-rows: auto auto auto minmax(0, 1fr) auto; }
+@media (min-width: 700px) { .picker { align-items: center; } .picker-box { border-radius: 14px; } }
+.picker-h { display: flex; justify-content: space-between; align-items: center; }
+#pickQ { width: 100%; box-sizing: border-box; font: inherit; font-size: 15px; padding: 9px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--ink); }
+.picker-list { overflow-y: auto; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; align-content: start; }
+.picker-list { grid-auto-rows: max-content; }
+.pick-row { display: flex; border: 1px solid var(--line); border-radius: 8px; min-height: 48px; }
+.pick-row.on { border-color: var(--brass); }
+.pick-go { flex: 1; min-width: 0; text-align: left; background: none; border: 0; padding: 8px 10px; color: var(--ink); font: inherit; display: grid; cursor: pointer; }
+.pick-go small { color: var(--muted); font-size: 11px; }
+.pick-star { flex: none; width: 40px; background: none; border: 0; border-left: 1px solid var(--line); color: var(--brass); font-size: 17px; cursor: pointer; }
+.brief { padding: 4px 14px 14px; display: grid; gap: 12px; }
+.brief-row { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 8px; align-items: start; }
+.brief-k { font-weight: 600; color: var(--muted); padding-top: 3px; }
+.brief-row p { margin: 4px 0 0; font-size: 14px; }
 #mainTable { min-width: 0; width: 100%; }
 #mainTable th, #mainTable td { padding-left: 6px; padding-right: 6px; white-space: nowrap; }
 #mainTable td:first-child { white-space: normal; }
@@ -246,7 +299,10 @@ td.n { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
       <h1>Jsq <b>交易台</b></h1>
       <span class="status wait" id="status"><i></i><span id="statusText">正在连接币安…</span></span>
     </div>
-    <button class="ghost" id="colorMode" type="button" aria-label="切换涨跌颜色">绿涨红跌</button>
+    <div class="seg tabs" id="tabs" role="tablist" aria-label="页面">
+      <button type="button" role="tab" data-tab="contract" aria-selected="true" aria-pressed="true">合约</button>
+      <button type="button" role="tab" data-tab="stock" aria-selected="false" aria-pressed="false">正股</button>
+    </div>
   </header>
 
   <nav class="sbar" id="sbar" aria-label="市场状态和页面">
@@ -255,10 +311,7 @@ td.n { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
       <button type="button" class="schip" data-go="stock" id="sbUS"><span>美股</span><b>—</b></button>
       <button type="button" class="schip" data-go="contract" data-sym="XAUUSDT" id="sbAU"><span>黄金</span><b>—</b></button>
       <button type="button" class="schip" data-go="contract" data-sym="XAGUSDT" id="sbAG"><span>白银</span><b>—</b></button>
-    </div>
-    <div class="seg tabs" id="tabs" role="tablist" aria-label="页面">
-      <button type="button" role="tab" data-tab="contract" aria-selected="true" aria-pressed="true">合约</button>
-      <button type="button" role="tab" data-tab="stock" aria-selected="false" aria-pressed="false">正股</button>
+      <button type="button" class="schip" data-go="contract" data-sym="BTCUSDT" id="sbBTC"><span>比特币</span><b>—</b></button>
     </div>
   </nav>
 
@@ -267,37 +320,41 @@ td.n { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
   <div class="tab" id="tab-contract">
   <div class="controls">
     <div class="syms" id="syms" role="group" aria-label="品种"></div>
-    <div class="seg" id="tfs" role="group" aria-label="周期">
-      <button type="button" data-tf="15m">15分</button>
-      <button type="button" data-tf="1h">1小时</button>
-      <button type="button" data-tf="4h">4小时</button>
-      <button type="button" data-tf="1d">日线</button>
-    </div>
+    <button type="button" class="btn pick-open" id="pickOpen">全部品种</button>
   </div>
 
-  <section class="quote">
-    <span class="px num" id="px">—</span>
-    <span class="chg num" id="chg"></span>
-    <div class="chips" id="stateChips"></div>
-    <span class="fund num" id="fund"></span>
-    <span class="advice" id="advice"></span>
+  <section class="panel card" id="card" aria-labelledby="cardName">
+    <div class="card-top">
+      <h2 id="cardName">—</h2>
+      <span class="px num" id="px">—</span><span class="chg num" id="chg"></span>
+      <span class="fund num" id="fund"></span>
+    </div>
+    <div class="card-dir flat" id="cardDir">等行情载入…</div>
+    <p class="card-why" id="cardWhy"></p>
+    <ul class="card-tech" id="cardTech"></ul>
+    <p class="card-plan" id="cardPlan"></p>
+    <p class="card-hist" id="cardHist"></p>
+    <p class="card-warn" id="cardWarn"></p>
+    <div class="row-btns">
+      <button type="button" class="btn" id="ckLong">按这个填入做多</button>
+      <button type="button" class="btn" id="ckShort">按这个填入做空</button>
+    </div>
+    <div hidden><div class="chips" id="stateChips"></div><span class="advice" id="advice"></span></div>
   </section>
 
-  <section class="panel check" id="checkPanel" aria-labelledby="checkTitle">
-    <div class="panel-h"><h2 id="checkTitle">开单前检查</h2><span class="sub" id="checkSub"></span></div>
-    <div class="check-body">
-      <div class="check-verdict" id="checkVerdict">等行情载入…</div>
-      <ol class="check-list" id="checkList"></ol>
-      <div class="row-btns">
-        <button type="button" class="btn" id="ckLong">按这个检查填入做多</button>
-        <button type="button" class="btn" id="ckShort">按这个检查填入做空</button>
-      </div>
-    </div>
-  </section>
+
 
   <div class="main">
     <div class="col">
       <section class="panel">
+        <div class="chart-h">
+          <div class="seg" id="tfs" role="group" aria-label="周期">
+      <button type="button" data-tf="15m">15分</button>
+      <button type="button" data-tf="1h">1小时</button>
+      <button type="button" data-tf="4h">4小时</button>
+      <button type="button" data-tf="1d">日线</button>
+          </div>
+        </div>
         <div class="layers" id="layers">
           <button type="button" class="layer s" data-layer="sr" aria-pressed="true"><i></i>支撑阻力</button>
           <button type="button" class="layer t" data-layer="tl" aria-pressed="true"><i></i>趋势线</button>
@@ -317,37 +374,22 @@ td.n { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
         </div>
       </section>
 
-      <section class="panel">
-        <div class="panel-h">
-          <h2>规则体检：这些信号历史上赚不赚钱</h2>
-          <div class="seg" id="repTabs" role="group" aria-label="回测样本">
-            <button type="button" data-rep="gold_15m" aria-pressed="true">黄金 15分</button>
-            <button type="button" data-rep="silver_15m" aria-pressed="false">白银 15分</button>
-            <button type="button" data-rep="gold_1h" aria-pressed="false">黄金 1小时</button>
-            <button type="button" data-rep="trend" aria-pressed="false">趋势规则</button>
-            <button type="button" data-rep="log" aria-pressed="false">验证记录</button>
-          </div>
-        </div>
-        <div class="report">
-          <div class="tablewrap"><table id="repTable"></table></div>
-          <p class="note" id="repNote"></p>
-        </div>
-      </section>
     </div>
 
     <div class="col">
+      <details class="fold" id="foldTech"><summary>技术指标明细：4小时 / 1小时 / 15分钟结构和价格附近的形态</summary>
       <section class="panel" id="trendPanel">
         <div class="panel-h"><h2>K线结构</h2><span class="sub" id="trendSub">4小时 · 1小时 · 15分钟</span></div>
         <div class="trend" id="trendRows"><div class="empty">等K线载入后计算。</div></div>
         <div class="combo" id="combo" hidden></div>
         <p class="note trend-note" id="trendNote"></p>
       </section>
-
       <section class="panel">
         <div class="panel-h"><h2>当前价格附近的形态</h2><span class="sub" id="setupSub"></span></div>
         <div class="setups" id="setups"><div class="empty">等K线载入后自动识别。</div></div>
       </section>
-
+      </details>
+      <details class="fold" id="foldCalc"><summary>下单计算器：仓位和成本</summary>
       <section class="panel" id="calcPanel">
         <div class="panel-h"><h2>下单前：仓位和成本</h2><span class="sub">币安合约普通费率</span></div>
         <form class="calc" id="calc" autocomplete="off">
@@ -357,7 +399,7 @@ td.n { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
             <button type="button" class="btn" id="use24L">按 24 小时最低点止损做多</button>
             <button type="button" class="btn" id="use24S">按 24 小时最高点止损做空</button>
           </div>
-          <div class="example" id="exampleTag">示例：视频里那笔单（做空 3,997.01，止损 3,999.01，止盈 3,994.01）</div>
+          <div class="example" id="exampleTag" hidden></div>
           <div class="fields">
             <div class="field full">
               <label>方向</label>
@@ -379,7 +421,26 @@ td.n { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
           <dl class="kv" id="calcOut"></dl>
         </form>
       </section>
-
+      </details>
+      <details class="fold"><summary>回测成绩：图上这些信号历史上赚不赚钱</summary>
+      <section class="panel">
+        <div class="panel-h">
+          <h2>各信号的回测成绩</h2>
+          <div class="seg" id="repTabs" role="group" aria-label="回测样本">
+            <button type="button" data-rep="gold_15m" aria-pressed="true">黄金 15分</button>
+            <button type="button" data-rep="silver_15m" aria-pressed="false">白银 15分</button>
+            <button type="button" data-rep="gold_1h" aria-pressed="false">黄金 1小时</button>
+            <button type="button" data-rep="trend" aria-pressed="false">趋势规则</button>
+            <button type="button" data-rep="log" aria-pressed="false">验证记录</button>
+          </div>
+        </div>
+        <div class="report">
+          <div class="tablewrap"><table id="repTable"></table></div>
+          <p class="note" id="repNote"></p>
+        </div>
+      </section>
+      </details>
+      <details class="fold"><summary>交易日志（只存在这台手机）</summary>
       <section class="panel" id="logPanel">
         <div class="panel-h"><h2>交易日志和今日风控</h2><span class="sub">只存在这台设备的浏览器里</span></div>
         <div class="calc">
@@ -393,6 +454,7 @@ td.n { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
           <div class="loglist" id="logList"></div>
         </div>
       </section>
+      </details>
     </div>
   </div>
 
@@ -400,8 +462,19 @@ td.n { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
   </div>
 
   <div class="tab" id="tab-stock" hidden>
+  <section class="panel" id="stockBrief" aria-labelledby="briefTitle">
+    <div class="panel-h"><h2 id="briefTitle">一眼看懂</h2><span class="sub" id="briefSub"></span></div>
+    <div class="brief" id="briefBody"><p class="note">正在载入…</p></div>
+  </section>
+  <section class="panel" id="mainPanel" aria-labelledby="mainTitle">
+    <div class="panel-h"><h2 id="mainTitle">今天的主线：钱往哪些行业走</h2><span class="sub" id="mainSub">正在载入…</span></div>
+    <div class="report">
+      <div class="tablewrap"><table id="mainTable"></table></div>
+      <p class="note">按证监会行业分类，只算15只股票以上、成交占全市场0.5%以上的行业。"比平时"是今天的成交占比除以近20天平均占比，按它排序：数字越大，说明资金越往这个行业集中。这是描述，不是买卖信号。</p>
+    </div>
+  </section>
   <section class="panel env" id="envPanel" aria-labelledby="envTitle">
-    <div class="panel-h"><h2 id="envTitle">市场环境</h2><span class="sub" id="envAsof">正在载入…</span></div>
+    <div class="panel-h"><h2 id="envTitle">市场环境细节</h2><span class="sub" id="envAsof">正在载入…</span></div>
     <div class="env-grid">
       <article class="env-card">
         <div class="env-card-h"><h3>A股</h3><span class="chip" id="aState">—</span></div>
@@ -429,21 +502,75 @@ td.n { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
     <div class="report">
       <h3 class="env-sub">A股情绪温度各档：之后60天全A等权的平均涨跌 · 上涨概率（2016年以来）</h3>
       <div class="tablewrap"><table id="envStats"></table></div>
-      <h3 class="env-sub">已经回测过的规则</h3>
+      <details class="fold-in"><summary>已经回测过的规则（点开看证据）</summary>
       <div class="env-rules" id="envRules"></div>
+      </details>
       <p class="note">这一块只显示市场状态和历史回测结果，<b>不给买卖信号</b>。情绪温度由全部A股（剔除ST和次新股）的11个指标算出：涨停占比、跌停占比、涨停减跌停、炸板率、连板高度、昨日涨停今日表现、上涨家数占比、成交额热度、创一年新高减新低、站上20日线和60日线的比例，各自换算成在过去一年里的位置后取平均。</p>
     </div>
   </section>
-  <section class="panel" id="mainPanel" aria-labelledby="mainTitle">
-    <div class="panel-h"><h2 id="mainTitle">今天的主线：钱往哪些行业走</h2><span class="sub" id="mainSub">正在载入…</span></div>
-    <div class="report">
-      <div class="tablewrap"><table id="mainTable"></table></div>
-      <p class="note">按证监会行业分类，只算15只股票以上、成交占全市场0.5%以上的行业。"比平时"是今天的成交占比除以近20天平均占比，按它排序：数字越大，说明资金越往这个行业集中。这是描述，不是买卖信号。</p>
-    </div>
-  </section>
   </div>
+
+  <div class="foot"><button class="ghost" id="colorMode" type="button" aria-label="切换涨跌颜色">绿涨红跌</button><span class="note">点它切换涨跌颜色（A股习惯红涨绿跌）。</span></div>
 </div>
 
+<div class="picker" id="picker" hidden role="dialog" aria-modal="true" aria-labelledby="pickTitle">
+  <div class="picker-box">
+    <div class="picker-h"><b id="pickTitle">选品种</b><button type="button" class="ghost" id="pickClose">关闭</button></div>
+    <input id="pickQ" type="search" placeholder="搜代码或名字，比如 NVDA、英伟达、黄金" autocomplete="off">
+    <div class="seg" id="pickTabs" role="group" aria-label="分组">
+      <button type="button" data-g="fav">自选</button><button type="button" data-g="metal">贵金属/大宗</button><button type="button" data-g="stock">美股</button><button type="button" data-g="crypto">加密</button>
+    </div>
+    <div class="picker-list" id="pickList"></div>
+    <p class="note">点名字切换品种；点 ☆ 加入自选（顶部那一排），点 ★ 移出。</p>
+  </div>
+</div>
+<script>
+(() => {
+"use strict";
+// 合约品种清单：贵金属/大宗、美股合约（币安股票永续）、加密主流币。自选存在本机浏览器。
+const METALS = ["XAUUSDT", "XAGUSDT", "XPTUSDT", "XPDUSDT", "COPPERUSDT", "NATGASUSDT"];
+const CRYPTO = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT", "DOGEUSDT", "ADAUSDT"];
+const STOCKS = ["SPCXUSDT", "QQQUSDT", "SPYUSDT", "IWMUSDT", "SMHUSDT", "NVDAUSDT", "AMDUSDT", "MUUSDT", "DELLUSDT", "TSLAUSDT", "AAPLUSDT", "MSFTUSDT",
+  "GOOGLUSDT", "METAUSDT", "AMZNUSDT", "AVGOUSDT", "TSMUSDT", "ASMLUSDT", "ARMUSDT", "INTCUSDT", "QCOMUSDT", "TXNUSDT", "AMATUSDT", "LRCXUSDT",
+  "KLACUSDT", "MRVLUSDT", "SNDKUSDT", "WDCUSDT", "SMCIUSDT", "ANETUSDT", "CSCOUSDT", "ORCLUSDT", "CRMUSDT", "ADBEUSDT", "NOWUSDT", "SNOWUSDT",
+  "PLTRUSDT", "CRWDUSDT", "PANWUSDT", "ZSUSDT", "NETUSDT", "DDOGUSDT", "MDBUSDT", "TEAMUSDT", "SHOPUSDT", "APPUSDT", "RDDTUSDT", "UBERUSDT",
+  "NFLXUSDT", "COINUSDT", "HOODUSDT", "MSTRUSDT", "MARAUSDT", "CRCLUSDT", "IONQUSDT", "RKLBUSDT", "OKLOUSDT", "CEGUSDT", "VSTUSDT", "GEVUSDT",
+  "VRTUSDT", "CRWVUSDT", "COHRUSDT", "LITEUSDT", "CIENUSDT", "GLWUSDT", "HPEUSDT", "IBMUSDT", "FLEXUSDT", "TERUSDT", "SNPSUSDT", "AKAMUSDT",
+  "BABAUSDT", "PDDUSDT", "MELIUSDT", "JPMUSDT", "GSUSDT", "BACUSDT", "BXUSDT", "IBKRUSDT", "SOFIUSDT", "VUSDT", "LLYUSDT", "UNHUSDT",
+  "ABBVUSDT", "MRKUSDT", "PFEUSDT", "AMGNUSDT", "MRNAUSDT", "COSTUSDT", "WMTUSDT", "HDUSDT", "MCDUSDT", "KOUSDT", "NKEUSDT", "DISUSDT",
+  "EBAYUSDT", "TTWOUSDT", "CVNAUSDT", "GMEUSDT", "AMCUSDT", "XOMUSDT", "OXYUSDT", "EQTUSDT", "CATUSDT", "BEUSDT", "ACNUSDT", "GDXUSDT",
+  "XLEUSDT", "SOXLUSDT", "TQQQUSDT", "SQQQUSDT"];
+const CN = {
+  XAUUSDT: "黄金", XAGUSDT: "白银", XPTUSDT: "铂金", XPDUSDT: "钯金", COPPERUSDT: "铜", NATGASUSDT: "天然气",
+  BTCUSDT: "比特币", ETHUSDT: "以太坊", SOLUSDT: "SOL", BNBUSDT: "BNB", XRPUSDT: "XRP", DOGEUSDT: "狗狗币", ADAUSDT: "ADA",
+  SPCXUSDT: "SPCX", QQQUSDT: "纳指QQQ", SPYUSDT: "标普SPY", IWMUSDT: "罗素2000", SMHUSDT: "半导体ETF", NVDAUSDT: "英伟达", AMDUSDT: "AMD",
+  MUUSDT: "美光", DELLUSDT: "戴尔", TSLAUSDT: "特斯拉", AAPLUSDT: "苹果", MSFTUSDT: "微软", GOOGLUSDT: "谷歌", METAUSDT: "Meta", AMZNUSDT: "亚马逊",
+  AVGOUSDT: "博通", TSMUSDT: "台积电", ASMLUSDT: "阿斯麦", ARMUSDT: "ARM", INTCUSDT: "英特尔", QCOMUSDT: "高通", TXNUSDT: "德州仪器",
+  AMATUSDT: "应用材料", LRCXUSDT: "泛林", KLACUSDT: "科磊", MRVLUSDT: "迈威尔", SNDKUSDT: "闪迪", WDCUSDT: "西部数据", SMCIUSDT: "超微电脑",
+  ANETUSDT: "Arista", CSCOUSDT: "思科", ORCLUSDT: "甲骨文", CRMUSDT: "Salesforce", ADBEUSDT: "Adobe", PLTRUSDT: "Palantir", NFLXUSDT: "奈飞",
+  COINUSDT: "Coinbase", MSTRUSDT: "微策略", BABAUSDT: "阿里巴巴", PDDUSDT: "拼多多", JPMUSDT: "摩根大通", GSUSDT: "高盛", BACUSDT: "美国银行",
+  LLYUSDT: "礼来", UNHUSDT: "联合健康", COSTUSDT: "好市多", WMTUSDT: "沃尔玛", MCDUSDT: "麦当劳", KOUSDT: "可口可乐", NKEUSDT: "耐克",
+  DISUSDT: "迪士尼", XOMUSDT: "埃克森美孚", CATUSDT: "卡特彼勒", IBMUSDT: "IBM", UBERUSDT: "优步", SHOPUSDT: "Shopify", GDXUSDT: "金矿ETF",
+  XLEUSDT: "能源ETF", SOXLUSDT: "三倍半导体", TQQQUSDT: "三倍纳指", SQQQUSDT: "三倍做空纳指", HOODUSDT: "Robinhood", CRCLUSDT: "Circle",
+  GEVUSDT: "GE Vernova", CEGUSDT: "Constellation", VSTUSDT: "Vistra", OKLOUSDT: "Oklo", RKLBUSDT: "火箭实验室", IONQUSDT: "IonQ",
+  MRNAUSDT: "Moderna", PFEUSDT: "辉瑞", MRKUSDT: "默沙东", ABBVUSDT: "艾伯维", AMGNUSDT: "安进", HDUSDT: "家得宝", EBAYUSDT: "eBay",
+  MELIUSDT: "美客多", VUSDT: "Visa", GLWUSDT: "康宁", HPEUSDT: "慧与", CRWVUSDT: "CoreWeave", VRTUSDT: "Vertiv", COHRUSDT: "Coherent",
+  LITEUSDT: "Lumentum", CIENUSDT: "Ciena", SNOWUSDT: "Snowflake", NOWUSDT: "ServiceNow", CRWDUSDT: "CrowdStrike", PANWUSDT: "Palo Alto",
+};
+const names = {};
+for (const s of [...METALS, ...CRYPTO, ...STOCKS]) names[s] = CN[s] || s.replace("USDT", "");
+const DEF = ["XAUUSDT", "XAGUSDT", "AMDUSDT", "MUUSDT", "DELLUSDT", "SPCXUSDT", "NVDAUSDT", "TSLAUSDT", "BTCUSDT"];
+const KEY = "jsq.favs";
+const all = [...METALS, ...STOCKS, ...CRYPTO];
+function favs() {
+  try { const v = JSON.parse(localStorage.getItem(KEY) || "null"); if (Array.isArray(v)) { const f = v.filter((s) => all.includes(s)); if (f.length) return f; } } catch (e) {}
+  return DEF.slice();
+}
+function saveFavs(a) { try { localStorage.setItem(KEY, JSON.stringify(a)); } catch (e) {} }
+const groupOfSym = (s) => METALS.includes(s) ? "metal" : CRYPTO.includes(s) ? "crypto" : "stock";
+window.JSQ_UNIVERSE = { METALS, CRYPTO, STOCKS, all, names, favs, saveFavs, groupOfSym };
+})();
+</script>
 <script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.3/dist/lightweight-charts.standalone.production.js"></script>
 <script>
 (() => {
@@ -461,8 +588,8 @@ const REST = "https://fapi.binance.com";
 const WSS_BASES = ["wss://fstream.binance.com/market/stream?streams=", "wss://fstream.binance.com/stream?streams="];
 let wsBase = 0, kOpenedAt = 0, tOpenedAt = 0, lastTick = 0;
 const TZ = 8 * 3600;
-const NAMES = { XAUUSDT: "黄金", XAGUSDT: "白银", AMDUSDT: "AMD", MUUSDT: "美光", DELLUSDT: "戴尔", SPCXUSDT: "SpaceX" };
-const ORDER = ["XAUUSDT", "XAGUSDT", "AMDUSDT", "MUUSDT", "DELLUSDT", "SPCXUSDT"];
+const NAMES = window.JSQ_UNIVERSE.names;
+let ORDER = window.JSQ_UNIVERSE.favs();
 const TF_LABEL = { "15m": "15分", "1h": "1小时", "4h": "4小时", "1d": "日线" };
 const TF_SEC = { "15m": 900, "1h": 3600, "4h": 14400, "1d": 86400 };
 const PIV_K = { "15m": 4, "1h": 3, "4h": 3, "1d": 3 };
@@ -479,7 +606,7 @@ const store = {
 };
 const $ = (id) => document.getElementById(id);
 const state = {
-  sym: ORDER.includes(store.get("sym", "")) ? store.get("sym") : "XAUUSDT",
+  sym: window.JSQ_UNIVERSE.all.includes(store.get("sym", "")) ? store.get("sym") : "XAUUSDT",
   tf: TF_SEC[store.get("tf", "")] ? store.get("tf") : "15m",
   ind: "macd", rep: "gold_15m", redUp: store.get("redUp", "0") === "1", side: -1,
   layers: { sr: true, tl: true, r24: false, pat: true }
@@ -1322,7 +1449,8 @@ function fillFromChart(side) {
 
 // ------------------------------------------------------------ wiring
 function renderSyms() {
-  $("syms").innerHTML = ORDER.map(s => `<button type="button" class="sym" data-sym="${s}" aria-pressed="${s === state.sym}">${NAMES[s]}<small>—</small></button>`).join("");
+  const LIST = ORDER.includes(state.sym) ? ORDER : [...ORDER, state.sym];
+  $("syms").innerHTML = LIST.map(s => `<button type="button" class="sym" data-sym="${s}" aria-pressed="${s === state.sym}">${NAMES[s]}<small>—</small></button>`).join("");
   $("syms").querySelectorAll("button").forEach(b => b.addEventListener("click", () => { if (state.sym === b.dataset.sym) return; state.sym = b.dataset.sym; store.set("sym", state.sym); load(); }));
 }
 function syncButtons() {
@@ -1388,7 +1516,9 @@ function wire() {
   }, 2000);
 }
 
-window.JSQ = { get state() { return state; }, get VIEW() { return VIEW; }, get CUR() { return CUR; }, NAMES, TF_LABEL, groupOf };
+window.JSQ = { get state() { return state; }, get VIEW() { return VIEW; }, get CUR() { return CUR; }, NAMES, TF_LABEL, groupOf,
+  select(s) { if (state.sym === s) return; state.sym = s; store.set("sym", s); renderSyms(); load(); seedTickers(); },
+  setFavs(f) { ORDER = f.slice(); renderSyms(); openTicker(); seedTickers(); } };
 function boot() {
   if (!LWC) { $("overlay").textContent = "画图组件没有载入成功，请刷新页面再试。"; return; }
   renderSyms(); buildCharts(); wire(); renderReport(); setSide(-1); calc(); renderJournal();
@@ -1684,6 +1814,7 @@ function liveInd(q) {
 }
 function renderMain(rows, when) {
   const tb = $("mainTable"); if (!tb) return;
+  window.JSQ_MAIN_TOP = rows;
   $("mainSub").textContent = when;
   tb.replaceChildren();
   const head = el("tr"); ["行业", "成交占比", "比平时", "涨跌", "涨停"].forEach((h) => head.append(el("th", null, h)));
@@ -1772,27 +1903,24 @@ if (window.JSQ_ENV) start(); else document.addEventListener("jsq-env-ready", sta
 <script>
 (() => {
 "use strict";
-// 页面切换（合约 / 正股）、顶部状态栏、合约开单前检查。只用回测过的规则给方向。
+// 页面切换、顶部状态栏、合约"一眼看懂"结论卡、选品种、正股"一眼看懂"。方向只用回测过的规则下结论，技术面用大白话描述。
 const $ = (id) => document.getElementById(id);
+const U = window.JSQ_UNIVERSE;
 const pct = (x, dp = 1) => (x == null || !isFinite(x)) ? "—" : (x >= 0 ? "+" : "") + (x * 100).toFixed(dp) + "%";
+const pabs = (x, dp = 1) => (x == null || !isFinite(x)) ? "—" : (Math.abs(x) * 100).toFixed(dp) + "%";
 const fmt = (x, dp) => (x == null || !isFinite(x)) ? "—" : Number(x).toLocaleString("en-US", { minimumFractionDigits: dp, maximumFractionDigits: dp });
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const REST = "https://fapi.binance.com";
-const METALS = { XAUUSDT: "黄金", XAGUSDT: "白银" };
-const MET = {};            // sym -> { price, ma200, bull, vs, at }
-let lastCheck = 0, checkTimer = null, lastKey = "";
+const DMA = {};            // sym -> { price, ma200, vs, bull, at }  日线200日线
+let lastRender = 0, timer = null, lastKey = "";
 
-// ---------------------------------------------------------------- 页面切换
-function currentTab() { return $("tab-stock").hidden ? "contract" : "stock"; }
+// ================================================================ 页面切换
 function setTab(t, push) {
   if (t !== "stock") t = "contract";
   $("tab-contract").hidden = t !== "contract";
   $("tab-stock").hidden = t !== "stock";
-  $("tabs").querySelectorAll("button").forEach((b) => {
-    const on = b.dataset.tab === t;
-    b.setAttribute("aria-selected", String(on)); b.setAttribute("aria-pressed", String(on));
-  });
-  if (push) { try { history.replaceState(null, "", "#" + t); } catch (e) { location.hash = t; } }
+  $("tabs").querySelectorAll("button").forEach((b) => { const on = b.dataset.tab === t; b.setAttribute("aria-selected", String(on)); b.setAttribute("aria-pressed", String(on)); });
+  if (push) { try { history.replaceState(null, "", "#" + t); } catch (e) {} }
   try { localStorage.setItem("tab", t); } catch (e) {}
   document.dispatchEvent(new CustomEvent("jsq-tab", { detail: t }));
 }
@@ -1800,10 +1928,7 @@ function initTabs() {
   $("tabs").querySelectorAll("button").forEach((b) => b.addEventListener("click", () => setTab(b.dataset.tab, true)));
   $("sbarChips").querySelectorAll("button").forEach((b) => b.addEventListener("click", () => {
     setTab(b.dataset.go, true);
-    if (b.dataset.sym && window.JSQ && window.JSQ.state.sym !== b.dataset.sym) {
-      const btn = document.querySelector(`#syms button[data-sym="${b.dataset.sym}"]`);
-      if (btn) btn.click();
-    }
+    if (b.dataset.sym && window.JSQ && window.JSQ.state.sym !== b.dataset.sym) window.JSQ.select(b.dataset.sym);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }));
   let t = (location.hash || "").replace("#", "");
@@ -1812,165 +1937,256 @@ function initTabs() {
   window.addEventListener("hashchange", () => { const h = location.hash.replace("#", ""); if (h === "stock" || h === "contract") setTab(h, false); });
 }
 
-// ---------------------------------------------------------------- 状态栏
-function sChip(id, text, cls) { const b = $(id); if (!b) return; b.querySelector("b").textContent = text; b.className = "schip " + (cls || ""); }
+// ================================================================ 环境
 function usNow() {
   const E = window.JSQ_ENV; if (!E) return null;
-  const L = window.JSQ_LIVE_US, U = E.live && E.live.us;
-  if (L && U && L.QQQ && U.QQQ) {
-    const ma = (U.QQQ.sum199 + L.QQQ) / 200, vs = L.QQQ / ma - 1;
-    return { bull: vs > 0, vs, live: true, stopDist: L.QQQ / U.QQQ.stop_line - 1 };
+  const L = window.JSQ_LIVE_US, UL = E.live && E.live.us;
+  if (L && UL && L.QQQ && UL.QQQ) {
+    const ma = (UL.QQQ.sum199 + L.QQQ) / 200, sma = (UL.SPY.sum199 + L.SPY) / 200;
+    return { bull: L.QQQ > ma, vs: L.QQQ / ma - 1, spxVs: L.SPY / sma - 1, live: true, stopDist: L.QQQ / UL.QQQ.stop_line - 1, stop: E.us.today.stop_line };
   }
   const u = E.us.today;
-  return { bull: u.ndx_vs > 0, vs: u.ndx_vs, live: false, stopDist: u.ndx / u.stop_line - 1 };
+  return { bull: u.ndx_vs > 0, vs: u.ndx_vs, spxVs: u.spx_vs, live: false, stopDist: u.ndx / u.stop_line - 1, stop: u.stop_line };
 }
+// 日线200日线：贵金属/大宗按期货交易日（去掉周末K线），加密按自然日
+async function fetchDMA(sym) {
+  const r = await fetch(`${REST}/fapi/v1/klines?symbol=${sym}&interval=1d&limit=320`, { cache: "no-store" });
+  if (!r.ok) throw new Error("HTTP " + r.status);
+  const k = await r.json();
+  if (!Array.isArray(k) || k.length < 2) throw new Error("short");
+  const price = +k[k.length - 1][4], crypto = U.groupOfSym(sym) === "crypto";
+  const done = k.slice(0, -1).filter((x) => { if (crypto) return true; const d = new Date(+x[0]).getUTCDay(); return d !== 0 && d !== 6; }).map((x) => +x[4]).slice(-199);
+  if (done.length < 199) throw new Error("short");
+  const ma = (done.reduce((s, x) => s + x, 0) + price) / 200;
+  DMA[sym] = { price, ma200: ma, vs: price / ma - 1, bull: price > ma, at: Date.now() };
+}
+async function needDMA(sym) {
+  if (DMA[sym] && Date.now() - DMA[sym].at < 5 * 60e3) return;
+  try { await fetchDMA(sym); } catch (e) {}
+}
+// 一个品种的"大方向"
+function envFor(sym) {
+  const g = U.groupOfSym(sym);
+  if (g === "stock") {
+    const u = usNow(); if (!u) return null;
+    return { bull: u.bull, what: `纳指在200日线${u.bull ? "上方" : "下方"}（${pct(u.vs)}）`, src: u.live ? "币安QQQ合约实时" : "上个美股收盘", tested: true };
+  }
+  const ref = g === "crypto" ? "BTCUSDT" : sym, d = DMA[ref];
+  if (!d) return null;
+  const nm = U.names[ref] || ref;
+  return { bull: d.bull, what: `${nm}在200日线${d.bull ? "上方" : "下方"}（${pct(d.vs)}）`, src: "币安日线实时", tested: sym === "XAUUSDT" || sym === "XAGUSDT" };
+}
+
+// ================================================================ 状态栏
+function sChip(id, text, cls) { const b = $(id); if (!b) return; b.querySelector("b").textContent = text; b.className = "schip " + (cls || ""); }
+const band = (t) => t < 20 ? "冰点" : t < 40 ? "偏冷" : t <= 60 ? "中性" : t <= 80 ? "偏热" : "过热";
 function renderBar() {
   const E = window.JSQ_ENV;
   if (E) {
     const a = E.a.today, AL = window.JSQ_LIVE_A;
     const t = AL ? AL.temp : a.temp, reg = AL ? AL.regime : a.regime;
-    const band = t < 20 ? "冰点" : t < 40 ? "偏冷" : t <= 60 ? "中性" : t <= 80 ? "偏热" : "过热";
-    sChip("sbA", `${reg} · ${band} ${Math.round(t)}`, reg === "牛市" ? "good" : "warn");
+    sChip("sbA", `${reg} · ${band(t)} ${Math.round(t)}`, reg === "牛市" ? "good" : "warn");
     const u = usNow();
     if (u) sChip("sbUS", `${u.bull ? "牛市" : "熊市"} · 纳指${pct(u.vs)}`, u.bull ? "good" : "warn");
   }
-  for (const [sym, id] of [["XAUUSDT", "sbAU"], ["XAGUSDT", "sbAG"]]) {
-    const m = MET[sym];
+  for (const [sym, id] of [["XAUUSDT", "sbAU"], ["XAGUSDT", "sbAG"], ["BTCUSDT", "sbBTC"]]) {
+    const m = DMA[sym];
     if (m) sChip(id, `${m.bull ? "牛市" : "熊市"} · ${pct(m.vs)}`, m.bull ? "good" : "warn");
   }
 }
 
-// 金银：用币安日线算200日线（只用已收盘的日线，现价当今天）
-async function fetchMetal(sym) {
-  const r = await fetch(`${REST}/fapi/v1/klines?symbol=${sym}&interval=1d&limit=320`, { cache: "no-store" });
-  if (!r.ok) throw new Error("HTTP " + r.status);
-  const k = await r.json();
-  if (!Array.isArray(k) || k.length < 2) throw new Error("short");
-  const price = +k[k.length - 1][4];
-  // 回测用的是期货交易日的200日线：去掉周六周日的K线，只用已收盘的日线
-  const done = k.slice(0, -1).filter((x) => { const d = new Date(+x[0]).getUTCDay(); return d !== 0 && d !== 6; }).map((x) => +x[4]).slice(-199);
-  if (done.length < 199) throw new Error("short");
-  const ma = (done.reduce((s, x) => s + x, 0) + price) / 200;
-  MET[sym] = { price, ma200: ma, vs: price / ma - 1, bull: price > ma, at: Date.now() };
-}
-async function refreshMetals() {
-  await Promise.allSettled(Object.keys(METALS).map(fetchMetal));
-  renderBar(); renderCheck(true);
+// ================================================================ 技术面（大白话）
+function tech(V, tf) {
+  const t = V.n - 1, items = [], day = tf === "1d" ? "20日" : "24小时", dp = V.dp;
+  let score = 0;
+  const add = (k, lean, txt, s) => { items.push({ k, lean, txt }); score += s; };
+  add("均线", V.trend === 1 ? "多" : "空", V.trend === 1 ? "短期均线在长期均线上面，趋势向上" : "短期均线在长期均线下面，趋势向下", V.trend);
+  const h1 = V.hist[t], h0 = V.hist[t - 1], h3 = V.hist[t - 3];
+  if (h1 > 0) add("MACD", "多", (h0 <= 0 || h3 <= 0) ? "刚翻红（金叉），上涨动能刚出来" : (h1 > h0 ? "红柱在变长，上涨在加速" : "红柱在变短，上涨在减速"), 1);
+  else add("MACD", "空", (h0 >= 0 || h3 >= 0) ? "刚翻绿（死叉），下跌动能刚出来" : (h1 < h0 ? "绿柱在变长，下跌在加速" : "绿柱在变短，下跌在减速"), -1);
+  const r = V.R[t];
+  if (r == null) add("RSI", "中", "数据不够", 0);
+  else if (r >= 70) add("RSI", "中", `${r.toFixed(0)}，超买：涨得太急，容易回落`, 0);
+  else if (r >= 55) add("RSI", "多", `${r.toFixed(0)}，偏强`, 1);
+  else if (r > 45) add("RSI", "中", `${r.toFixed(0)}，不强不弱`, 0);
+  else if (r > 30) add("RSI", "空", `${r.toFixed(0)}，偏弱`, -1);
+  else add("RSI", "中", `${r.toFixed(0)}，超卖：跌得太急，容易反弹`, 0);
+  const H = V.H, L = V.L, last = V.last;
+  let pos, pl = "中", ps = 0;
+  if (isFinite(H) && last > H) { pos = `刚突破${day}最高点 ${fmt(H, dp)}`; pl = "多"; ps = 1; }
+  else if (isFinite(L) && last < L) { pos = `刚跌破${day}最低点 ${fmt(L, dp)}`; pl = "空"; ps = -1; }
+  else if (isFinite(H) && isFinite(L) && H > L) {
+    const p = (last - L) / (H - L);
+    pos = p > 0.75 ? `在${day}高点附近（离 ${fmt(H, dp)} 还差 ${pabs(H / last - 1, 2)}）` : p < 0.25 ? `在${day}低点附近（离 ${fmt(L, dp)} 还差 ${pabs(last / L - 1, 2)}）` : `在${day}高低点中间`;
+  } else pos = "—";
+  if (V.res[0] && (V.res[0].p - last) / V.a <= 0.6) pos += `，头上就是阻力 ${fmt(V.res[0].p, dp)}`;
+  else if (V.sup[0] && (last - V.sup[0].p) / V.a <= 0.6) pos += `，脚下就是支撑 ${fmt(V.sup[0].p, dp)}`;
+  add("位置", pl, pos, ps);
+  if (V.regime === "bull") add("日线", "多", "日线在涨（站在50日均线上方且均线向上）", 1);
+  else if (V.regime === "bear") add("日线", "空", "日线在跌（在50日均线下方且均线向下）", -1);
+  else add("日线", "中", V.regime ? "日线在震荡" : "日线数据不够", 0);
+  const pat = V.pats.filter((p) => p.status === "pending" || (p.status === "break" && p.at >= t - 6)).pop();
+  if (pat) {
+    const up = pat.side === 1;
+    add("形态", up ? "多" : "空", pat.status === "pending" ? `${up ? "双底" : "双顶"}已成形，等收盘${up ? "站上" : "跌破"}颈线 ${fmt(pat.neck, dp)}` : `${up ? "双底刚突破" : "双顶刚跌破"}颈线 ${fmt(pat.neck, dp)}`, pat.status === "break" ? (up ? 1 : -1) : 0);
+  }
+  const lean = score >= 2 ? "偏多" : score <= -2 ? "偏空" : "多空分歧";
+  return { items, score, lean };
 }
 
-// ---------------------------------------------------------------- 开单前检查
+// ================================================================ 结论卡
+function statFor(sym, bull, side) {
+  const E = window.JSQ_ENV; if (!E || !E.contract_stats) return null;
+  const g = U.groupOfSym(sym);
+  const key = sym === "XAUUSDT" ? "XAUUSD" : sym === "XAGUSDT" ? "XAGUSD" : (["AMDUSDT", "MUUSDT", "DELLUSDT", "SPCXUSDT"].includes(sym) ? "stock_main" : (g === "stock" ? "stock_other" : null));
+  if (!key || !E.contract_stats[key]) return null;
+  const s = E.contract_stats[key][`breakout|E|${bull ? "bull" : "bear"}|${side}`];
+  return s ? { key, s } : null;
+}
+const SAMPLE = { stock_main: "AMD/美光/戴尔近5年", stock_other: "25只大型科技股近5年", XAUUSD: "黄金近5年", XAGUSD: "白银近5年" };
+function histLine(st, label) {
+  if (!st) return "";
+  const s = st.s, w = Math.round(s.win * 10), net = s.avg;
+  return `${label}：10笔里赚${w}笔，平均每笔${net >= 0 ? "净赚" : "净亏"} ${Math.abs(net).toFixed(2)} 份止损（${SAMPLE[st.key]}，${s.n}笔）`;
+}
 function usMarketClosed() {
   const p = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", weekday: "short", hour: "2-digit", minute: "2-digit", hour12: false }).formatToParts(new Date());
   const g = (t) => (p.find((x) => x.type === t) || {}).value;
   const wd = g("weekday"), hm = (+g("hour") % 24) * 60 + +g("minute");
   return wd === "Sat" || wd === "Sun" || hm < 9 * 60 + 30 || hm >= 16 * 60;
 }
-function statFor(sym, env, side) {
-  const E = window.JSQ_ENV; if (!E || !E.contract_stats) return null;
-  const key = sym === "XAUUSDT" ? "XAUUSD" : sym === "XAGUSDT" ? "XAGUSD" : "stock_main";
-  const s = E.contract_stats[key]; if (!s) return null;
-  return { key, s: s[`breakout|E|${env}|${side}`] };
+function plan(V, side, tf) {
+  const E0 = V.last, dp = V.dp, day = tf === "1d" ? "20日" : "24小时";
+  const stop = side === 1 ? V.L * 0.999 : V.H * 1.001, R = side * (E0 - stop);
+  if (!(R > 0) || !isFinite(R)) return `现价已经越过${day}${side === 1 ? "最低" : "最高"}点，按你的规则没法放止损。`;
+  const cands = [];
+  const lv = side === 1 ? V.res[0] : V.sup[0];
+  if (lv && side * (lv.p - E0) >= 0.5 * R) cands.push({ p: lv.p, w: side === 1 ? "阻力" : "支撑" });
+  const ext = side === 1 ? V.H : V.L;
+  if (isFinite(ext) && side * (ext - E0) >= 0.5 * R) cands.push({ p: ext, w: `${day}${side === 1 ? "最高" : "最低"}` });
+  cands.sort((a, b) => side * (a.p - b.p));
+  const tg = cands[0] || { p: E0 + side * 2 * R, w: "两倍止损距离" };
+  const rr = side * (tg.p - E0) / R;
+  return `${side === 1 ? "做多" : "做空"}参考：止损 <b>${fmt(stop, dp)}</b>（亏 ${pabs(R / E0, 2)}）→ 目标 <b>${fmt(tg.p, dp)}</b>（${esc(tg.w)}，赚 ${pabs((tg.p - E0) / E0, 2)}），盈亏比 1:${rr.toFixed(1)}${rr < 1 ? "，<b>不划算</b>" : ""}。浮盈到 ${fmt(E0 + side * R, dp)} 就把止损挪到开仓价。`;
 }
-function li(title, cls, html) {
-  return `<li class="ck ${cls}"><div class="ck-h"><span class="chip ${cls}">${esc(title)}</span></div><div class="ck-b">${html}</div></li>`;
-}
-function renderCheck(force) {
+function setDir(text, cls) { const d = $("cardDir"); d.textContent = text; d.className = "card-dir " + cls; }
+function renderCard(force) {
   const J = window.JSQ; if (!J) return;
-  const now = Date.now(), key = J.state.sym + "|" + J.state.tf + "|" + (J.VIEW ? J.VIEW.n : 0);
-  if (key.split("|")[0] !== lastKey.split("|")[0] || key.split("|")[1] !== lastKey.split("|")[1]) force = true;
-  lastKey = key;
-  if (!force && now - lastCheck < 2000) { clearTimeout(checkTimer); checkTimer = setTimeout(() => renderCheck(true), 2100); return; }
-  lastCheck = now;
-  const sym = J.state.sym, V = J.VIEW, name = J.NAMES[sym] || sym, isMetal = !!METALS[sym];
-  $("checkSub").textContent = `${name} · ${J.TF_LABEL[J.state.tf] || J.state.tf}`;
-  if (!V) { $("checkVerdict").innerHTML = "等行情载入…"; $("checkList").innerHTML = ""; return; }
-
-  // 1 大方向
-  let env = null, envTxt = "", envLive = "";
-  if (isMetal) {
-    const m = MET[sym];
-    if (m) { env = m.bull ? "bull" : "bear"; envTxt = `${name}在200日线${m.bull ? "上方" : "下方"}（${pct(m.vs)}，200日线 ${fmt(m.ma200, V.dp)}）`; envLive = "币安日线实时计算"; }
+  const now = Date.now(), key = J.state.sym + "|" + J.state.tf;
+  if (key !== lastKey) { force = true; lastKey = key; }
+  if (!force && now - lastRender < 2000) { clearTimeout(timer); timer = setTimeout(() => renderCard(true), 2100); return; }
+  lastRender = now;
+  const sym = J.state.sym, tf = J.state.tf, V = J.VIEW, name = U.names[sym] || sym, g = U.groupOfSym(sym);
+  $("cardName").textContent = `${name} · ${J.TF_LABEL[tf] || tf}`;
+  if (!V) { setDir("等行情载入…", "flat"); $("cardWhy").textContent = ""; $("cardTech").innerHTML = ""; $("cardPlan").innerHTML = ""; $("cardHist").textContent = ""; $("cardWarn").textContent = ""; return; }
+  const T = tech(V, tf), env = envFor(sym);
+  if (g !== "stock") needDMA(g === "crypto" ? "BTCUSDT" : sym).then(() => { if (!env && envFor(sym)) renderCard(true); });
+  // 技术面一行一行
+  $("cardTech").innerHTML = T.items.map((x) => `<li><span class="lean ${x.lean === "多" ? "up" : x.lean === "空" ? "down" : "flat"}">${x.lean}</span><b>${x.k}</b>${esc(x.txt)}</li>`).join("");
+  // 结论
+  let dir, cls, why, side = 0;
+  const leanTxt = `技术面${T.lean}（${T.items.filter((x) => x.lean === "多").length}项偏多、${T.items.filter((x) => x.lean === "空").length}项偏空）`;
+  if (!env) { dir = T.lean === "多空分歧" ? "看不清" : `技术面${T.lean}`; cls = "flat"; why = `大方向还没算出来。${leanTxt}。`; side = T.lean === "偏多" ? 1 : T.lean === "偏空" ? -1 : 0; }
+  else if (!env.tested) {
+    dir = T.lean === "偏多" ? "技术面偏多" : T.lean === "偏空" ? "技术面偏空" : "看不清"; cls = T.lean === "偏多" ? "up" : T.lean === "偏空" ? "down" : "flat";
+    why = `大方向：${env.what}。${leanTxt}。<b>这个品种没回测过</b>，只能参考技术面。`; side = T.lean === "偏多" ? 1 : T.lean === "偏空" ? -1 : 0;
+  } else if (env.bull) {
+    if (T.lean === "偏多") { dir = "可以做多"; cls = "up"; side = 1; why = `大方向牛市（${env.what}），${leanTxt}，顺势。`; }
+    else if (T.lean === "偏空") { dir = "别做空，等回调结束"; cls = "warn"; side = 0; why = `大方向牛市（${env.what}），短线在回调。回测里牛市做空基本都亏，等短线重新转强再做多。`; }
+    else { dir = "等突破再做多"; cls = "warn"; side = 1; why = `大方向牛市（${env.what}），短线方向不明。等价格站上${tf === "1d" ? "20日" : "24小时"}最高点 ${fmt(V.H, V.dp)} 再考虑做多，不做空。`; }
   } else {
-    const u = usNow();
-    if (u) { env = u.bull ? "bull" : "bear"; envTxt = `纳指在200日线${u.bull ? "上方" : "下方"}（${pct(u.vs)}）`; envLive = u.live ? "币安 QQQ 合约实时换算" : "上个美股收盘"; }
+    if (T.lean === "偏空") { dir = "观望（偏空）"; cls = "down"; side = -1; why = `大方向熊市（${env.what}），${leanTxt}。但历史上熊市做空也基本不赚钱，要做只能轻仓、快进快出。`; }
+    else if (T.lean === "偏多") { dir = "观望（在反弹）"; cls = "warn"; side = 1; why = `大方向熊市（${env.what}），短线在反弹。熊市里的反弹靠不住，历史上做多也不稳定，不追。`; }
+    else { dir = "观望"; cls = "flat"; side = 0; why = `大方向熊市（${env.what}），${leanTxt}。多空都没有优势。`; }
   }
-  const items = [];
-  let verdict, vcls;
-  if (!env) { verdict = "大方向还没算出来（取不到日线或环境数据），先别按方向下结论。"; vcls = "warn"; items.push(li("大方向", "flat", "暂时取不到。")); }
-  else if (env === "bull") {
-    verdict = `<b>${isMetal ? name : "股票合约"}现在是牛市：只考虑做多，不做空。</b>`; vcls = "good";
-    items.push(li("大方向", "good", `${esc(envTxt)}，${esc(envLive)}。回测里牛市做空${isMetal ? "（金银8组里7组）" : "（8组测试全部）"}亏钱，所以这里不做空。`));
-  } else {
-    verdict = `<b>${isMetal ? name : "股票合约"}现在是熊市：少做、轻仓。</b>多空都没有稳定优势。`; vcls = "warn";
-    items.push(li("大方向", "warn", `${esc(envTxt)}，${esc(envLive)}。熊市里做多做空在回测里都没有稳定结论（长熊做空赚、短暂恐慌做多赚，事先分不出）。`));
+  setDir(dir, cls);
+  $("cardWhy").innerHTML = why + (env ? `<span class="src">（${esc(env.src)}）</span>` : "");
+  // 价位
+  $("cardPlan").innerHTML = side ? plan(V, side, tf) : "方向不明，不给参考价位。想做的话点下面按钮，按24小时高低点自动算。";
+  // 历史
+  const hl = [];
+  if (env && env.tested) {
+    hl.push(histLine(statFor(sym, env.bull, "long"), env.bull ? "牛市里突破做多" : "熊市里突破做多"));
+    hl.push(histLine(statFor(sym, env.bull, "short"), env.bull ? "牛市里跌破做空" : "熊市里跌破做空"));
   }
-
-  // 2 趋势阶段（页面原有分析）
-  const tr = V.trend === 1 ? "向上" : "向下";
-  const rg = V.regime === "bull" ? "日线上涨" : V.regime === "bear" ? "日线下跌" : V.regime === "range" ? "日线震荡" : "日线不足";
-  const agree = env && ((env === "bull" && V.trend === 1) || (env === "bear" && V.trend === -1));
-  items.push(li("趋势阶段", agree ? "good" : "flat", `当前周期短线趋势${tr}，${rg}。${env === "bull" && V.trend === -1 ? "大方向向上但短线在回调：等短线重新向上（突破24小时高点）再考虑。" : ""}`));
-
-  // 3 止损和盈亏比（回测用的规则：24小时高低点外0.1%）
-  const sides = env === "bull" ? [1] : [1, -1];
-  const day = J.state.tf === "1d" ? "20日" : "24小时";
-  const parts = [];
-  for (const side of sides) {
-    const E0 = V.last, stop = side === 1 ? V.L * 0.999 : V.H * 1.001;
-    const R = side * (E0 - stop);
-    if (!(R > 0) || !isFinite(R)) { parts.push(`${side === 1 ? "做多" : "做空"}：现价已越过${day}${side === 1 ? "最低" : "最高"}点，没法按这个规则放止损。`); continue; }
-    const tgts = [];
-    const lv = side === 1 ? V.res[0] : V.sup[0];
-    if (lv) { const k = side * (lv.p - E0) / R; tgts.push(k < 0.2 ? `现价已贴着${side === 1 ? "阻力 R1" : "支撑 S1"} ${fmt(lv.p, V.dp)}（不到0.2R）` : `到${side === 1 ? "阻力 R1" : "支撑 S1"} ${fmt(lv.p, V.dp)} 是 ${k.toFixed(1)}R`); }
-    const ext = side === 1 ? V.H : V.L;
-    if (isFinite(ext) && side * (ext - E0) > 0) tgts.push(`到${day}${side === 1 ? "最高" : "最低"} ${fmt(ext, V.dp)} 是 ${(side * (ext - E0) / R).toFixed(1)}R`);
-    parts.push(`${side === 1 ? "做多" : "做空"}：止损 ${fmt(stop, V.dp)}（离现价 ${(R / E0 * 100).toFixed(2)}%），浮盈到 ${fmt(E0 + side * R, V.dp)}（1R）就把止损挪到开仓价。` + (tgts.length ? tgts.join("，") + "。" : ""));
-  }
-  items.push(li("止损和盈亏比", "flat", parts.map(esc).join("<br>")));
-
-  // 4 历史上同类情形
-  if (env) {
-    const rows = [];
-    for (const side of (env === "bull" ? ["long", "short"] : ["long", "short"])) {
-      const st = statFor(sym, env, side); if (!st || !st.s) continue;
-      const s = st.s, good = s.avg > 0.05, bad = s.avg < -0.05;
-      rows.push(`<div class="ck-stat ${good ? "pos" : bad ? "neg" : ""}"><b>${side === "long" ? "突破做多" : "跌破做空"}</b>：胜率 ${Math.round(s.win * 100)}%，平均每笔 <b>${s.avg >= 0 ? "+" : ""}${s.avg.toFixed(2)}R</b>（赚时平均 +${s.avg_win}R，亏时 ${s.avg_loss}R，${s.n} 笔）</div>`);
-    }
-    const note = window.JSQ_ENV.contract_stats_note || {}, key = statFor(sym, env, "long")?.key;
-    items.push(li("历史上同类情形", "flat", rows.join("") + `<p class="ck-src">${esc(note[key] || "")}${sym === "SPCXUSDT" ? "；SPCX 用 AMD/美光/戴尔的回测代替" : ""}。规则：${esc(note.rule || "")}</p>`));
-  }
-
-  // 5 提醒
+  $("cardHist").innerHTML = hl.filter(Boolean).map(esc).join("<br>");
+  // 提醒
   const warns = [];
-  if (!isMetal && usMarketClosed()) warns.push("美股现在休市：合约价可能在开盘时跳空，止损可能滑点。");
-  if (!isMetal) {
-    const ed = (window.JSQ_ENV.earnings || {})[sym.replace("USDT", "")];
-    if (ed) { const days = Math.round((new Date(ed + "T00:00:00Z") - new Date()) / 864e5); if (days >= -1 && days <= 10) warns.push(`财报日 ${ed}（${days <= 0 ? "就在这两天" : days + " 天后"}）：财报前后跳空风险大。`); }
+  if (g === "stock" && usMarketClosed()) warns.push("美股现在休市：合约价开盘时可能跳空，止损可能滑点。");
+  if (g === "stock") {
+    const ed = ((window.JSQ_ENV || {}).earnings || {})[sym.replace("USDT", "")];
+    if (ed) { const days = Math.round((new Date(ed + "T00:00:00Z") - new Date()) / 864e5); if (days >= -1 && days <= 10) warns.push(`${ed} 出财报（${days <= 0 ? "就在这两天" : days + "天后"}），前后容易跳空。`); }
+    const u = usNow(); if (u && u.stopDist < 0.05) warns.push(`纳指离认错线只差 ${pabs(u.stopDist)}，到了就按长熊处理。`);
   }
-  const U = window.JSQ_LIVE_US;
-  if (!isMetal && U && window.JSQ_ENV.live) { const d = U.QQQ / window.JSQ_ENV.live.us.QQQ.stop_line - 1; if (d < 0.05) warns.push(`纳指离认错线只有 ${pct(d)}：到了就按长熊处理。`); }
-  warns.push("仓位按每笔最多亏本金的 1% 来算（下面计算器里填）。");
-  items.push(li("提醒", warns.length > 1 ? "warn" : "flat", warns.map(esc).join("<br>")));
-
-  $("checkVerdict").className = "check-verdict " + vcls;
-  $("checkVerdict").innerHTML = verdict;
-  $("checkList").innerHTML = items.join("");
-  $("ckShort").hidden = env === "bull";
+  if (["SOXLUSDT", "TQQQUSDT", "SQQQUSDT"].includes(sym)) warns.push("这是三倍杠杆ETF，波动是普通股票的三倍。");
+  warns.push("每笔最多亏本金的1%（仓位用下面计算器算）。");
+  $("cardWarn").textContent = warns.join(" ");
+  $("ckShort").hidden = !!(env && env.tested && env.bull);
 }
 
-function initCheck() {
-  $("ckLong").addEventListener("click", () => { const b = $("use24L"); if (b) { b.click(); $("calcPanel").scrollIntoView({ behavior: "smooth", block: "start" }); } });
-  $("ckShort").addEventListener("click", () => { const b = $("use24S"); if (b) { b.click(); $("calcPanel").scrollIntoView({ behavior: "smooth", block: "start" }); } });
-  document.addEventListener("jsq-view", () => renderCheck(false));
-  document.addEventListener("jsq-env-ready", () => { renderBar(); renderCheck(true); });
-  document.addEventListener("jsq-live", () => { renderBar(); renderCheck(false); });
-  refreshMetals();
-  setInterval(refreshMetals, 5 * 60e3);
+// ================================================================ 选品种
+function openPicker() { $("picker").hidden = false; $("pickQ").value = ""; renderPick(); setTimeout(() => $("pickQ").focus(), 50); }
+function closePicker() { $("picker").hidden = true; }
+let pickGroup = "fav";
+function renderPick() {
+  const q = $("pickQ").value.trim().toLowerCase(), favs = U.favs(), J = window.JSQ;
+  $("pickTabs").querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.g === pickGroup)));
+  let list = q ? U.all.filter((s) => s.toLowerCase().includes(q) || (U.names[s] || "").toLowerCase().includes(q))
+    : pickGroup === "fav" ? favs : pickGroup === "metal" ? U.METALS : pickGroup === "crypto" ? U.CRYPTO : U.STOCKS;
+  $("pickList").innerHTML = list.map((s) => `<div class="pick-row${J && J.state.sym === s ? " on" : ""}"><button type="button" class="pick-go" data-s="${s}"><b>${esc(U.names[s])}</b><small>${s.replace("USDT", "")}</small></button><button type="button" class="pick-star" data-s="${s}" aria-label="自选">${favs.includes(s) ? "★" : "☆"}</button></div>`).join("") || `<p class="note">没找到。</p>`;
+}
+function initPicker() {
+  $("pickOpen").addEventListener("click", openPicker);
+  $("pickClose").addEventListener("click", closePicker);
+  $("picker").addEventListener("click", (e) => { if (e.target === $("picker")) closePicker(); });
+  $("pickQ").addEventListener("input", renderPick);
+  $("pickTabs").querySelectorAll("button").forEach((b) => b.addEventListener("click", () => { pickGroup = b.dataset.g; $("pickQ").value = ""; renderPick(); }));
+  $("pickList").addEventListener("click", (e) => {
+    const go = e.target.closest(".pick-go"), star = e.target.closest(".pick-star");
+    if (star) { const s = star.dataset.s, f = U.favs(); const i = f.indexOf(s); if (i >= 0) { if (f.length > 1) f.splice(i, 1); } else f.push(s); U.saveFavs(f); window.JSQ.setFavs(f); renderPick(); }
+    else if (go) { closePicker(); window.JSQ.select(go.dataset.s); }
+  });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("picker").hidden) closePicker(); });
 }
 
-initTabs();
-initCheck();
-renderBar();
+// ================================================================ 正股：一眼看懂
+function renderBrief() {
+  const E = window.JSQ_ENV; if (!E) return;
+  const a = E.a.today, AL = window.JSQ_LIVE_A, t = AL ? AL.temp : a.temp, reg = AL ? AL.regime : a.regime, b = band(t);
+  let aDo;
+  if (reg === "熊市") aDo = b === "冰点" ? "可以分批买" : b === "偏冷" ? "快到冰点，可以小仓开始分批" : b === "中性" ? "少动，等温度跌到20以下再分批买" : "别追：熊市里突然变热多数是反弹陷阱";
+  else aDo = (b === "冰点" || b === "偏冷") ? "回调可以买（优先上升趋势里回踩20日线的票）" : b === "中性" ? "正常拿着" : b === "偏热" ? "别追高" : "别追，过热之后60天平均是跌的";
+  const u = usNow();
+  let uDo = "—", uWhat = "";
+  if (u) {
+    uWhat = `纳指离200日线 ${pct(u.vs)}，标普 ${pct(u.spxVs)}`;
+    if (u.bull) uDo = "牛市：正股正常拿着；合约不做空";
+    else if (u.spxVs > 0) uDo = `科技股在调整、标普还没破：正股可以分批买、留足现金；合约少做`;
+    else uDo = `大盘也破了200日线：分批、留现金；纳指跌到 ${fmt(u.stop, 0)}（认错线）就减仓`;
+  }
+  const mt = window.JSQ_MAIN_TOP || (a.top_ind || []);
+  const rows = [
+    ["A股", `${reg} · ${b}（${Math.round(t)}）`, aDo, reg === "牛市" ? "good" : "warn"],
+    ["美股", u ? (u.bull ? "牛市" : "熊市") : "—", uDo + (uWhat ? `。${uWhat}` : ""), u && u.bull ? "good" : "warn"],
+    ["主线", mt.slice(0, 3).map((x) => x.name).join("、") || "—", "成交占比比平时放大最多的行业（只是资金去向，不是买卖信号）", "flat"],
+  ];
+  $("briefBody").innerHTML = rows.map(([k, s, d, c]) => `<div class="brief-row"><span class="brief-k">${k}</span><div><b class="chip ${c}">${esc(s)}</b><p>${esc(d)}</p></div></div>`).join("");
+  $("briefSub").textContent = AL ? "盘中实时" : `${+a.date.slice(5, 7)}月${+a.date.slice(8, 10)}日收盘`;
+}
+
+// ================================================================ 启动
+function init() {
+  initTabs(); initPicker();
+  $("ckLong").addEventListener("click", () => { $("foldCalc").open = true; const b = $("use24L"); if (b) { b.click(); $("foldCalc").scrollIntoView({ behavior: "smooth", block: "start" }); } });
+  $("ckShort").addEventListener("click", () => { $("foldCalc").open = true; const b = $("use24S"); if (b) { b.click(); $("foldCalc").scrollIntoView({ behavior: "smooth", block: "start" }); } });
+  document.addEventListener("jsq-view", () => renderCard(false));
+  document.addEventListener("jsq-env-ready", () => { renderBar(); renderCard(true); renderBrief(); });
+  document.addEventListener("jsq-live", () => { renderBar(); renderCard(false); renderBrief(); });
+  const refresh = async () => { await Promise.allSettled(["XAUUSDT", "XAGUSDT", "BTCUSDT"].map(needDMA)); renderBar(); renderCard(true); };
+  refresh(); setInterval(refresh, 5 * 60e3);
+  renderBar();
+}
+init();
 })();
 </script>
 </body>
