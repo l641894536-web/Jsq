@@ -211,6 +211,29 @@ td.n { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
 .env-live-h b { font-size: 13px; color: var(--brass); }
 .env-live-note { margin: 0; font-size: 12px; color: var(--muted); }
 .env .chip.brass { color: var(--brass); background: var(--brass-soft); }
+
+/* status bar + tabs + pre-trade check */
+.sbar { position: sticky; top: 0; z-index: 30; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px;
+  padding: 8px 0; background: color-mix(in srgb, var(--bg) 90%, transparent); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); }
+.sbar-chips { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; min-width: 0; flex: 1 1 auto; }
+.sbar-chips::-webkit-scrollbar { display: none; }
+.schip { display: inline-flex; align-items: baseline; gap: 6px; white-space: nowrap; border: 1px solid var(--line); border-radius: 999px; padding: 4px 10px;
+  background: var(--panel); color: var(--ink); font: inherit; font-size: 12px; cursor: pointer; }
+.schip span { color: var(--muted); }
+.schip b { font-weight: 600; font-variant-numeric: tabular-nums; }
+.schip.good b { color: var(--good); } .schip.warn b { color: var(--warn); } .schip.bad b { color: var(--bad); }
+.tabs button { min-width: 64px; }
+.tab { display: grid; gap: 14px; }
+.tab[hidden] { display: none; }
+.check-body { padding: 10px 14px 14px; display: grid; gap: 10px; }
+.check-verdict { font-size: 14px; border-radius: 8px; padding: 9px 12px; background: var(--sunk); }
+.check-verdict.good { background: var(--good-soft); } .check-verdict.warn { background: var(--warn-soft); }
+.check-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.ck { display: grid; grid-template-columns: 112px minmax(0, 1fr); gap: 10px; align-items: start; border-top: 1px solid var(--line); padding-top: 8px; }
+@media (max-width: 560px) { .ck { grid-template-columns: minmax(0, 1fr); gap: 4px; } }
+.ck-b { font-size: 13px; overflow-wrap: anywhere; }
+.ck-stat { margin: 2px 0; } .ck-stat.pos b { color: var(--good); } .ck-stat.neg b { color: var(--bad); }
+.ck-src { margin: 4px 0 0; font-size: 11.5px; color: var(--muted); }
 </style>
 </head>
 <body>
@@ -223,42 +246,22 @@ td.n { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
     <button class="ghost" id="colorMode" type="button" aria-label="切换涨跌颜色">绿涨红跌</button>
   </header>
 
-  <section class="panel env" id="envPanel" aria-labelledby="envTitle">
-    <div class="panel-h"><h2 id="envTitle">市场环境</h2><span class="sub" id="envAsof">正在载入…</span></div>
-    <div class="env-grid">
-      <article class="env-card">
-        <div class="env-card-h"><h3>A股</h3><span class="chip" id="aState">—</span></div>
-        <div class="env-big"><span class="num" id="aTemp">—</span><span class="env-unit">情绪温度（0–100，20以下冰点，80以上过热）</span></div>
-        <dl class="kv" id="aKv"></dl>
-        <div class="env-live" id="aLive" hidden><div class="env-live-h"><b>盘中实时</b><span class="sub" id="aLiveTime"></span></div><dl class="kv" id="aLiveKv"></dl><p class="env-live-note" id="aLiveNote"></p></div>
-        <p class="env-hist" id="aHist"></p>
-      </article>
-      <article class="env-card">
-        <div class="env-card-h"><h3>美股</h3><span class="chip" id="usState">—</span></div>
-        <div class="env-big"><span class="num" id="usVix">—</span><span class="env-unit">VIX 恐慌指数（20以上算恐慌）</span></div>
-        <dl class="kv" id="usKv"></dl>
-        <div class="env-live" id="usLive" hidden><div class="env-live-h"><b>实时</b><span class="sub" id="usLiveTime"></span></div><dl class="kv" id="usLiveKv"></dl><p class="env-live-note" id="usLiveNote"></p></div>
-        <p class="env-hist" id="usHist"></p>
-      </article>
+  <nav class="sbar" id="sbar" aria-label="市场状态和页面">
+    <div class="sbar-chips" id="sbarChips">
+      <button type="button" class="schip" data-go="stock" id="sbA"><span>A股</span><b>—</b></button>
+      <button type="button" class="schip" data-go="stock" id="sbUS"><span>美股</span><b>—</b></button>
+      <button type="button" class="schip" data-go="contract" data-sym="XAUUSDT" id="sbAU"><span>黄金</span><b>—</b></button>
+      <button type="button" class="schip" data-go="contract" data-sym="XAGUSDT" id="sbAG"><span>白银</span><b>—</b></button>
     </div>
-    <div class="env-chart-h">
-      <div class="seg" id="envTabs" role="group" aria-label="环境走势">
-        <button type="button" data-env="a" aria-pressed="true">A股情绪温度</button>
-        <button type="button" data-env="us" aria-pressed="false">纳指与200日线</button>
-      </div>
-      <span class="sub" id="envLegend"></span>
+    <div class="seg tabs" id="tabs" role="tablist" aria-label="页面">
+      <button type="button" role="tab" data-tab="contract" aria-selected="true" aria-pressed="true">合约</button>
+      <button type="button" role="tab" data-tab="stock" aria-selected="false" aria-pressed="false">正股</button>
     </div>
-    <div id="envChart"></div>
-    <div class="report">
-      <h3 class="env-sub">A股情绪温度各档：之后60天全A等权的平均涨跌 · 上涨概率（2016年以来）</h3>
-      <div class="tablewrap"><table id="envStats"></table></div>
-      <h3 class="env-sub">已经回测过的规则</h3>
-      <div class="env-rules" id="envRules"></div>
-      <p class="note">这一块只显示市场状态和历史回测结果，<b>不给买卖信号</b>。情绪温度由全部A股（剔除ST和次新股）的11个指标算出：涨停占比、跌停占比、涨停减跌停、炸板率、连板高度、昨日涨停今日表现、上涨家数占比、成交额热度、创一年新高减新低、站上20日线和60日线的比例，各自换算成在过去一年里的位置后取平均。</p>
-    </div>
-  </section>
+  </nav>
 
 
+
+  <div class="tab" id="tab-contract">
   <div class="controls">
     <div class="syms" id="syms" role="group" aria-label="品种"></div>
     <div class="seg" id="tfs" role="group" aria-label="周期">
@@ -275,6 +278,18 @@ td.n { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
     <div class="chips" id="stateChips"></div>
     <span class="fund num" id="fund"></span>
     <span class="advice" id="advice"></span>
+  </section>
+
+  <section class="panel check" id="checkPanel" aria-labelledby="checkTitle">
+    <div class="panel-h"><h2 id="checkTitle">开单前检查</h2><span class="sub" id="checkSub"></span></div>
+    <div class="check-body">
+      <div class="check-verdict" id="checkVerdict">等行情载入…</div>
+      <ol class="check-list" id="checkList"></ol>
+      <div class="row-btns">
+        <button type="button" class="btn" id="ckLong">按这个检查填入做多</button>
+        <button type="button" class="btn" id="ckShort">按这个检查填入做空</button>
+      </div>
+    </div>
   </section>
 
   <div class="main">
@@ -378,7 +393,45 @@ td.n { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
     </div>
   </div>
 
-  <p class="note">行情直接来自币安合约（K线和最新价实时推送，资金费率约每 3 秒更新）。图上的支撑阻力、趋势线和双底双顶由固定规则自动画出，和回测用的是同一套规则。<b>这里不给"看涨/看跌"信号</b>：回测显示这些形态扣掉手续费后都不赚钱，趋势规则对个股方向也没有预测力，所以每处直接写出它的历史成绩。仅供看图参考，不构成投资建议。</p>
+  <p class="note">行情直接来自币安合约（K线和最新价实时推送，资金费率约每 3 秒更新）。图上的支撑阻力、趋势线和双底双顶由固定规则自动画出，和回测用的是同一套规则。<b>"开单前检查"里的方向只来自回测过的规则</b>（大方向牛市时不做空），每处都写着历史成绩；图上的形态本身扣掉手续费后不赚钱，不单独当信号。仅供参考，不构成投资建议。</p>
+  </div>
+
+  <div class="tab" id="tab-stock" hidden>
+  <section class="panel env" id="envPanel" aria-labelledby="envTitle">
+    <div class="panel-h"><h2 id="envTitle">市场环境</h2><span class="sub" id="envAsof">正在载入…</span></div>
+    <div class="env-grid">
+      <article class="env-card">
+        <div class="env-card-h"><h3>A股</h3><span class="chip" id="aState">—</span></div>
+        <div class="env-big"><span class="num" id="aTemp">—</span><span class="env-unit">情绪温度（0–100，20以下冰点，80以上过热）</span></div>
+        <dl class="kv" id="aKv"></dl>
+        <div class="env-live" id="aLive" hidden><div class="env-live-h"><b>盘中实时</b><span class="sub" id="aLiveTime"></span></div><dl class="kv" id="aLiveKv"></dl><p class="env-live-note" id="aLiveNote"></p></div>
+        <p class="env-hist" id="aHist"></p>
+      </article>
+      <article class="env-card">
+        <div class="env-card-h"><h3>美股</h3><span class="chip" id="usState">—</span></div>
+        <div class="env-big"><span class="num" id="usVix">—</span><span class="env-unit">VIX 恐慌指数（20以上算恐慌）</span></div>
+        <dl class="kv" id="usKv"></dl>
+        <div class="env-live" id="usLive" hidden><div class="env-live-h"><b>实时</b><span class="sub" id="usLiveTime"></span></div><dl class="kv" id="usLiveKv"></dl><p class="env-live-note" id="usLiveNote"></p></div>
+        <p class="env-hist" id="usHist"></p>
+      </article>
+    </div>
+    <div class="env-chart-h">
+      <div class="seg" id="envTabs" role="group" aria-label="环境走势">
+        <button type="button" data-env="a" aria-pressed="true">A股情绪温度</button>
+        <button type="button" data-env="us" aria-pressed="false">纳指与200日线</button>
+      </div>
+      <span class="sub" id="envLegend"></span>
+    </div>
+    <div id="envChart"></div>
+    <div class="report">
+      <h3 class="env-sub">A股情绪温度各档：之后60天全A等权的平均涨跌 · 上涨概率（2016年以来）</h3>
+      <div class="tablewrap"><table id="envStats"></table></div>
+      <h3 class="env-sub">已经回测过的规则</h3>
+      <div class="env-rules" id="envRules"></div>
+      <p class="note">这一块只显示市场状态和历史回测结果，<b>不给买卖信号</b>。情绪温度由全部A股（剔除ST和次新股）的11个指标算出：涨停占比、跌停占比、涨停减跌停、炸板率、连板高度、昨日涨停今日表现、上涨家数占比、成交额热度、创一年新高减新低、站上20日线和60日线的比例，各自换算成在过去一年里的位置后取平均。</p>
+    </div>
+  </section>
+  </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.3/dist/lightweight-charts.standalone.production.js"></script>
@@ -496,7 +549,7 @@ function snapRows(sym, tf) {
 }
 async function getSeries(sym, tf) {
   try {
-    const [rows, daily] = await Promise.all([fetchKlines(sym, tf, 1000), tf === "1d" ? null : fetchKlines(sym, "1d", 200)]);
+    const [rows, daily] = await Promise.all([fetchKlines(sym, tf, 1000), tf === "1d" ? null : fetchKlines(sym, "1d", 260)]);
     if (!rows.length) throw new Error("empty");
     return { sym, tf, rows, daily: daily || rows, src: "live" };
   } catch (e) {
@@ -957,7 +1010,7 @@ async function renderTrend() {
   } finally { trendBusy = false; }
 }
 
-function reanalyze() { VIEW = analyze(CUR); lastAnalysis = Date.now(); drawOverlays(); renderPrice(); renderState(); renderSetups(); }
+function reanalyze() { VIEW = analyze(CUR); lastAnalysis = Date.now(); drawOverlays(); renderPrice(); renderState(); renderSetups(); document.dispatchEvent(new CustomEvent("jsq-view")); }
 
 // ------------------------------------------------------------ live stream
 let wsK = null, wsT = null, retryK = 0, retryT = 0, timerK = null, timerT = null;
@@ -1325,6 +1378,7 @@ function wire() {
   }, 2000);
 }
 
+window.JSQ = { get state() { return state; }, get VIEW() { return VIEW; }, get CUR() { return CUR; }, NAMES, TF_LABEL, groupOf };
 function boot() {
   if (!LWC) { $("overlay").textContent = "画图组件没有载入成功，请刷新页面再试。"; return; }
   renderSyms(); buildCharts(); wire(); renderReport(); setSide(-1); calc(); renderJournal();
@@ -1590,10 +1644,12 @@ function renderA(q) {
   $("aLiveNote").textContent = "盘中温度是估算：涨停、跌停、上涨占比用实时数据，其余7项沿用上个收盘。按收盘数据回测，和正式温度平均差约3.5分，越接近收盘越准。" +
     (q.failed ? ` 这次有 ${q.failed} 批行情没取到。` : "");
   box.hidden = false;
+  window.JSQ_LIVE_A = { temp: t, regime: ewLive > ma ? "牛市" : "熊市", at: Date.now() };
+  document.dispatchEvent(new CustomEvent("jsq-live"));
 }
 
 async function tickA() {
-  if (aBusy || document.hidden) return;
+  if (aBusy || document.hidden || $("tab-stock").hidden) return;
   aBusy = true;
   try { renderA(await fetchA()); }
   catch (e) {
@@ -1628,6 +1684,8 @@ function renderUS(px) {
   $("usLiveTime").textContent = `北京时间 ${t} · 每30秒刷新`;
   $("usLiveNote").textContent = "币安股票合约24小时交易，美股休市时显示的是合约价，开盘后可能有差。200日线位置按\"把现价当今天收盘\"计算。";
   $("usLive").hidden = false;
+  window.JSQ_LIVE_US = { QQQ: px.QQQ, SPY: px.SPY, at: Date.now() };
+  document.dispatchEvent(new CustomEvent("jsq-live"));
 }
 async function tickUS() {
   if (document.hidden) return;
@@ -1651,8 +1709,213 @@ function start() {
   if (!E || !E.live) return;
   schedule();
   document.addEventListener("visibilitychange", () => { if (!document.hidden) { tickUS(); if (aSession()) tickA(); } });
+  document.addEventListener("jsq-tab", (e) => { if (e.detail === "stock") tickA(); });
 }
 if (window.JSQ_ENV) start(); else document.addEventListener("jsq-env-ready", start, { once: true });
+})();
+</script>
+<script>
+(() => {
+"use strict";
+// 页面切换（合约 / 正股）、顶部状态栏、合约开单前检查。只用回测过的规则给方向。
+const $ = (id) => document.getElementById(id);
+const pct = (x, dp = 1) => (x == null || !isFinite(x)) ? "—" : (x >= 0 ? "+" : "") + (x * 100).toFixed(dp) + "%";
+const fmt = (x, dp) => (x == null || !isFinite(x)) ? "—" : Number(x).toLocaleString("en-US", { minimumFractionDigits: dp, maximumFractionDigits: dp });
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const REST = "https://fapi.binance.com";
+const METALS = { XAUUSDT: "黄金", XAGUSDT: "白银" };
+const MET = {};            // sym -> { price, ma200, bull, vs, at }
+let lastCheck = 0, checkTimer = null, lastKey = "";
+
+// ---------------------------------------------------------------- 页面切换
+function currentTab() { return $("tab-stock").hidden ? "contract" : "stock"; }
+function setTab(t, push) {
+  if (t !== "stock") t = "contract";
+  $("tab-contract").hidden = t !== "contract";
+  $("tab-stock").hidden = t !== "stock";
+  $("tabs").querySelectorAll("button").forEach((b) => {
+    const on = b.dataset.tab === t;
+    b.setAttribute("aria-selected", String(on)); b.setAttribute("aria-pressed", String(on));
+  });
+  if (push) { try { history.replaceState(null, "", "#" + t); } catch (e) { location.hash = t; } }
+  try { localStorage.setItem("tab", t); } catch (e) {}
+  document.dispatchEvent(new CustomEvent("jsq-tab", { detail: t }));
+}
+function initTabs() {
+  $("tabs").querySelectorAll("button").forEach((b) => b.addEventListener("click", () => setTab(b.dataset.tab, true)));
+  $("sbarChips").querySelectorAll("button").forEach((b) => b.addEventListener("click", () => {
+    setTab(b.dataset.go, true);
+    if (b.dataset.sym && window.JSQ && window.JSQ.state.sym !== b.dataset.sym) {
+      const btn = document.querySelector(`#syms button[data-sym="${b.dataset.sym}"]`);
+      if (btn) btn.click();
+    }
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }));
+  let t = (location.hash || "").replace("#", "");
+  if (t !== "stock" && t !== "contract") { try { t = localStorage.getItem("tab") || "contract"; } catch (e) { t = "contract"; } }
+  setTab(t, false);
+  window.addEventListener("hashchange", () => { const h = location.hash.replace("#", ""); if (h === "stock" || h === "contract") setTab(h, false); });
+}
+
+// ---------------------------------------------------------------- 状态栏
+function sChip(id, text, cls) { const b = $(id); if (!b) return; b.querySelector("b").textContent = text; b.className = "schip " + (cls || ""); }
+function usNow() {
+  const E = window.JSQ_ENV; if (!E) return null;
+  const L = window.JSQ_LIVE_US, U = E.live && E.live.us;
+  if (L && U && L.QQQ && U.QQQ) {
+    const ma = (U.QQQ.sum199 + L.QQQ) / 200, vs = L.QQQ / ma - 1;
+    return { bull: vs > 0, vs, live: true, stopDist: L.QQQ / U.QQQ.stop_line - 1 };
+  }
+  const u = E.us.today;
+  return { bull: u.ndx_vs > 0, vs: u.ndx_vs, live: false, stopDist: u.ndx / u.stop_line - 1 };
+}
+function renderBar() {
+  const E = window.JSQ_ENV;
+  if (E) {
+    const a = E.a.today, AL = window.JSQ_LIVE_A;
+    const t = AL ? AL.temp : a.temp, reg = AL ? AL.regime : a.regime;
+    const band = t < 20 ? "冰点" : t < 40 ? "偏冷" : t <= 60 ? "中性" : t <= 80 ? "偏热" : "过热";
+    sChip("sbA", `${reg} · ${band} ${Math.round(t)}`, reg === "牛市" ? "good" : "warn");
+    const u = usNow();
+    if (u) sChip("sbUS", `${u.bull ? "牛市" : "熊市"} · 纳指${pct(u.vs)}`, u.bull ? "good" : "warn");
+  }
+  for (const [sym, id] of [["XAUUSDT", "sbAU"], ["XAGUSDT", "sbAG"]]) {
+    const m = MET[sym];
+    if (m) sChip(id, `${m.bull ? "牛市" : "熊市"} · ${pct(m.vs)}`, m.bull ? "good" : "warn");
+  }
+}
+
+// 金银：用币安日线算200日线（只用已收盘的日线，现价当今天）
+async function fetchMetal(sym) {
+  const r = await fetch(`${REST}/fapi/v1/klines?symbol=${sym}&interval=1d&limit=320`, { cache: "no-store" });
+  if (!r.ok) throw new Error("HTTP " + r.status);
+  const k = await r.json();
+  if (!Array.isArray(k) || k.length < 2) throw new Error("short");
+  const price = +k[k.length - 1][4];
+  // 回测用的是期货交易日的200日线：去掉周六周日的K线，只用已收盘的日线
+  const done = k.slice(0, -1).filter((x) => { const d = new Date(+x[0]).getUTCDay(); return d !== 0 && d !== 6; }).map((x) => +x[4]).slice(-199);
+  if (done.length < 199) throw new Error("short");
+  const ma = (done.reduce((s, x) => s + x, 0) + price) / 200;
+  MET[sym] = { price, ma200: ma, vs: price / ma - 1, bull: price > ma, at: Date.now() };
+}
+async function refreshMetals() {
+  await Promise.allSettled(Object.keys(METALS).map(fetchMetal));
+  renderBar(); renderCheck(true);
+}
+
+// ---------------------------------------------------------------- 开单前检查
+function usMarketClosed() {
+  const p = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", weekday: "short", hour: "2-digit", minute: "2-digit", hour12: false }).formatToParts(new Date());
+  const g = (t) => (p.find((x) => x.type === t) || {}).value;
+  const wd = g("weekday"), hm = (+g("hour") % 24) * 60 + +g("minute");
+  return wd === "Sat" || wd === "Sun" || hm < 9 * 60 + 30 || hm >= 16 * 60;
+}
+function statFor(sym, env, side) {
+  const E = window.JSQ_ENV; if (!E || !E.contract_stats) return null;
+  const key = sym === "XAUUSDT" ? "XAUUSD" : sym === "XAGUSDT" ? "XAGUSD" : "stock_main";
+  const s = E.contract_stats[key]; if (!s) return null;
+  return { key, s: s[`breakout|E|${env}|${side}`] };
+}
+function li(title, cls, html) {
+  return `<li class="ck ${cls}"><div class="ck-h"><span class="chip ${cls}">${esc(title)}</span></div><div class="ck-b">${html}</div></li>`;
+}
+function renderCheck(force) {
+  const J = window.JSQ; if (!J) return;
+  const now = Date.now(), key = J.state.sym + "|" + J.state.tf + "|" + (J.VIEW ? J.VIEW.n : 0);
+  if (key.split("|")[0] !== lastKey.split("|")[0] || key.split("|")[1] !== lastKey.split("|")[1]) force = true;
+  lastKey = key;
+  if (!force && now - lastCheck < 2000) { clearTimeout(checkTimer); checkTimer = setTimeout(() => renderCheck(true), 2100); return; }
+  lastCheck = now;
+  const sym = J.state.sym, V = J.VIEW, name = J.NAMES[sym] || sym, isMetal = !!METALS[sym];
+  $("checkSub").textContent = `${name} · ${J.TF_LABEL[J.state.tf] || J.state.tf}`;
+  if (!V) { $("checkVerdict").innerHTML = "等行情载入…"; $("checkList").innerHTML = ""; return; }
+
+  // 1 大方向
+  let env = null, envTxt = "", envLive = "";
+  if (isMetal) {
+    const m = MET[sym];
+    if (m) { env = m.bull ? "bull" : "bear"; envTxt = `${name}在200日线${m.bull ? "上方" : "下方"}（${pct(m.vs)}，200日线 ${fmt(m.ma200, V.dp)}）`; envLive = "币安日线实时计算"; }
+  } else {
+    const u = usNow();
+    if (u) { env = u.bull ? "bull" : "bear"; envTxt = `纳指在200日线${u.bull ? "上方" : "下方"}（${pct(u.vs)}）`; envLive = u.live ? "币安 QQQ 合约实时换算" : "上个美股收盘"; }
+  }
+  const items = [];
+  let verdict, vcls;
+  if (!env) { verdict = "大方向还没算出来（取不到日线或环境数据），先别按方向下结论。"; vcls = "warn"; items.push(li("大方向", "flat", "暂时取不到。")); }
+  else if (env === "bull") {
+    verdict = `<b>${isMetal ? name : "股票合约"}现在是牛市：只考虑做多，不做空。</b>`; vcls = "good";
+    items.push(li("大方向", "good", `${esc(envTxt)}，${esc(envLive)}。回测里牛市做空${isMetal ? "（金银8组里7组）" : "（8组测试全部）"}亏钱，所以这里不做空。`));
+  } else {
+    verdict = `<b>${isMetal ? name : "股票合约"}现在是熊市：少做、轻仓。</b>多空都没有稳定优势。`; vcls = "warn";
+    items.push(li("大方向", "warn", `${esc(envTxt)}，${esc(envLive)}。熊市里做多做空在回测里都没有稳定结论（长熊做空赚、短暂恐慌做多赚，事先分不出）。`));
+  }
+
+  // 2 趋势阶段（页面原有分析）
+  const tr = V.trend === 1 ? "向上" : "向下";
+  const rg = V.regime === "bull" ? "日线上涨" : V.regime === "bear" ? "日线下跌" : V.regime === "range" ? "日线震荡" : "日线不足";
+  const agree = env && ((env === "bull" && V.trend === 1) || (env === "bear" && V.trend === -1));
+  items.push(li("趋势阶段", agree ? "good" : "flat", `当前周期短线趋势${tr}，${rg}。${env === "bull" && V.trend === -1 ? "大方向向上但短线在回调：等短线重新向上（突破24小时高点）再考虑。" : ""}`));
+
+  // 3 止损和盈亏比（回测用的规则：24小时高低点外0.1%）
+  const sides = env === "bull" ? [1] : [1, -1];
+  const day = J.state.tf === "1d" ? "20日" : "24小时";
+  const parts = [];
+  for (const side of sides) {
+    const E0 = V.last, stop = side === 1 ? V.L * 0.999 : V.H * 1.001;
+    const R = side * (E0 - stop);
+    if (!(R > 0) || !isFinite(R)) { parts.push(`${side === 1 ? "做多" : "做空"}：现价已越过${day}${side === 1 ? "最低" : "最高"}点，没法按这个规则放止损。`); continue; }
+    const tgts = [];
+    const lv = side === 1 ? V.res[0] : V.sup[0];
+    if (lv) { const k = side * (lv.p - E0) / R; tgts.push(k < 0.2 ? `现价已贴着${side === 1 ? "阻力 R1" : "支撑 S1"} ${fmt(lv.p, V.dp)}（不到0.2R）` : `到${side === 1 ? "阻力 R1" : "支撑 S1"} ${fmt(lv.p, V.dp)} 是 ${k.toFixed(1)}R`); }
+    const ext = side === 1 ? V.H : V.L;
+    if (isFinite(ext) && side * (ext - E0) > 0) tgts.push(`到${day}${side === 1 ? "最高" : "最低"} ${fmt(ext, V.dp)} 是 ${(side * (ext - E0) / R).toFixed(1)}R`);
+    parts.push(`${side === 1 ? "做多" : "做空"}：止损 ${fmt(stop, V.dp)}（离现价 ${(R / E0 * 100).toFixed(2)}%），浮盈到 ${fmt(E0 + side * R, V.dp)}（1R）就把止损挪到开仓价。` + (tgts.length ? tgts.join("，") + "。" : ""));
+  }
+  items.push(li("止损和盈亏比", "flat", parts.map(esc).join("<br>")));
+
+  // 4 历史上同类情形
+  if (env) {
+    const rows = [];
+    for (const side of (env === "bull" ? ["long", "short"] : ["long", "short"])) {
+      const st = statFor(sym, env, side); if (!st || !st.s) continue;
+      const s = st.s, good = s.avg > 0.05, bad = s.avg < -0.05;
+      rows.push(`<div class="ck-stat ${good ? "pos" : bad ? "neg" : ""}"><b>${side === "long" ? "突破做多" : "跌破做空"}</b>：胜率 ${Math.round(s.win * 100)}%，平均每笔 <b>${s.avg >= 0 ? "+" : ""}${s.avg.toFixed(2)}R</b>（赚时平均 +${s.avg_win}R，亏时 ${s.avg_loss}R，${s.n} 笔）</div>`);
+    }
+    const note = window.JSQ_ENV.contract_stats_note || {}, key = statFor(sym, env, "long")?.key;
+    items.push(li("历史上同类情形", "flat", rows.join("") + `<p class="ck-src">${esc(note[key] || "")}${sym === "SPCXUSDT" ? "；SPCX 用 AMD/美光/戴尔的回测代替" : ""}。规则：${esc(note.rule || "")}</p>`));
+  }
+
+  // 5 提醒
+  const warns = [];
+  if (!isMetal && usMarketClosed()) warns.push("美股现在休市：合约价可能在开盘时跳空，止损可能滑点。");
+  if (!isMetal) {
+    const ed = (window.JSQ_ENV.earnings || {})[sym.replace("USDT", "")];
+    if (ed) { const days = Math.round((new Date(ed + "T00:00:00Z") - new Date()) / 864e5); if (days >= -1 && days <= 10) warns.push(`财报日 ${ed}（${days <= 0 ? "就在这两天" : days + " 天后"}）：财报前后跳空风险大。`); }
+  }
+  const U = window.JSQ_LIVE_US;
+  if (!isMetal && U && window.JSQ_ENV.live) { const d = U.QQQ / window.JSQ_ENV.live.us.QQQ.stop_line - 1; if (d < 0.05) warns.push(`纳指离认错线只有 ${pct(d)}：到了就按长熊处理。`); }
+  warns.push("仓位按每笔最多亏本金的 1% 来算（下面计算器里填）。");
+  items.push(li("提醒", warns.length > 1 ? "warn" : "flat", warns.map(esc).join("<br>")));
+
+  $("checkVerdict").className = "check-verdict " + vcls;
+  $("checkVerdict").innerHTML = verdict;
+  $("checkList").innerHTML = items.join("");
+  $("ckShort").hidden = env === "bull";
+}
+
+function initCheck() {
+  $("ckLong").addEventListener("click", () => { const b = $("use24L"); if (b) { b.click(); $("calcPanel").scrollIntoView({ behavior: "smooth", block: "start" }); } });
+  $("ckShort").addEventListener("click", () => { const b = $("use24S"); if (b) { b.click(); $("calcPanel").scrollIntoView({ behavior: "smooth", block: "start" }); } });
+  document.addEventListener("jsq-view", () => renderCheck(false));
+  document.addEventListener("jsq-env-ready", () => { renderBar(); renderCheck(true); });
+  document.addEventListener("jsq-live", () => { renderBar(); renderCheck(false); });
+  refreshMetals();
+  setInterval(refreshMetals, 5 * 60e3);
+}
+
+initTabs();
+initCheck();
+renderBar();
 })();
 </script>
 </body>
