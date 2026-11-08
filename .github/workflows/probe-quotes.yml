@@ -1,0 +1,39 @@
+name: probe-quotes
+on:
+  push:
+    paths: [".github/workflows/probe-quotes.yml"]
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Probe
+        run: |
+          mkdir out && cd out
+          UA="Mozilla/5.0"
+          FS="m:0+t:6,m:0+t:80,m:1+t:2,m:1+t:23"
+          F="f2,f3,f6,f12,f13,f14,f15,f16,f17,f18,f26"
+          for host in push2.eastmoney.com 82.push2.eastmoney.com; do
+            for pz in 5000 100; do
+              curl -sS -m 30 -A "$UA" -e "https://quote.eastmoney.com/" "https://$host/api/qt/clist/get?pn=1&pz=$pz&po=1&np=1&fltt=2&invt=2&fid=f12&fs=$FS&fields=$F&cb=jsq_cb" -o "em_${host}_${pz}.txt" -w "$host pz=$pz http=%{http_code} size=%{size_download}\n" || echo "$host pz=$pz FAILED"
+            done
+          done | tee summary.txt
+          curl -sS -m 30 -A "$UA" "https://qt.gtimg.cn/q=sh000001,sz399001,sh000300" -o tencent.txt -w "tencent http=%{http_code}\n" | tee -a summary.txt || true
+          for f in em_*.txt; do head -c 1500 "$f" > "${f%.txt}.head"; python3 -c "
+          import json,re,sys
+          t=open('$f',encoding='utf-8',errors='replace').read()
+          m=re.match(r'^\s*jsq_cb\((.*)\);?\s*$',t,re.S)
+          d=json.loads(m.group(1)) if m else None
+          if d and d.get('data'): print('$f', 'total', d['data'].get('total'), 'rows', len(d['data']['diff']))
+          else: print('$f', 'no data', t[:200])
+          " >> summary.txt; done
+          rm -f em_*_5000.txt
+          ls -la
+      - name: Save
+        run: |
+          cd out
+          git init -q -b probe && git config user.name bot && git config user.email bot@users.noreply.github.com
+          git add -A && git commit -q -m probe
+          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" probe
