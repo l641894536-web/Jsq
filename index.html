@@ -1962,7 +1962,12 @@ async function fetchDMA(sym) {
 }
 async function needDMA(sym) {
   if (DMA[sym] && Date.now() - DMA[sym].at < 5 * 60e3) return;
-  try { await fetchDMA(sym); } catch (e) {}
+  try { await fetchDMA(sym); }
+  catch (e) {
+    // 币安上市不满200个交易日（铜、天然气等）：用美国期货日线的200日线
+    const f = ((window.JSQ_ENV || {}).live || {}).fut, x = f && f[sym];
+    if (x) DMA[sym] = { price: x.close, ma200: x.ma200, vs: x.vs, bull: x.vs > 0, at: Date.now(), src: `${x.ticker}期货 ${x.date.slice(5)} 收盘` };
+  }
 }
 // 一个品种的"大方向"
 // 非科技蓝筹（回测样本：23只金融/医药/消费/能源/工业大盘股）——大方向看标普，不看纳指
@@ -1981,7 +1986,7 @@ function envFor(sym) {
   const ref = g === "crypto" ? "BTCUSDT" : sym, d = DMA[ref];
   if (!d) return null;
   const nm = U.names[ref] || ref;
-  return { bull: d.bull, what: `${nm}在200日线${d.bull ? "上方" : "下方"}（${pct(d.vs)}）`, src: "币安日线实时" };
+  return { bull: d.bull, what: `${nm}在200日线${d.bull ? "上方" : "下方"}（${pct(d.vs)}）`, src: d.src || "币安日线实时" };
 }
 
 // ================================================================ 状态栏
@@ -2042,7 +2047,7 @@ function tech(V, tf) {
 }
 
 // ================================================================ 结论卡
-const STATKEY = { XAUUSDT: "XAUUSD", XAGUSDT: "XAGUSD", XPTUSDT: "XPTCMDUSD", XPDUSDT: "XPDCMDUSD", COPPERUSDT: "COPPERCMDUSD", NATGASUSDT: "GASCMDUSD" };
+const STATKEY = { XAUUSDT: "XAUUSD", XAGUSDT: "XAGUSD", XPTUSDT: "commod", XPDUSDT: "commod", COPPERUSDT: "commod", NATGASUSDT: "commod" };
 function statKey(sym) {
   const g = U.groupOfSym(sym);
   if (STATKEY[sym]) return STATKEY[sym];
@@ -2058,14 +2063,14 @@ function statFor(sym, bull, side) {
   const s = E.contract_stats[key][`breakout|E|${bull ? "bull" : "bear"}|${side}`];
   return s ? { key, s } : null;
 }
-const SAMPLE = { stock_main: "AMD/美光/戴尔近5年", stock_other: "25只大型科技股近5年", stock_nontech: "23只非科技蓝筹近5年", crypto: "6个主流币近5年",
+const SAMPLE = { stock_main: "AMD/美光/戴尔近5年", stock_other: "25只大型科技股近5年", stock_nontech: "23只非科技蓝筹近5年", crypto: "7个主流币近5年", commod: "铂金/钯金/铜/天然气近5年",
   XAUUSD: "黄金近5年", XAGUSD: "白银近5年", XPTCMDUSD: "铂金近5年", XPDCMDUSD: "钯金近5年", COPPERCMDUSD: "铜近5年", GASCMDUSD: "天然气近5年" };
 // 回测评级：样本少 / 稳定赚 / 时灵时不灵 / 基本不赚 / 亏
 function grade(st) {
   if (!st) return "none";
   const s = st.s;
   if (s.n < 100) return "few";
-  if (s.avg >= 0.08) return (s.h1 > 0 && s.h2 > 0) ? "edge" : "unstable";
+  if (s.avg >= 0.08) return Math.min(s.h1, s.h2) >= 0.03 ? "edge" : "unstable";
   return s.avg > -0.03 ? "flat" : "lose";
 }
 const rTxt = (x) => `${x >= 0 ? "赚" : "亏"}${Math.abs(x).toFixed(2)}份止损`;
