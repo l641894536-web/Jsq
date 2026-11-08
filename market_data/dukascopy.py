@@ -30,6 +30,9 @@ SCHEMA = {"symbol": "str", "ts": "str", "open": ("float", 5), "high": ("float", 
           "close": ("float", 5), "volume": ("float", 4)}
 REC = struct.Struct(">Iiiiif")
 PLAUSIBLE = {"XAUUSD": (200, 20000), "XAGUSD": (2, 500), "AMDUSUSD": (2, 3000), "MUUSUSD": (2, 5000), "DELLUSUSD": (2, 3000)}
+# commodity CFDs: ranges narrower than 10x so exactly one point factor can fit (no silent mis-scaling)
+STRICT = {"XPTCMDUSD": (400, 3999), "XPDCMDUSD": (400, 3999), "COPPERCMDUSD": (1.2, 11.9), "GASCMDUSD": (1.0, 9.99)}
+PLAUSIBLE.update(STRICT)
 
 
 def _download(sess, url: str, cap: float = 90.0):
@@ -65,7 +68,11 @@ def parse(sym: str, month: str, blob: bytes, day: int | None = None) -> pd.DataF
     df = pd.DataFrame(recs, columns=["sec", "open", "close", "low", "high", "volume"])
     lo, hi = PLAUSIBLE.get(sym, (0.5, 20000) if sym.endswith("USUSD") else (0, float("inf")))
     med = float(df["close"].median())
-    factor = next((f for f in (1000, 100000, 100, 10000, 10) if lo <= med / f <= hi), 1000)
+    factor = next((f for f in (1000, 100000, 100, 10000, 10) if lo <= med / f <= hi), None)
+    if factor is None:
+        if sym in STRICT:
+            raise ValueError(f"{sym} {month}: median {med} fits no point factor for range {lo}-{hi}")
+        factor = 1000
     for c in ("open", "close", "low", "high"):
         df[c] = df[c] / factor
     ok = ((df["low"] <= df[["open", "close"]].min(axis=1)) & (df["high"] >= df[["open", "close"]].max(axis=1))).mean()

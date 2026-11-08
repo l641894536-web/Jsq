@@ -68,7 +68,9 @@ DK_STOCKS_1H = ["AAPL", "MSFT", "AMZN", "GOOGL", "META", "FB", "NVDA", "TSLA", "
 DK_STOCKS_1H_OTHER = ["JPM", "BAC", "WFC", "GS", "V", "MA", "JNJ", "UNH", "PFE", "MRK", "ABBV", "LLY", "PG", "KO",
                       "PEP", "WMT", "COST", "HD", "MCD", "NKE", "DIS", "XOM", "CVX", "BA", "CAT", "HON", "UNP",
                       "T", "VZ", "CMCSA"]
-DK_SYMBOLS = ["XAUUSD", "XAGUSD"] + [t + "USUSD" for t in DK_STOCKS_1H + DK_STOCKS_1H_OTHER]
+# platinum, palladium, copper, natural gas (Dukascopy commodity CFDs): history for the Binance XPT/XPD/COPPER/NATGAS perps
+DK_COMMOD_1H = ["XPTCMDUSD", "XPDCMDUSD", "COPPERCMDUSD", "GASCMDUSD"]
+DK_SYMBOLS = ["XAUUSD", "XAGUSD"] + [t + "USUSD" for t in DK_STOCKS_1H + DK_STOCKS_1H_OTHER] + DK_COMMOD_1H
 DK_START = "2020-01"
 # 1-minute files -> stored as 5-minute bars (dukascopy/5m). AMD/MU/DELL are Dukascopy's US-stock quotes
 # (AMD.US/USD ...), regular session only; they back intraday tests of the Binance stock contracts.
