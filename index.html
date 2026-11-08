@@ -206,6 +206,10 @@ td.n { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
 .env-rule p { margin: 0; font-size: 12.5px; color: var(--muted); overflow-wrap: anywhere; }
 .env-rule p.env-caveat { color: var(--warn); }
 .env-rule .tags { display: flex; gap: 6px; flex-wrap: wrap; }
+.env-live { border-top: 1px dashed var(--line); padding-top: 8px; display: grid; gap: 6px; }
+.env-live-h { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.env-live-h b { font-size: 13px; color: var(--brass); }
+.env-live-note { margin: 0; font-size: 12px; color: var(--muted); }
 .env .chip.brass { color: var(--brass); background: var(--brass-soft); }
 </style>
 </head>
@@ -226,12 +230,14 @@ td.n { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
         <div class="env-card-h"><h3>A股</h3><span class="chip" id="aState">—</span></div>
         <div class="env-big"><span class="num" id="aTemp">—</span><span class="env-unit">情绪温度（0–100，20以下冰点，80以上过热）</span></div>
         <dl class="kv" id="aKv"></dl>
+        <div class="env-live" id="aLive" hidden><div class="env-live-h"><b>盘中实时</b><span class="sub" id="aLiveTime"></span></div><dl class="kv" id="aLiveKv"></dl><p class="env-live-note" id="aLiveNote"></p></div>
         <p class="env-hist" id="aHist"></p>
       </article>
       <article class="env-card">
         <div class="env-card-h"><h3>美股</h3><span class="chip" id="usState">—</span></div>
         <div class="env-big"><span class="num" id="usVix">—</span><span class="env-unit">VIX 恐慌指数（20以上算恐慌）</span></div>
         <dl class="kv" id="usKv"></dl>
+        <div class="env-live" id="usLive" hidden><div class="env-live-h"><b>实时</b><span class="sub" id="usLiveTime"></span></div><dl class="kv" id="usLiveKv"></dl><p class="env-live-note" id="usLiveNote"></p></div>
         <p class="env-hist" id="usHist"></p>
       </article>
     </div>
@@ -1478,8 +1484,175 @@ async function bootEnv() {
     return;
   }
   renderCards(); renderStats(); renderRules(); wireEnv(); drawChart();
+  window.JSQ_ENV = ENV;
+  document.dispatchEvent(new CustomEvent("jsq-env-ready"));
 }
 bootEnv();
+})();
+</script>
+<script>
+(() => {
+"use strict";
+// 盘中实时：A股用腾讯行情（qt.gtimg.cn，全市场分批取），美股用币安 QQQ/SPY 永续合约。取不到时不影响收盘数据的显示。
+const $ = (id) => document.getElementById(id);
+const pct = (x, dp = 1) => (x == null || !isFinite(x)) ? "—" : (x >= 0 ? "+" : "") + (x * 100).toFixed(dp) + "%";
+const num = (x, dp = 0) => (x == null || !isFinite(x)) ? "—" : Number(x).toLocaleString("en-US", { minimumFractionDigits: dp, maximumFractionDigits: dp });
+const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+const band = (t) => t < 20 ? "冰点" : t < 40 ? "偏冷" : t <= 60 ? "中性" : t <= 80 ? "偏热" : "过热";
+const A_EVERY = 120e3, US_EVERY = 30e3, BATCH = 400;
+let E = null, aTimer = null, usTimer = null, aBusy = false;
+
+function bj() {
+  const p = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Shanghai", year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", hour12: false, weekday: "short" }).formatToParts(new Date());
+  const g = (t) => (p.find((x) => x.type === t) || {}).value;
+  return { date: `${g("year")}${g("month")}${g("day")}`, hm: (+g("hour") % 24) * 60 + +g("minute"), wd: g("weekday") };
+}
+function aSession() {
+  const b = bj();
+  return b.wd !== "Sat" && b.wd !== "Sun" && b.hm >= 9 * 60 + 15 && b.hm <= 15 * 60 + 5;
+}
+const loadScript = window.__envLoadScript || ((url) => new Promise((res, rej) => {
+  const s = document.createElement("script");
+  s.src = url; s.charset = "gbk"; s.async = true;
+  const t = setTimeout(() => { s.remove(); rej(new Error("timeout")); }, 15000);
+  s.onload = () => { clearTimeout(t); s.remove(); res(); };
+  s.onerror = () => { clearTimeout(t); s.remove(); rej(new Error("load")); };
+  document.head.appendChild(s);
+}));
+const take = (k) => { const v = window[k]; try { delete window[k]; } catch (e) { window[k] = undefined; } return v; };
+
+function kv(dl, rows) { dl.replaceChildren(); for (const [k, v] of rows) dl.append(el("dt", null, k), el("dd", null, v)); }
+
+// ---------------- A股
+async function fetchA() {
+  const L = E.live.a, codes = L.codes, jobs = [loadScript("https://qt.gtimg.cn/q=sh000001")];
+  for (let i = 0; i < codes.length; i += BATCH) jobs.push(loadScript("https://qt.gtimg.cn/q=" + codes.slice(i, i + BATCH).map((c) => "s_" + c).join(",")));
+  const res = await Promise.allSettled(jobs);
+  const failed = res.filter((r) => r.status === "rejected").length;
+  let stamp = null;
+  const ix = take("v_sh000001");
+  if (typeof ix === "string") { const f = ix.split("~"); if (f[30] && /^\d{14}$/.test(f[30])) stamp = f[30]; }
+  let n = 0, zt = 0, dt = 0, up = 0, sum = 0, amt = 0;
+  for (const c of codes) {
+    const v = take("v_s_" + c);
+    if (typeof v !== "string") continue;
+    const f = v.split("~");
+    const price = +f[3], chg = +f[4], p = +f[5], vol = +f[6], am = +f[7];
+    if (!(vol > 0) || !(price > 0) || !isFinite(chg) || !isFinite(p)) continue;
+    const prev = Math.round((price - chg) * 100) / 100;
+    const lim = (c.startsWith("sh688") || c.startsWith("sz30")) ? 0.2 : 0.1;
+    const upL = Math.floor(prev * (1 + lim) * 100 + 0.5) / 100, dnL = Math.floor(prev * (1 - lim) * 100 + 0.5) / 100;
+    n++;
+    if (Math.abs(price - upL) < 0.005) zt++;
+    if (Math.abs(price - dnL) < 0.005) dt++;
+    if (p > 0) up++;
+    sum += p; if (isFinite(am)) amt += am;
+  }
+  if (n < codes.length * 0.5) throw new Error(`只取到 ${n} 只`);
+  return { n, zt, dt, up, ew: sum / n / 100, amt: amt / 1e4, stamp, failed };
+}
+
+function estTemp(L, raw) {
+  let tot = 0, cnt = 0;
+  for (const k of Object.keys(L.last4)) {
+    const sm = (L.last4[k].reduce((a, b) => a + b, 0) + raw[k]) / 5;
+    const prev = L.prev249[k].filter((x) => x != null);
+    let lt = 0, eq = 0;
+    for (const x of prev) { if (x < sm) lt++; else if (x === sm) eq++; }
+    const p = (lt + 0.5 * eq) / prev.length;
+    tot += L.dir[k] === "cold" ? 1 - p : p; cnt++;
+  }
+  for (const k of Object.keys(L.other_pct)) {
+    const p = L.other_pct[k];
+    if (p == null) continue;
+    tot += L.other_dir[k] === "cold" ? 1 - p : p; cnt++;
+  }
+  return tot / cnt * 100;
+}
+
+function renderA(q) {
+  const L = E.live.a, box = $("aLive");
+  const raw = { "涨停占比": q.zt / q.n, "跌停占比": q.dt / q.n, "涨跌停差占比": (q.zt - q.dt) / q.n, "上涨占比": q.up / q.n };
+  const t = estTemp(L, raw);
+  const ewLive = L.ew_last * (1 + q.ew), ma = (L.ew_sum199 + ewLive) / 200;
+  const today = bj().date, isToday = q.stamp && q.stamp.slice(0, 8) === today;
+  const stampTxt = q.stamp ? `${+q.stamp.slice(4, 6)}月${+q.stamp.slice(6, 8)}日 ${q.stamp.slice(8, 10)}:${q.stamp.slice(10, 12)}` : "时间未知";
+  $("aLiveTime").textContent = isToday ? `行情时间 ${stampTxt}` + (aSession() ? " · 每2分钟刷新" : "") : `最新行情是 ${stampTxt}（非交易时段）`;
+  kv($("aLiveKv"), [
+    ["情绪温度（盘中估算）", `${t.toFixed(0)}（${band(t)}）`],
+    ["全A等权今日", pct(q.ew, 2)],
+    ["全A等权 vs 200日线", `${pct(ewLive / ma - 1)}（${ewLive > ma ? "牛市" : "熊市"}）`],
+    ["涨停 / 跌停", `${q.zt} / ${q.dt} 只`],
+    ["上涨家数占比", `${Math.round(q.up / q.n * 100)}%（${q.n} 只）`],
+    ["成交额（已成交）", `${num(q.amt / 1e4, 2)} 万亿`],
+  ]);
+  $("aLiveNote").textContent = "盘中温度是估算：涨停、跌停、上涨占比用实时数据，其余7项沿用上个收盘。按收盘数据回测，和正式温度平均差约3.5分，越接近收盘越准。" +
+    (q.failed ? ` 这次有 ${q.failed} 批行情没取到。` : "");
+  box.hidden = false;
+}
+
+async function tickA() {
+  if (aBusy || document.hidden) return;
+  aBusy = true;
+  try { renderA(await fetchA()); }
+  catch (e) {
+    $("aLive").hidden = false;
+    $("aLiveTime").textContent = "盘中行情暂时取不到";
+    $("aLiveKv").replaceChildren();
+    $("aLiveNote").textContent = "上面是收盘数据，不受影响。稍后会自动再试。";
+  } finally { aBusy = false; }
+}
+
+// ---------------- 美股（币安合约，24小时交易）
+async function fetchUS() {
+  const out = {};
+  await Promise.all(["QQQ", "SPY"].map(async (t) => {
+    const r = await fetch(`https://fapi.binance.com/fapi/v1/ticker/price?symbol=${t}USDT`, { cache: "no-store" });
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    const j = await r.json();
+    out[t] = +j.price;
+  }));
+  return out;
+}
+function renderUS(px) {
+  const U = E.live.us, rows = [];
+  const q = U.QQQ, s = U.SPY;
+  const qma = (q.sum199 + px.QQQ) / 200, sma = (s.sum199 + px.SPY) / 200;
+  rows.push(["纳指（QQQ 合约）", `${num(px.QQQ, 2)}，200日线 ${pct(px.QQQ / qma - 1)}`]);
+  rows.push(["标普（SPY 合约）", `${num(px.SPY, 2)}，200日线 ${pct(px.SPY / sma - 1)}`]);
+  rows.push(["离认错线", `${pct(px.QQQ / q.stop_line - 1)}（QQQ ${num(q.stop_line, 2)}）`]);
+  rows.push(["较上个收盘", `QQQ ${pct(px.QQQ / q.close - 1, 2)} · SPY ${pct(px.SPY / s.close - 1, 2)}`]);
+  kv($("usLiveKv"), rows);
+  const t = new Intl.DateTimeFormat("zh-CN", { timeZone: "Asia/Shanghai", hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date());
+  $("usLiveTime").textContent = `北京时间 ${t} · 每30秒刷新`;
+  $("usLiveNote").textContent = "币安股票合约24小时交易，美股休市时显示的是合约价，开盘后可能有差。200日线位置按\"把现价当今天收盘\"计算。";
+  $("usLive").hidden = false;
+}
+async function tickUS() {
+  if (document.hidden) return;
+  try { renderUS(await fetchUS()); }
+  catch (e) {
+    $("usLive").hidden = false;
+    $("usLiveTime").textContent = "币安合约价暂时取不到";
+    $("usLiveKv").replaceChildren();
+    $("usLiveNote").textContent = "上面是收盘数据，不受影响。";
+  }
+}
+
+function schedule() {
+  clearInterval(aTimer); clearInterval(usTimer);
+  tickA(); tickUS();
+  aTimer = setInterval(() => { if (aSession()) tickA(); }, A_EVERY);
+  usTimer = setInterval(tickUS, US_EVERY);
+}
+function start() {
+  E = window.JSQ_ENV;
+  if (!E || !E.live) return;
+  schedule();
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) { tickUS(); if (aSession()) tickA(); } });
+}
+if (window.JSQ_ENV) start(); else document.addEventListener("jsq-env-ready", start, { once: true });
 })();
 </script>
 </body>
