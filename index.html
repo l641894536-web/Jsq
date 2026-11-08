@@ -182,6 +182,31 @@ td.n { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
   #chart { height: 340px; }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+
+/* market environment */
+.env .env-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding: 12px 14px 4px; }
+@media (max-width: 760px) { .env .env-grid { grid-template-columns: minmax(0, 1fr); } }
+.env-card { border: 1px solid var(--line); border-radius: 9px; padding: 12px; display: grid; gap: 10px; align-content: start; min-width: 0; }
+.env-card-h { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.env-card-h h3 { margin: 0; font-size: 15px; font-weight: 600; }
+.env-big { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.env-big .num { font-size: 30px; font-weight: 600; letter-spacing: -.01em; }
+.env-unit { color: var(--muted); font-size: 12px; }
+.env .kv dd { font-family: var(--font-ui); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.env-hist { margin: 0; font-size: 13px; background: var(--sunk); border-radius: 7px; padding: 8px 10px; overflow-wrap: anywhere; }
+.env-chart-h { display: flex; flex-wrap: wrap; gap: 8px; justify-content: space-between; align-items: center; padding: 10px 14px 0; }
+#envChart { position: relative; height: 260px; margin: 6px 6px 0; }
+.env-sub { margin: 4px 0 0; font-size: 13px; font-weight: 600; }
+.env table { min-width: 0; }
+.env tr.cur td { background: var(--brass-soft); }
+.env-rules { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+@media (max-width: 760px) { .env-rules { grid-template-columns: minmax(0, 1fr); } }
+.env-rule { border: 1px solid var(--line); border-radius: 9px; padding: 10px 12px; display: grid; gap: 6px; align-content: start; min-width: 0; }
+.env-rule h4 { margin: 0; font-size: 14px; font-weight: 600; }
+.env-rule p { margin: 0; font-size: 12.5px; color: var(--muted); overflow-wrap: anywhere; }
+.env-rule p.env-caveat { color: var(--warn); }
+.env-rule .tags { display: flex; gap: 6px; flex-wrap: wrap; }
+.env .chip.brass { color: var(--brass); background: var(--brass-soft); }
 </style>
 </head>
 <body>
@@ -193,6 +218,40 @@ td.n { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
     </div>
     <button class="ghost" id="colorMode" type="button" aria-label="切换涨跌颜色">绿涨红跌</button>
   </header>
+
+  <section class="panel env" id="envPanel" aria-labelledby="envTitle">
+    <div class="panel-h"><h2 id="envTitle">市场环境</h2><span class="sub" id="envAsof">正在载入…</span></div>
+    <div class="env-grid">
+      <article class="env-card">
+        <div class="env-card-h"><h3>A股</h3><span class="chip" id="aState">—</span></div>
+        <div class="env-big"><span class="num" id="aTemp">—</span><span class="env-unit">情绪温度（0–100，20以下冰点，80以上过热）</span></div>
+        <dl class="kv" id="aKv"></dl>
+        <p class="env-hist" id="aHist"></p>
+      </article>
+      <article class="env-card">
+        <div class="env-card-h"><h3>美股</h3><span class="chip" id="usState">—</span></div>
+        <div class="env-big"><span class="num" id="usVix">—</span><span class="env-unit">VIX 恐慌指数（20以上算恐慌）</span></div>
+        <dl class="kv" id="usKv"></dl>
+        <p class="env-hist" id="usHist"></p>
+      </article>
+    </div>
+    <div class="env-chart-h">
+      <div class="seg" id="envTabs" role="group" aria-label="环境走势">
+        <button type="button" data-env="a" aria-pressed="true">A股情绪温度</button>
+        <button type="button" data-env="us" aria-pressed="false">纳指与200日线</button>
+      </div>
+      <span class="sub" id="envLegend"></span>
+    </div>
+    <div id="envChart"></div>
+    <div class="report">
+      <h3 class="env-sub">A股情绪温度各档：之后60天全A等权的平均涨跌 · 上涨概率（2016年以来）</h3>
+      <div class="tablewrap"><table id="envStats"></table></div>
+      <h3 class="env-sub">已经回测过的规则</h3>
+      <div class="env-rules" id="envRules"></div>
+      <p class="note">这一块只显示市场状态和历史回测结果，<b>不给买卖信号</b>。情绪温度由全部A股（剔除ST和次新股）的11个指标算出：涨停占比、跌停占比、涨停减跌停、炸板率、连板高度、昨日涨停今日表现、上涨家数占比、成交额热度、创一年新高减新低、站上20日线和60日线的比例，各自换算成在过去一年里的位置后取平均。</p>
+    </div>
+  </section>
+
 
   <div class="controls">
     <div class="syms" id="syms" role="group" aria-label="品种"></div>
@@ -1266,6 +1325,161 @@ function boot() {
   load(); openTicker(); seedTickers();
 }
 boot();
+})();
+</script>
+<script>
+(() => {
+"use strict";
+const LWC = window.LightweightCharts;
+const $ = (id) => document.getElementById(id);
+const css = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const pct = (x, dp = 1) => (x == null || !isFinite(x)) ? "—" : (x >= 0 ? "+" : "") + (x * 100).toFixed(dp) + "%";
+const num = (x, dp = 0) => (x == null || !isFinite(x)) ? "—" : Number(x).toLocaleString("en-US", { minimumFractionDigits: dp, maximumFractionDigits: dp });
+const md = (d) => `${+d.slice(5, 7)}月${+d.slice(8, 10)}日`;
+const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+let ENV = null, chart = null, view = "a";
+
+function kv(dl, rows) {
+  dl.replaceChildren();
+  for (const [k, v] of rows) dl.append(el("dt", null, k), el("dd", null, v));
+}
+
+function renderCards() {
+  const a = ENV.a.today, u = ENV.us.today;
+  $("envAsof").textContent = `${md(a.date)}收盘 · 每个交易日收盘后更新`;
+  const ac = $("aState");
+  ac.textContent = `${a.regime} · ${a.band}`;
+  ac.className = "chip " + (a.regime === "牛市" ? "good" : "warn");
+  $("aTemp").textContent = a.temp.toFixed(1);
+  kv($("aKv"), [
+    ["全A等权指数 vs 200日线", pct(a.ew_vs_ma200)],
+    ["近10个交易日最低温度", `${a.temp_min10.toFixed(1)}（${md(a.temp_min10_date)}）`],
+    ["成交额", `${num(a.amount / 10000, 2)} 万亿（一年均量的 ${a.heat.toFixed(2)} 倍）`],
+    ["涨停 / 跌停", `${a.zt} / ${a.dt} 只`],
+    ["最高连板", `${a.lb} 板`],
+    ["上涨家数占比", `${Math.round(a.adv * 100)}%`],
+  ]);
+  const key = a.regime === "牛市" ? "bull" : "bear";
+  const st = ENV.a.stats.find((r) => r.band === a.band);
+  let t = st && st[key + "_n"] ? `历史上「${a.regime}·${a.band}」之后60天：全A等权平均 ${pct(st[key + "_ret"])}，上涨概率 ${Math.round(st[key + "_up"] * 100)}%（${st[key + "_n"]} 个交易日）。` : "";
+  if (a.regime === "熊市") t += " 熊市里温度跌到20以下（冰点）时分批买历史上最好；突然冲到80以上（过热）多数是反弹陷阱。";
+  else t += " 牛市里过热（80以上）之后60天平均下跌；偏冷时上升趋势回踩20日线的股票表现最好（证据较弱）。";
+  $("aHist").textContent = t;
+
+  const uc = $("usState");
+  uc.textContent = u.state;
+  uc.className = "chip " + (u.state.startsWith("牛市") ? "good" : "warn");
+  $("usVix").textContent = u.vix.toFixed(1);
+  kv($("usKv"), [
+    ["纳指100", `${num(u.ndx)}（200日线 ${num(u.ndx_ma200)}，${pct(u.ndx_vs)}）`],
+    ["标普500", `${num(u.spx)}（200日线 ${num(u.spx_ma200)}，${pct(u.spx_vs)}）`],
+    ["纳指离一年高点", pct(u.ndx_dd52)],
+    ["纳指最近一次跌破", `${md(u.break_date)}，收盘 ${num(u.break_close)}`],
+    ["认错线（跌破日再跌15%）", num(u.stop_line)],
+  ]);
+  const ndxB = u.ndx_vs < 0, spxB = u.spx_vs < 0;
+  let ut;
+  if (!ndxB) ut = "纳指在200日线上方：合约不做空（8组回测里牛市做空全部亏钱）。";
+  else if (!spxB) ut = `纳指已跌破、标普还在200日线上方（只高 ${(u.spx_vs * 100).toFixed(1)}%）：历史上这种只有科技股跌破的情况9次全部一年内涨回。标普收盘跌破 ${num(u.spx_ma200)} 就进入长熊都出自的那一组。合约：少做、轻仓。`;
+  else ut = "纳指和标普都在200日线下方：历史上长熊都出自这一组，但仍约八成一年内涨回。纳指跌到认错线就按长熊处理。合约：少做、轻仓。";
+  $("usHist").textContent = ut;
+}
+
+function renderStats() {
+  const a = ENV.a.today, tb = $("envStats");
+  tb.replaceChildren();
+  const head = el("tr");
+  ["温度", "全部", "熊市里", "牛市里"].forEach((h) => head.append(el("th", null, h)));
+  const thead = el("thead"); thead.append(head);
+  const body = el("tbody");
+  const cell = (r, k) => r[k + "_n"] ? `${pct(r[k + "_ret"])} · ${Math.round(r[k + "_up"] * 100)}%` : "—";
+  const range = { "冰点": "<20", "偏冷": "20–40", "中性": "40–60", "偏热": "60–80", "过热": ">80" };
+  for (const r of ENV.a.stats) {
+    const tr = el("tr", r.band === a.band ? "cur" : null);
+    tr.append(el("td", null, `${r.band}（${range[r.band]}）`));
+    const all = el("td", "n", `${pct(r.all_ret)} · ${Math.round(r.all_up * 100)}%`);
+    tr.append(all, el("td", "n", cell(r, "bear")), el("td", "n", cell(r, "bull")));
+    body.append(tr);
+  }
+  tb.append(thead, body);
+}
+
+function renderRules() {
+  const box = $("envRules");
+  box.replaceChildren();
+  const cls = { "高": "good", "中": "brass", "低": "flat" };
+  for (const f of ENV.findings) {
+    const card = el("div", "env-rule");
+    const tags = el("div", "tags");
+    tags.append(el("span", "chip", f.m), el("span", "chip " + (cls[f.lvl] || "flat"), "可信度 " + f.lvl));
+    card.append(tags, el("h4", null, f.rule), el("p", null, f.ev));
+    if (f.note) card.append(el("p", "env-caveat", f.note));
+    box.append(card);
+  }
+}
+
+function drawChart() {
+  const box = $("envChart");
+  if (chart) { chart.remove(); chart = null; }
+  if (!LWC) { box.textContent = "画图组件没有载入成功，请刷新页面再试。"; return; }
+  chart = LWC.createChart(box, {
+    width: box.clientWidth, height: box.clientHeight || 260,
+    layout: { background: { type: "solid", color: "transparent" }, textColor: css("--muted"), fontFamily: css("--font-ui"), fontSize: 11 },
+    grid: { vertLines: { visible: false }, horzLines: { color: css("--line") } },
+    rightPriceScale: { borderVisible: false }, leftPriceScale: { visible: true, borderVisible: false },
+    timeScale: { borderVisible: false }, handleScroll: false, handleScale: false,
+  });
+  if (view === "a") {
+    const S = ENV.a.series;
+    const ew = chart.addLineSeries({ color: css("--ink"), lineWidth: 1, priceScaleId: "left", priceLineVisible: false, lastValueVisible: false });
+    ew.setData(S.filter((x) => x.ew != null).map((x) => ({ time: x.d, value: x.ew })));
+    const ma = chart.addLineSeries({ color: css("--trend"), lineWidth: 1, lineStyle: 2, priceScaleId: "left", priceLineVisible: false, lastValueVisible: false });
+    ma.setData(S.filter((x) => x.ma != null).map((x) => ({ time: x.d, value: x.ma })));
+    const t = chart.addLineSeries({ color: css("--brass"), lineWidth: 2, priceScaleId: "right", priceLineVisible: false,
+      autoscaleInfoProvider: () => ({ priceRange: { minValue: 0, maxValue: 100 } }) });
+    t.setData(S.filter((x) => x.t != null).map((x) => ({ time: x.d, value: x.t })));
+    t.createPriceLine({ price: 20, color: css("--level-s"), lineStyle: 2, lineWidth: 1, axisLabelVisible: true, title: "冰点" });
+    t.createPriceLine({ price: 80, color: css("--level-r"), lineStyle: 2, lineWidth: 1, axisLabelVisible: true, title: "过热" });
+    $("envLegend").textContent = "金线：情绪温度（右轴）；黑线：全A等权指数，紫虚线：它的200日线（左轴）";
+  } else {
+    const S = ENV.us.series, u = ENV.us.today;
+    const n = chart.addLineSeries({ color: css("--ink"), lineWidth: 2, priceScaleId: "right", priceLineVisible: false });
+    n.setData(S.filter((x) => x.ndx != null).map((x) => ({ time: x.d, value: x.ndx })));
+    n.createPriceLine({ price: u.stop_line, color: css("--bad"), lineStyle: 2, lineWidth: 1, axisLabelVisible: true, title: "认错线" });
+    const ma = chart.addLineSeries({ color: css("--trend"), lineWidth: 1, lineStyle: 2, priceScaleId: "right", priceLineVisible: false, lastValueVisible: false });
+    ma.setData(S.filter((x) => x.ma != null).map((x) => ({ time: x.d, value: x.ma })));
+    const v = chart.addLineSeries({ color: css("--brass"), lineWidth: 1, priceScaleId: "left", priceLineVisible: false });
+    v.setData(S.filter((x) => x.vix != null).map((x) => ({ time: x.d, value: x.vix })));
+    v.createPriceLine({ price: 20, color: css("--muted"), lineStyle: 2, lineWidth: 1, axisLabelVisible: true, title: "VIX 20" });
+    $("envLegend").textContent = "黑线：纳指100，紫虚线：200日线，红虚线：认错线（右轴）；金线：VIX（左轴）";
+  }
+  chart.timeScale().fitContent();
+}
+
+function wireEnv() {
+  $("envTabs").querySelectorAll("button").forEach((b) => b.addEventListener("click", () => {
+    view = b.dataset.env;
+    $("envTabs").querySelectorAll("button").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+    drawChart();
+  }));
+  const box = $("envChart");
+  if (window.ResizeObserver) new ResizeObserver(() => { if (chart) chart.applyOptions({ width: box.clientWidth }); }).observe(box);
+  window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", drawChart);
+  new MutationObserver(drawChart).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+}
+
+async function bootEnv() {
+  try {
+    const res = await fetch("env.json", { cache: "no-store" });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    ENV = await res.json();
+  } catch (e) {
+    $("envAsof").textContent = "环境数据没有载入成功，请刷新页面再试。";
+    return;
+  }
+  renderCards(); renderStats(); renderRules(); wireEnv(); drawChart();
+}
+bootEnv();
 })();
 </script>
 </body>
