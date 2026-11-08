@@ -153,7 +153,11 @@ def run(root: Path, mode: str, deadline: float) -> dict:
         cur = f"{now.year}-{now.month:02d}"
         start = C.DK_START if mode == "full" else months("2000-01", cur)[-2]
         todo = [(s, m) for s in C.DK_SYMBOLS for m in months(start, cur) if not have(base, s, m)]
+        # newly added symbols first, so they are not starved behind an old backlog the feed keeps refusing
+        first = set(getattr(C, "DK_COMMOD_1H", []))
+        todo.sort(key=lambda j: j[0] not in first)
         st.log(f"{len(todo)} symbol-months to fetch")
+        fails = {"run": 0}           # consecutive failed months: the feed is refusing us, stop early
         sess = requests.Session()
         sess.headers["User-Agent"] = "Mozilla/5.0 (market-data-bot)"
 
@@ -161,18 +165,22 @@ def run(root: Path, mode: str, deadline: float) -> dict:
             s, m = job
             if time.time() > deadline:
                 return job, None, "deadline"
+            if fails["run"] >= 40:
+                return job, None, "skipped: feed refused the last 40 months"
             url = URL.format(sym=s, y=m[:4], m0=int(m[5:7]) - 1)
             for attempt in range(6):
                 if time.time() > deadline:
                     return job, None, "deadline"
                 try:
                     content = _download(sess, url)
+                    fails["run"] = 0
                     if content is None:
                         return job, None, None
                     return job, parse(s, m, content), None
                 except Exception as e:
                     err = str(e)
                     time.sleep(5 * (attempt + 1))   # the feed answers 503 when hit too fast
+            fails["run"] += 1
             return job, None, err
 
         parts, n_ok = [], 0

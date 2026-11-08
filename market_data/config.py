@@ -47,7 +47,8 @@ BN_1H_START = "2017-01-01"
 BN_15M_START = "2022-01-01"
 # intraday watchlist; detected stock perpetuals (e.g. TSLAUSDT) are added automatically
 BN_WATCH = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT", "DOGEUSDT",
-            "XAUUSDT", "XAGUSDT", "PAXGUSDT", "XAUTUSDT"]
+            "XAUUSDT", "XAGUSDT", "PAXGUSDT", "XAUTUSDT",
+            "ADAUSDT", "XPTUSDT", "XPDUSDT", "COPPERUSDT", "NATGASUSDT"]
 BN_STOCK_PERP_SINCE = "2025-06-01"   # a stock-ticker-named perp first listed after this = stock perp
 BN_SMOKE = ["BTCUSDT", "XAUUSDT", "PAXGUSDT", "TSLAUSDT"]
 
