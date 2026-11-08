@@ -40,6 +40,10 @@ jobs:
           for y in $(seq 2014 $(date -u +%Y)); do pats="$pats /a_share/daily/$y"; done
           git -C data sparse-checkout set --no-cone $pats
           du -sh data
+          if git ls-remote --exit-code --heads "$REPO_URL" fund >/dev/null; then
+            git clone -q --depth 1 --filter=blob:none --sparse --branch fund "$REPO_URL" fund
+            git -C fund sparse-checkout set --no-cone /us
+          else mkdir -p fund; fi
 
       - name: Install
         run: |
@@ -50,7 +54,7 @@ jobs:
         run: |
           cp site/env.json prev_env.json
           venv/bin/python -u code/pages/env_pipeline.py --data data --jsq code \
-            --static site/env_static.json --out site/env.json --prev prev_env.json | tee build.log
+            --static site/env_static.json --fund fund --out site/env.json --prev prev_env.json | tee build.log
           venv/bin/python - <<'PY'
           import json
           a = json.load(open("site/env.json")); o = json.load(open("prev_env.json"))

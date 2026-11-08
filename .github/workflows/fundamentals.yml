@@ -1,0 +1,70 @@
+name: fundamentals
+
+# 基本面数据（A股季度成长/盈利、美股财报日）→ fund 分支。补不完会自己再触发（每天最多6次）。
+on:
+  schedule:
+    - cron: "41 12 * * *"
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "pages/fundamentals.py"
+      - ".github/workflows/fundamentals.yml"
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: fundamentals
+  cancel-in-progress: false
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    env:
+      REPO_URL: https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Get code, status and fund branch
+        run: |
+          git clone -q --depth 1 "$REPO_URL" code
+          git clone -q --depth 1 --filter=blob:none --sparse --branch data "$REPO_URL" data
+          git -C data sparse-checkout set --no-cone /status.json
+          if git ls-remote --exit-code --heads "$REPO_URL" fund >/dev/null; then
+            git clone -q --depth 1 --branch fund "$REPO_URL" fund
+          else
+            mkdir fund && git -C fund init -q -b fund && git -C fund remote add origin "$REPO_URL"
+          fi
+
+      - name: Install
+        run: |
+          python -m venv venv
+          venv/bin/pip install -q pandas baostock yfinance lxml
+
+      - name: Fetch
+        timeout-minutes: 310
+        run: venv/bin/python -u code/pages/fundamentals.py --out fund --status data/status.json --minutes 290 --flag continue.flag
+
+      - name: Save to fund branch
+        if: always()
+        working-directory: fund
+        run: |
+          git config user.name "fundamentals-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then echo "no change"; exit 0; fi
+          git commit -q -m "fundamentals $(date -u +%Y-%m-%dT%H:%MZ)"
+          git push -q origin HEAD:fund
+
+      - name: Continue backfill
+        if: always() && hashFiles('continue.flag') != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          n=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow fundamentals.yml --created "$(date -u +%Y-%m-%d)" --json databaseId --jq length || echo 0)
+          if [ "${n:-0}" -lt 6 ]; then gh workflow run fundamentals.yml --repo "$GITHUB_REPOSITORY" --ref main; else echo "already $n runs today"; fi

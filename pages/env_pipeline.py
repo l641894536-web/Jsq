@@ -25,6 +25,7 @@ ap = argparse.ArgumentParser()
 ap.add_argument("--data", required=True); ap.add_argument("--jsq", required=True)
 ap.add_argument("--out", required=True); ap.add_argument("--prev", default=None)
 ap.add_argument("--static", required=True)
+ap.add_argument("--fund", default=None)   # fund 分支目录（可选）：美股财报日
 args = ap.parse_args()
 sys.path.insert(0, args.jsq)
 os.environ["MARKET_DATA"] = args.data
@@ -199,6 +200,54 @@ recent_ok = last_tr >= len(dates) - 10
 st_last = P["isST"][np.clip(last_tr, 0, None), np.arange(len(codes))] == 1
 elig = recent_ok & ~st_last & (age[-1] >= 19)
 live_a["codes"] = [c.replace(".", "") for c in codes[elig]]
+
+# ---------------- 行业（主线）：证监会行业，收盘时各行业的涨停数、平均涨跌、成交占比 vs 近20日平均占比
+SHORT = {"计算机、通信和其他电子设备制造业": "电子/通信设备", "专用设备制造业": "专用设备", "化学原料和化学制品制造业": "化工",
+         "软件和信息技术服务业": "软件/IT服务", "电气机械和器材制造业": "电气设备", "医药制造业": "医药", "通用设备制造业": "通用设备",
+         "汽车制造业": "汽车", "橡胶和塑料制品业": "橡胶塑料", "非金属矿物制品业": "建材", "金属制品业": "金属制品",
+         "电力、热力生产和供应业": "电力热力", "有色金属冶炼和压延加工业": "有色冶炼", "铁路、船舶、航空航天和其他运输设备制造业": "航空航天/船舶",
+         "仪器仪表制造业": "仪器仪表", "互联网和相关服务": "互联网", "资本市场服务": "券商", "货币金融服务": "银行",
+         "酒、饮料和精制茶制造业": "酒饮料", "有色金属矿采选业": "有色矿采", "煤炭开采和洗选业": "煤炭", "黑色金属冶炼和压延加工业": "钢铁",
+         "土木工程建筑业": "建筑", "生态保护和环境治理业": "环保", "农副食品加工业": "农副食品", "纺织服装、服饰业": "服装",
+         "研究和试验发展": "研发服务", "专业技术服务业": "专业技术服务", "电信、广播电视和卫星传输服务": "通信服务",
+         "广播、电视、电影和录音制作业": "影视", "新闻和出版业": "出版", "保险业": "保险", "石油和天然气开采业": "油气开采",
+         "石油加工、炼焦和核燃料加工业": "石化炼焦", "水上运输业": "航运", "航空运输业": "航空", "道路运输业": "公路运输"}
+import re as _re
+def _short(x):
+    if not isinstance(x, str) or not x:
+        return None
+    x = _re.sub(r"^[A-Z]\d{2}", "", x)
+    if x in SHORT:
+        return SHORT[x]
+    return x.split("和")[0].split("、")[0].replace("制造业", "").rstrip("业")[:8]
+_ind = pd.read_csv(f"{args.data}/a_share/meta/industry.csv", dtype=str)
+_imap = dict(zip(_ind.code, _ind.industry.map(_short)))
+ind_of = np.array([_imap.get(c) for c in codes], dtype=object)
+names = sorted({x for x in ind_of if isinstance(x, str) and x})
+idx_of = {nm: i for i, nm in enumerate(names)}
+code_ind = np.array([idx_of.get(x, -1) if isinstance(x, str) else -1 for x in ind_of])
+amt_m = np.where(traded, P["amount"], 0).astype("float64")
+tot = amt_m.sum(1, keepdims=True)
+sh = np.zeros((len(dates), len(names)))
+for j in range(len(names)):
+    sh[:, j] = amt_m[:, code_ind == j].sum(1) / np.maximum(tot[:, 0], 1)
+share20 = sh[-21:-1].mean(0)                      # 不含当天的前20天平均占比
+last_pct = np.where(ok[-1], pct[-1], np.nan)
+top = []
+for j, nm in enumerate(names):
+    m = (code_ind == j) & ok[-1]
+    if m.sum() < 15 or sh[-21:-1, j].mean() < 0.005:   # 太小的行业不排（占全市场成交不到0.5%）
+        continue
+    top.append(dict(name=nm, n=int(m.sum()), zt=int(zt[-1][m].sum()), avg=r(np.nanmean(last_pct[m]) / 100, 4),
+                    share=r(sh[-1, j], 4), share20=r(sh[-21:-1, j].mean(), 4)))
+top.sort(key=lambda x: (x["share"] or 0) / max(x["share20"] or 1e-9, 1e-9), reverse=True)   # 成交占比比平时放大最多的在前
+a_today["top_ind"] = top[:8]
+live_a["ind_names"] = names
+live_a["ind_share20"] = [r(x, 5) for x in sh[-20:].mean(0)]   # 下个交易日盘中比较用：含最近一天的20天平均
+_elig_codes = codes[elig]
+_pos = {c: i for i, c in enumerate(codes)}
+live_a["code_ind"] = [int(code_ind[_pos[c]]) for c in _elig_codes]
+
 live_us = {}
 for t in ["QQQ", "SPY"]:
     px = load.us_daily(t).set_index("date")["close"]
@@ -210,9 +259,17 @@ live_us["QQQ"]["stop_line"] = r(qq.loc[n.index[t0]] * 0.85, 2)
 live = dict(a=live_a, us=live_us)
 static = json.load(open(args.static, encoding="utf-8"))
 findings = static["findings"]
+earn = {}
+if args.fund and os.path.exists(f"{args.fund}/us/earnings.csv"):
+    _e = pd.read_csv(f"{args.fund}/us/earnings.csv")
+    _today = str(pd.Timestamp(us_today["date"]).date())
+    for t, g in _e.groupby("ticker"):
+        nxt = sorted(d for d in g.date.astype(str) if d >= _today)
+        if nxt:
+            earn[t] = nxt[0]
 env = dict(asof=max(a_today["date"], us_today["date"]), a=dict(today=a_today, stats=stats, series=a_series),
            us=dict(today=us_today, series=us_series), live=live, findings=findings,
-           contract_stats=static.get("contract_stats"), contract_stats_note=static.get("contract_stats_note"))
+           contract_stats=static.get("contract_stats"), contract_stats_note=static.get("contract_stats_note"), earnings=earn)
 json.dump(env, open(args.out, "w"), ensure_ascii=False, separators=(",", ":"))
 
 # ============================================================ 变化摘要
