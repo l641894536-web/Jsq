@@ -36,4 +36,13 @@ Local pandas has no pyarrow, so storage is CSV + xz, monthly partitions (`<datas
 - Binance REST is geo-blocked from US runners, so klines come from the data.binance.vision archive
   (newest bar = yesterday UTC). Stock perps (e.g. TSLAUSDT) are auto-detected and get intraday bars.
 - Check a run without auth: `curl -s https://api.github.com/repos/l641894536-web/Jsq/actions/runs?per_page=3`.
-- Strategy / backtest code should NOT be committed here (the repo is public); keep it in the session.
+- The owner wants the workbench to be usable and kept up to date; research / strategy code may live
+  in this repo (owner, 2026-11-08). Don't block useful changes on "the repo is public".
+
+## Workbench (交易台, GitHub Pages)
+- Branch `gh-pages`: `index.html` (live Binance charts + 市场环境 block), `env.json`, `env_static.json`
+  (research conclusions shown on the page; edit by hand), `snapshot.json`.
+- `env.json` is rebuilt by `.github/workflows/env-page.yml` after every successful `market-data` run,
+  using `pages/env_pipeline.py` (A-share sentiment temperature + bull/bear, US 200-day lines / VIX /
+  stop line, plus `live` baselines). The page then updates intraday on its own: A-share quotes from
+  qt.gtimg.cn (`s_` format, 400 codes per request), US from Binance QQQUSDT / SPYUSDT perps.

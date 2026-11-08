@@ -49,7 +49,7 @@ jobs:
       - name: Build env.json
         run: |
           cp site/env.json prev_env.json
-          venv/bin/python -u code/pages/env_indicators.py --data data --jsq code \
+          venv/bin/python -u code/pages/env_pipeline.py --data data --jsq code \
             --static site/env_static.json --out site/env.json --prev prev_env.json | tee build.log
           venv/bin/python - <<'PY'
           import json
