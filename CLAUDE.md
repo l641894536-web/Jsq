@@ -20,6 +20,7 @@ load.binance("1h", "XAUUSDT"); load.binance("1d")  # 1d = every USD-M perp; 1h/1
 load.binance_spot("1h", "PAXGUSDT")            # spot gold token, 1h/15m back to 2020 (XAUUSDT perp only from 2025-12)
 load.dukascopy(["XAUUSD", "XAGUSD"])           # interbank spot gold/silver 1h from 2020; cleaner than PAXG before 2025 (thin book, spiky wicks)
 load.dukascopy("XAUUSD", interval="5m")        # 5-minute bars built from Dukascopy 1-minute files (complete months)
+load.dukascopy(["XPTCMDUSD", "COPPERCMDUSD"])  # platinum / palladium / copper / natural gas CFDs 1h (GASCMDUSD, XPDCMDUSD); price checked vs PL=F/HG=F
 ```
 Local pandas has no pyarrow, so storage is CSV + xz, monthly partitions (`<dataset>/YYYY/YYYY-MM.csv.xz`).
 
@@ -35,6 +36,8 @@ Local pandas has no pyarrow, so storage is CSV + xz, monthly partitions (`<datas
   look-alike crypto tokens (C, F, O, MET...) and CLUSDT (crude oil) are rejected.
 - Binance REST is geo-blocked from US runners, so klines come from the data.binance.vision archive
   (newest bar = yesterday UTC). Stock perps (e.g. TSLAUSDT) are auto-detected and get intraday bars.
+- Dukascopy throttles GitHub runners (503 / timeouts); the 1h backlog of US stocks is still filling. New symbols in
+  `DK_COMMOD_1H` are fetched first, and the stage gives up after 40 consecutive refused months.
 - Check a run without auth: `curl -s https://api.github.com/repos/l641894536-web/Jsq/actions/runs?per_page=3`.
 - The owner wants the workbench to be usable and kept up to date; research / strategy code may live
   in this repo (owner, 2026-11-08). Don't block useful changes on "the repo is public".
@@ -42,6 +45,8 @@ Local pandas has no pyarrow, so storage is CSV + xz, monthly partitions (`<datas
 ## Workbench (交易台, GitHub Pages)
 - Branch `gh-pages`: `index.html` (live Binance charts + 市场环境 block), `env.json`, `env_static.json`
   (research conclusions shown on the page; edit by hand), `snapshot.json`.
+- Contract card verdicts come from `env_static.json` `contract_stats` (built by `research/build_contract_stats.py`):
+  key `breakout|E|bull/bear|long/short`, groups stock_main / stock_other / stock_nontech / crypto / commod / XAUUSD / XAGUSD.
 - `env.json` is rebuilt by `.github/workflows/env-page.yml` after every successful `market-data` run,
   using `pages/env_pipeline.py` (A-share sentiment temperature + bull/bear, US 200-day lines / VIX /
   stop line, plus `live` baselines). The page then updates intraday on its own: A-share quotes from
