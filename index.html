@@ -431,6 +431,13 @@ td.n { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
       <p class="note">这一块只显示市场状态和历史回测结果，<b>不给买卖信号</b>。情绪温度由全部A股（剔除ST和次新股）的11个指标算出：涨停占比、跌停占比、涨停减跌停、炸板率、连板高度、昨日涨停今日表现、上涨家数占比、成交额热度、创一年新高减新低、站上20日线和60日线的比例，各自换算成在过去一年里的位置后取平均。</p>
     </div>
   </section>
+  <section class="panel" id="mainPanel" aria-labelledby="mainTitle">
+    <div class="panel-h"><h2 id="mainTitle">今天的主线：钱往哪些行业走</h2><span class="sub" id="mainSub">正在载入…</span></div>
+    <div class="report">
+      <div class="tablewrap"><table id="mainTable"></table></div>
+      <p class="note">按证监会行业分类，只算15只股票以上的行业。排序看"成交占比比平时多了多少"：占比放大，说明资金在往这个行业集中。这是描述，不是买卖信号。</p>
+    </div>
+  </section>
   </div>
 </div>
 
@@ -1588,7 +1595,9 @@ async function fetchA() {
   const ix = take("v_sh000001");
   if (typeof ix === "string") { const f = ix.split("~"); if (f[30] && /^\d{14}$/.test(f[30])) stamp = f[30]; }
   let n = 0, zt = 0, dt = 0, up = 0, sum = 0, amt = 0;
-  for (const c of codes) {
+  const NI = (L.ind_names || []).length, I = { n: new Array(NI).fill(0), zt: new Array(NI).fill(0), sum: new Array(NI).fill(0), amt: new Array(NI).fill(0) };
+  for (let ci = 0; ci < codes.length; ci++) {
+    const c = codes[ci], g = L.code_ind ? L.code_ind[ci] : -1;
     const v = take("v_s_" + c);
     if (typeof v !== "string") continue;
     const f = v.split("~");
@@ -1598,13 +1607,15 @@ async function fetchA() {
     const lim = (c.startsWith("sh688") || c.startsWith("sz30")) ? 0.2 : 0.1;
     const upL = Math.floor(prev * (1 + lim) * 100 + 0.5) / 100, dnL = Math.floor(prev * (1 - lim) * 100 + 0.5) / 100;
     n++;
-    if (Math.abs(price - upL) < 0.005) zt++;
+    const isZt = Math.abs(price - upL) < 0.005;
+    if (isZt) zt++;
     if (Math.abs(price - dnL) < 0.005) dt++;
     if (p > 0) up++;
     sum += p; if (isFinite(am)) amt += am;
+    if (g >= 0) { I.n[g]++; if (isZt) I.zt[g]++; I.sum[g] += p; if (isFinite(am)) I.amt[g] += am; }
   }
   if (n < codes.length * 0.5) throw new Error(`只取到 ${n} 只`);
-  return { n, zt, dt, up, ew: sum / n / 100, amt: amt / 1e4, stamp, failed };
+  return { n, zt, dt, up, ew: sum / n / 100, amt: amt / 1e4, stamp, failed, I };
 }
 
 function estTemp(L, raw) {
@@ -1645,8 +1656,37 @@ function renderA(q) {
     (q.failed ? ` 这次有 ${q.failed} 批行情没取到。` : "");
   box.hidden = false;
   window.JSQ_LIVE_A = { temp: t, regime: ewLive > ma ? "牛市" : "熊市", at: Date.now() };
+  renderMain(liveInd(q), isToday ? `盘中 ${stampTxt}` : `最新行情 ${stampTxt}`);
   document.dispatchEvent(new CustomEvent("jsq-live"));
 }
+
+function liveInd(q) {
+  const L = E.live.a, I = q.I, tot = I.amt.reduce((a, b) => a + b, 0), out = [];
+  (L.ind_names || []).forEach((nm, g) => {
+    if (I.n[g] < 15 || !tot || (L.ind_share20[g] || 0) < 0.005) return;   // 太小的行业不排
+    out.push({ name: nm, n: I.n[g], zt: I.zt[g], avg: I.sum[g] / I.n[g] / 100, share: I.amt[g] / tot, share20: L.ind_share20[g] });
+  });
+  out.sort((a, b) => (b.share / (b.share20 || 1e-9)) - (a.share / (a.share20 || 1e-9)));
+  return out.slice(0, 8);
+}
+function renderMain(rows, when) {
+  const tb = $("mainTable"); if (!tb) return;
+  $("mainSub").textContent = when;
+  tb.replaceChildren();
+  const head = el("tr"); ["行业", "成交占比（平时）", "平均涨跌", "涨停"].forEach((h) => head.append(el("th", null, h)));
+  const th = el("thead"); th.append(head);
+  const body = el("tbody");
+  for (const r of rows) {
+    const tr = el("tr");
+    const ratio = r.share20 ? r.share / r.share20 : NaN;
+    tr.append(el("td", null, `${r.name}（${r.n}只）`),
+      el("td", "n", `${(r.share * 100).toFixed(1)}%（${(r.share20 * 100).toFixed(1)}%）${isFinite(ratio) ? " ×" + ratio.toFixed(2) : ""}`),
+      el("td", "n", pct(r.avg, 2)), el("td", "n", String(r.zt)));
+    body.append(tr);
+  }
+  tb.append(th, body);
+}
+window.JSQ_renderMainClose = () => { if (E && E.a.today.top_ind) renderMain(E.a.today.top_ind, `上个收盘（${E.a.today.date.slice(5).replace("-", "月")}日）`); };
 
 async function tickA() {
   if (aBusy || document.hidden || $("tab-stock").hidden) return;
@@ -1707,6 +1747,7 @@ function schedule() {
 function start() {
   E = window.JSQ_ENV;
   if (!E || !E.live) return;
+  window.JSQ_renderMainClose();
   schedule();
   document.addEventListener("visibilitychange", () => { if (!document.hidden) { tickUS(); if (aSession()) tickA(); } });
   document.addEventListener("jsq-tab", (e) => { if (e.detail === "stock") tickA(); });
