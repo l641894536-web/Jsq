@@ -1,7 +1,7 @@
 import pandas as pd, numpy as np, sys
-S = pd.read_csv("ashare_pick_snap.csv.xz", parse_dates=["date"])
+S = pd.read_csv("ashare_pick_snap23.csv.xz", parse_dates=["date"])
 S["bull"] = S.bull.astype(str).str.startswith("牛")
-MID = pd.Timestamp("2025-07-01")
+MID = pd.Timestamp("2025-01-01")
 H = sys.argv[1] if len(sys.argv) > 1 else "f20"
 S = S[S[H].notna()].copy()
 S["ex"] = S[H] - S.groupby("date")[H].transform("mean")

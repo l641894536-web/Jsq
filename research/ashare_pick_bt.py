@@ -79,7 +79,7 @@ def snapshot(t):
 
 L_close = None
 if __name__ == "__main__":
-    snaps = [snapshot(t) for t in month_ends("2024-05-01", "2026-10-31")]
+    snaps = [snapshot(t) for t in month_ends("2023-05-01", "2026-10-31")]
     S = pd.concat(snaps).reset_index(names="code")
-    S.to_csv("ashare_pick_snap.csv.xz", index=False)
+    S.to_csv("ashare_pick_snap23.csv.xz", index=False)
     print(S.groupby("date").agg(n=("code", "size"), growth_ok=("growth", lambda x: x.notna().mean()), temp=("temp", "first"), bull=("bull", "first")).to_string())
