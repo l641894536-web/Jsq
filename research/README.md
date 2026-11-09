@@ -12,6 +12,7 @@
 | `commod_bt.py` | 铂金、钯金、铜、天然气（Dukascopy 商品CFD，自身200日线） |
 | `build_contract_stats.py` | 汇总成 gh-pages `env_static.json` 的 `contract_stats`（含前后两段 h1/h2） |
 | `feat_bt.py` | 美股：能不能用开单前就知道的条件（波动、涨幅、强弱、自身战绩）挑出适合做突破的股票（结论：不能） |
+| `daily_bt.py` | 美股日线突破（20日高低点进场、10日反向离场）对比随便进场，扣资金费（结论：没有普遍优势） |
 | `bear.py` | 美股跌破200日线：长熊还是短恐慌，认错线 |
 | `build_panel.py`, `sentiment.py`, `test_sent.py`, `build_env.py` | A股情绪温度（11个指标） |
 | `ashare_vs_us.py`, `stock_bt.py`, `stock_split.py`, `stock_signals.py`, `trendstart.py` | 抄底、个股信号、趋势起点 |
