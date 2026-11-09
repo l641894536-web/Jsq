@@ -23,6 +23,7 @@
 | `stopwidth_bt.py` | 止损放宽（ATR、3天低点）对突破单和区间单的影响 |
 | `scale_in_bt.py`, `pyramid_bt.py` | 分批抄底（30/30/40）vs 一次性 vs 赚了再加，每次100U×5倍 |
 | `bear_strats_bt.py` | 熊市做法：分批补到深处、大跌抢反弹、反弹到20日线做空（结论：都不行） |
+| `dip_v2_bt.py` | 抄底改良：跌够N倍日波动后企稳再进 vs 跌够就分批，按品种和牛熊 |
 | `bear.py` | 美股跌破200日线：长熊还是短恐慌，认错线 |
 | `build_panel.py`, `sentiment.py`, `test_sent.py`, `build_env.py` | A股情绪温度（11个指标） |
 | `ashare_vs_us.py`, `stock_bt.py`, `stock_split.py`, `stock_signals.py`, `trendstart.py` | 抄底、个股信号、趋势起点 |
