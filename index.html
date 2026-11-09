@@ -262,6 +262,9 @@ td.n { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
 .lean.flat { color: var(--muted); background: var(--sunk); }
 .card-plan { margin: 0; font-size: 13.5px; background: var(--sunk); border-radius: 8px; padding: 8px 10px; }
 .card-hist { margin: 0; font-size: 12.5px; color: var(--muted); }
+.card-vol { margin: 0; font-size: 12.5px; color: var(--muted); line-height: 1.6; }
+.card-vol b { color: var(--ink); font-weight: 600; }
+.card-vol:empty { display: none; }
 .card-warn { margin: 0; font-size: 12.5px; color: var(--warn); }
 .chart-h { display: flex; justify-content: flex-end; padding: 8px 10px 0; }
 details.fold { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); }
@@ -334,6 +337,7 @@ details.fold-in > summary { cursor: pointer; font-size: 13px; font-weight: 600; 
     <p class="card-why" id="cardWhy"></p>
     <ul class="card-tech" id="cardTech"></ul>
     <p class="card-plan" id="cardPlan"></p>
+    <p class="card-vol" id="cardVol"></p>
     <p class="card-hist" id="cardHist"></p>
     <p class="card-warn" id="cardWarn"></p>
     <div class="row-btns">
@@ -1013,6 +1017,7 @@ const VLOG = [
   ["结构判断方向（摆动高低点 / 突破结构）", "4 小时、1 小时、15 分；黄金白银 2021–2026，股票合约 2026 年以来；2026-11 扩到近5年金银、7个主流币、48只美股、铂钯铜天然气，约5.3万次转向", "转向后 24 小时方向对 46~56%，和平时差不多；只有黄金4小时牛市翻多 64%（平时 53%，58次）、AMD/美光/戴尔1小时牛市翻多 62%（平时 52%）", "bad", "单看方向没有预测力"],
   ["顺着结构做：转向收盘进场，最近反向摆动点认错，结构反转离场", "同上（2026-11），扣来回 0.1% 和多单资金费；对照 = 结构已同向时随便进场", "赚的平均 +1.3~1.6 份、亏的平均 −0.8~−0.9 份；4 小时黄金 +0.20、白银 +0.19 份/笔（前后两段都赚，对照 −0.03/−0.07）；1 小时大多持平，AMD/美光/戴尔牛市做多 +0.31；15 分钟全部亏（−0.06~−0.22），多周期同向也救不回来", "warn", "4小时金银有用，15分钟不行"],
   ["历史相似行情：找过去最像的20段（离200/50日线、20/60日涨幅、波动、离一年高点），看之后5天/20天", "黄金、白银、铜、纳指、标普、AMD、美光、沪深300；只用当时以前的历史匹配，2021-11~2026-10逐日检验；换3个特征、50段复核", "方向：类比结果和实际涨跌的相关接近0，没有一个品种在两种设定下都显著；股票类常常反着来（类比说跌之后反而大涨）。范围：类比给的区间只罩住62~78%（应80%），不如直接按当前20日波动推算（75~80%）", "bad", "没通过"],
+  ["按最近20天波动估区间、算止损/目标被正常波动碰到的概率", "金银、7个主流币、币安上111只股票合约对应的美股、铂钯铜天然气，2021-11~2026-10；前半段校准、后半段检验", "明天的8成区间约 ±1.23~1.30 倍日波动、5天约 ±1.28~1.42 倍√5；用前半段定的倍数，后半段实际罩住 76%~82%；离现价1倍日波动，24小时内被碰到约 27%~31%，2倍约 6%~9%，前后两段一致", "good", "通过，已放进结论卡"],
   ["完整结构体系：4h 结构 → 1h 回调 → 5 分钟转强 → 回调低点止损 → 前高平一半 + 结构持有", "开发 2021–2023；检验 2024–2026 黄金、2021–2026 白银", "开发期不算成本 +0.12R；检验期黄金 +0.01R、扣费 −0.18R，白银扣费 −0.19R；不如随机进场", "bad", "没通过"],
   ["上级周期过滤（必须顺 4 小时结构）", "同上", "开发期顺 4h 每天多走约 0.3 个 ATR、方向对 55%；检验期变回 50%", "bad", "没通过"],
   ["结构延续持有 vs 固定 2R vs 拿 24 小时", "同上", "差别都在 ±0.1R 以内，没有哪种稳定更好", "warn", "没区别"],
@@ -2119,7 +2124,51 @@ function plan(V, side, tf, at) {
   const tg = cands[0] || { p: E0 + side * 2 * R, w: "两倍止损距离" };
   const rr = side * (tg.p - E0) / R;
   const head = at ? `${side === 1 ? "站上" : "跌破"} ${fmt(at, dp)} 之后${side === 1 ? "做多" : "做空"}参考` : `${side === 1 ? "做多" : "做空"}参考`;
+  PLANNUM = { E0, stop, target: tg.p, side };
   return `${head}：止损 <b>${fmt(stop, dp)}</b>（亏 ${pabs(R / E0, 2)}）→ 目标 <b>${fmt(tg.p, dp)}</b>（${esc(tg.w)}，赚 ${pabs((tg.p - E0) / E0, 2)}），盈亏比 1:${rr.toFixed(1)}${rr < 1 ? "，<b>不划算</b>" : ""}。浮盈到 ${fmt(E0 + side * R, dp)} 就把止损挪到开仓价。`;
+}
+// 波动参考：最近20天日波动 σ；80%区间倍数和"碰到概率"表按近5年历史校准（research/vol_range_bt.py，后半段实际罩住76%~82%）
+const VOLT = {"ks":[0.25,0.5,0.75,1.0,1.25,1.5,1.75,2.0,2.25,2.5,2.75,3.0,3.25,3.5,3.75,4.0],"g":{"commod":{"k1":1.3,"k5":1.307,"t1":[0.778,0.587,0.427,0.301,0.21,0.146,0.1,0.068,0.046,0.031,0.022,0.015,0.012,0.009,0.007,0.005],"t5":[0.789,0.597,0.439,0.315,0.22,0.149,0.104,0.071,0.05,0.036,0.026,0.018,0.013,0.01,0.008,0.005]},"silver":{"k1":1.269,"k5":1.422,"t1":[0.779,0.594,0.44,0.307,0.216,0.146,0.104,0.07,0.051,0.034,0.026,0.02,0.014,0.012,0.007,0.006],"t5":[0.806,0.607,0.44,0.323,0.232,0.168,0.12,0.085,0.065,0.043,0.031,0.017,0.013,0.008,0.005,0.005]},"gold":{"k1":1.293,"k5":1.39,"t1":[0.763,0.578,0.425,0.295,0.209,0.15,0.103,0.069,0.051,0.035,0.026,0.02,0.015,0.011,0.008,0.007],"t5":[0.782,0.596,0.434,0.316,0.218,0.158,0.12,0.089,0.064,0.046,0.035,0.024,0.019,0.016,0.011,0.009]},"crypto":{"k1":1.229,"k5":1.285,"t1":[0.778,0.571,0.41,0.297,0.215,0.156,0.115,0.086,0.066,0.051,0.04,0.032,0.025,0.021,0.018,0.015],"t5":[0.787,0.59,0.436,0.317,0.23,0.169,0.126,0.098,0.077,0.063,0.05,0.042,0.036,0.03,0.025,0.022]},"stock_other":{"k1":1.254,"k5":1.339,"t1":[0.685,0.525,0.384,0.274,0.192,0.134,0.093,0.065,0.046,0.033,0.024,0.019,0.015,0.011,0.009,0.008],"t5":[0.757,0.575,0.421,0.302,0.214,0.152,0.107,0.075,0.054,0.039,0.029,0.022,0.017,0.013,0.011,0.008]},"stock_nontech":{"k1":1.254,"k5":1.358,"t1":[0.706,0.548,0.403,0.288,0.203,0.143,0.099,0.07,0.049,0.035,0.026,0.02,0.015,0.012,0.009,0.008],"t5":[0.771,0.591,0.436,0.314,0.224,0.157,0.111,0.079,0.055,0.04,0.029,0.022,0.016,0.012,0.01,0.008]},"stock_main":{"k1":1.271,"k5":1.371,"t1":[0.673,0.514,0.376,0.272,0.188,0.131,0.09,0.063,0.045,0.032,0.024,0.018,0.013,0.01,0.008,0.007],"t5":[0.757,0.575,0.425,0.303,0.215,0.148,0.104,0.074,0.054,0.039,0.029,0.02,0.016,0.012,0.009,0.007]}}};
+const VOL = {};
+let PLANNUM = null;
+function volGroup(sym) {
+  const k = statKey(sym);
+  return k === "XAUUSD" ? "gold" : k === "XAGUSD" ? "silver" : k;
+}
+async function needVol(sym) {
+  if (VOL[sym] && Date.now() - VOL[sym].at < 10 * 60e3) return false;
+  const r = await fetch(`${REST}/fapi/v1/klines?symbol=${sym}&interval=1d&limit=45`, { cache: "no-store" });
+  if (!r.ok) return false;
+  const k = await r.json(); if (!Array.isArray(k)) return false;
+  const crypto = U.groupOfSym(sym) === "crypto";
+  const c = k.slice(0, -1).filter((x) => { if (crypto) return true; const d = new Date(+x[0]).getUTCDay(); return d !== 0 && d !== 6; }).map((x) => +x[4]).slice(-21);
+  if (c.length < 21) return false;
+  const lr = c.slice(1).map((x, i) => Math.log(x / c[i])), m = lr.reduce((a, b) => a + b, 0) / lr.length;
+  const sd = Math.sqrt(lr.reduce((a, b) => a + (b - m) ** 2, 0) / (lr.length - 1));
+  VOL[sym] = { sd, at: Date.now() };
+  return true;
+}
+function touchP(tab, k) {
+  const ks = VOLT.ks;
+  if (k <= ks[0]) return 1 - (1 - tab[0]) * k / ks[0];
+  if (k >= ks[ks.length - 1]) return tab[tab.length - 1];
+  const i = ks.findIndex((x) => x >= k), a = ks[i - 1], b = ks[i];
+  return tab[i - 1] + (tab[i] - tab[i - 1]) * (k - a) / (b - a);
+}
+function volText(sym, V) {
+  const v = VOL[sym], G = VOLT.g[volGroup(sym)] || VOLT.g.stock_other;
+  if (!v) return "";
+  const sd = v.sd, P = V.last, dp = V.dp, pc = (x) => Math.round(x * 100) + "%";
+  const b1 = [P * Math.exp(-G.k1 * sd), P * Math.exp(G.k1 * sd)], b5 = [P * Math.exp(-G.k5 * sd * Math.sqrt(5)), P * Math.exp(G.k5 * sd * Math.sqrt(5))];
+  let t = `<b>波动参考</b>：最近20天平均每天波动 ±${(sd * 100).toFixed(2)}%。明天这个时候 8 成在 <b>${fmt(b1[0], dp)} ~ ${fmt(b1[1], dp)}</b>；5 天后 8 成在 ${fmt(b5[0], dp)} ~ ${fmt(b5[1], dp)}。`;
+  if (PLANNUM) {
+    const { E0, stop, target } = PLANNUM, ds = Math.abs(Math.log(stop / E0)), dt = Math.abs(Math.log(target / E0));
+    const p1 = touchP(G.t1, ds / sd), p5 = touchP(G.t5, ds / sd / Math.sqrt(5)), q1 = touchP(G.t1, dt / sd), q5 = touchP(G.t5, dt / sd / Math.sqrt(5));
+    t += `<br>止损离开仓价 ${(Math.abs(stop - E0) / E0 * 100).toFixed(2)}%（${(ds / sd).toFixed(1)} 倍日波动）：光是正常来回，24 小时内被碰到约 <b>${pc(p1)}</b>，5 天内约 ${pc(p5)}。目标离开仓价 ${(Math.abs(target - E0) / E0 * 100).toFixed(2)}%：24 小时内碰到约 ${pc(q1)}，5 天内约 ${pc(q5)}。`;
+    if (p1 >= 0.45) t += `<b>止损偏近，正常波动就容易扫到</b>，要么等更好的位置，要么仓位减半。`;
+    else if (q5 < 0.15) t += `目标偏远，5 天内碰到的机会不大，可以先在近一点的位置减仓。`;
+  }
+  return t;
 }
 function setDir(text, cls) { const d = $("cardDir"); d.textContent = text; d.className = "card-dir " + cls; }
 function renderCard(force) {
@@ -2130,8 +2179,10 @@ function renderCard(force) {
   lastRender = now;
   const sym = J.state.sym, tf = J.state.tf, V = J.VIEW, name = U.names[sym] || sym, g = U.groupOfSym(sym);
   $("cardName").textContent = `${name} · ${J.TF_LABEL[tf] || tf}`;
-  if (!V) { setDir("等行情载入…", "flat"); $("cardWhy").textContent = ""; $("cardTech").innerHTML = ""; $("cardPlan").innerHTML = ""; $("cardHist").textContent = ""; $("cardWarn").textContent = ""; return; }
+  if (!V) { setDir("等行情载入…", "flat"); $("cardWhy").textContent = ""; $("cardTech").innerHTML = ""; $("cardPlan").innerHTML = ""; $("cardHist").textContent = ""; $("cardWarn").textContent = ""; $("cardVol").innerHTML = ""; return; }
   const T = tech(V, tf), env = envFor(sym);
+  PLANNUM = null;
+  needVol(sym).then((ch) => { if (ch && window.JSQ.state.sym === sym) renderCard(true); }).catch(() => {});
   if (g !== "stock") needDMA(g === "crypto" ? "BTCUSDT" : sym).then(() => { if (!env && envFor(sym)) renderCard(true); });
   // 技术面一行一行
   $("cardTech").innerHTML = T.items.map((x) => `<li><span class="lean ${x.lean === "多" ? "up" : x.lean === "空" ? "down" : "flat"}">${x.lean}</span><b>${x.k}</b>${esc(x.txt)}</li>`).join("");
@@ -2180,6 +2231,7 @@ function renderCard(force) {
     hl.push(histLine(stS, `${envWord}里跌破做空`));
   }
   $("cardHist").innerHTML = hl.filter(Boolean).map(esc).join("<br>");
+  $("cardVol").innerHTML = volText(sym, V);
   // 提醒
   const warns = [];
   if (g === "stock" && usMarketClosed()) warns.push("美股现在休市：合约价开盘时可能跳空，止损可能滑点。");
