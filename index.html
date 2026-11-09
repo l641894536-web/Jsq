@@ -279,6 +279,17 @@ details.fold-in > summary { cursor: pointer; font-size: 13px; font-weight: 600; 
 .picker-box { background: var(--panel); width: min(560px, 100%); max-height: 86vh; border-radius: 14px 14px 0 0; padding: 12px 14px max(14px, env(safe-area-inset-bottom, 0px)); display: grid; gap: 10px; grid-template-rows: auto auto auto minmax(0, 1fr) auto; }
 @media (min-width: 700px) { .picker { align-items: center; } .picker-box { border-radius: 14px; } }
 .picker-h { display: flex; justify-content: space-between; align-items: center; }
+#stkQ { width: 100%; box-sizing: border-box; font: inherit; font-size: 15px; padding: 9px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--ink); }
+.stk-list { display: grid; gap: 6px; }
+.stk-list:empty, .stk-out:empty { display: none; }
+.stk-list button { display: flex; justify-content: space-between; gap: 8px; text-align: left; font: inherit; padding: 9px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); color: var(--ink); min-height: 44px; align-items: center; }
+.stk-list button span { color: var(--muted); font-size: 12px; }
+.stk-out { background: var(--sunk); border-radius: 8px; padding: 10px 12px; font-size: 13.5px; }
+.stk-out p { margin: 6px 0; }
+.stk-h { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.stk-h span { color: var(--muted); font-size: 12px; }
+.stk-tip { border-top: 1px dashed var(--line); margin-top: 8px; padding-top: 4px; }
+.stk-tip b.ok { color: var(--good); } .stk-tip b.bad { color: var(--bad, var(--down)); }
 #pickQ { width: 100%; box-sizing: border-box; font: inherit; font-size: 15px; padding: 9px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--ink); }
 .picker-list { overflow-y: auto; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; align-content: start; }
 .picker-list { grid-auto-rows: max-content; }
@@ -476,6 +487,15 @@ details.fold-in > summary { cursor: pointer; font-size: 13px; font-weight: 600; 
     <div class="report">
       <div class="tablewrap"><table id="mainTable"></table></div>
       <p class="note">按证监会行业分类，只算15只股票以上、成交占全市场0.5%以上的行业。"比平时"是今天的成交占比除以近20天平均占比，按它排序：数字越大，说明资金越往这个行业集中。这是描述，不是买卖信号。</p>
+    </div>
+  </section>
+  <section class="panel" id="stkPanel" aria-labelledby="stkTitle">
+    <div class="panel-h"><h2 id="stkTitle">查个股：成长和强弱（A股）</h2><span class="sub" id="stkSub"></span></div>
+    <div class="report">
+      <input id="stkQ" type="search" placeholder="输入代码或名字，例如 600519、宁德" autocomplete="off">
+      <div class="stk-list" id="stkList"></div>
+      <div class="stk-out" id="stkOut"></div>
+      <p class="note" id="stkNote">正在载入…</p>
     </div>
   </section>
   <section class="panel env" id="envPanel" aria-labelledby="envTitle">
@@ -2307,6 +2327,72 @@ function init() {
   const refresh = async () => { await Promise.allSettled(["XAUUSDT", "XAGUSDT", "BTCUSDT"].map(needDMA)); renderBar(); renderCard(true); };
   refresh(); setInterval(refresh, 5 * 60e3);
   renderBar();
+}
+init();
+})();
+</script>
+<script>
+(() => {
+"use strict";
+// 查个股（A股）：成长、增速变化、近120天强弱，结合当前牛熊给回测倾向（research/ashare_pick_bt.py）
+const $ = (id) => document.getElementById(id);
+let DATA = null, loading = null;
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const pc = (x) => (x >= 0 ? "+" : "−") + Math.abs(x * 100).toFixed(Math.abs(x) >= 10 ? 0 : 1) + "%";
+const rk = (r) => r >= 0.5 ? `排前 ${Math.max(1, Math.round((1 - r) * 100))}%` : `排后 ${Math.max(1, Math.round(r * 100))}%`;
+async function load() {
+  if (DATA) return DATA;
+  if (!loading) loading = fetch("stocks_a.json?d=" + new Date().toISOString().slice(0, 10)).then((r) => r.ok ? r.json() : null).then((d) => {
+    if (!d) return null;
+    const F = d.fields; d.objs = d.rows.map((r) => Object.fromEntries(F.map((k, i) => [k, r[i]]))); DATA = d; return d;
+  }).catch(() => null);
+  return loading;
+}
+function summary() {
+  const s = (window.JSQ_ENV || {}).stocks_a;
+  if (!s) { $("stkNote").textContent = "成长数据还在准备，稍后再看。"; return; }
+  $("stkSub").textContent = `财报按公告日算 · ${s.date}`;
+  $("stkNote").innerHTML = `现在可选的 ${s.n_uni} 只股票（正常交易、非ST、上市满一年、日均成交 3000 万以上）里，<b>"净利润增速前30% 且增速在加快"</b>的有 ${s.n_pool} 只，最多的行业：${s.pool_ind.slice(0, 5).map((x) => `${esc(x[0])} ${x[1]}`).join("、")}。`;
+}
+function search(q) {
+  q = q.trim(); const box = $("stkList");
+  if (!q || !DATA) { box.innerHTML = ""; return; }
+  const digits = /^\d+$/.test(q);
+  const hit = DATA.objs.filter((o) => digits ? o.code.startsWith(q) : (o.name || "").includes(q)).slice(0, 8);
+  box.innerHTML = hit.length ? hit.map((o) => `<button type="button" data-c="${o.code}"><b>${esc(o.name || o.code)}</b><span>${o.code} · ${esc(o.ind || "")}</span></button>`).join("") : `<p class="note">没找到。</p>`;
+}
+function show(code) {
+  const o = DATA.objs.find((x) => x.code === code); if (!o) return;
+  $("stkList").innerHTML = "";
+  const bull = (DATA.regime || "").startsWith("牛"), L = [];
+  const g = o.growth, gtxt = Number.isFinite(g) ? `${pc(g)}（${rk(o.g_r)}）` : "没有数据";
+  const acc = Number.isFinite(o.accel) ? `比上一期${o.accel >= 0 ? "加快" : "放慢"} ${Math.abs(o.accel * 100).toFixed(0)} 个百分点（${rk(o.a_r)}）` : "";
+  L.push(`<p><b>成长</b>：最新已公告（${o.stat || "—"}）归母净利润同比 ${gtxt}${acc ? "，" + acc : ""}。${Number.isFinite(o.roe) ? `ROE ${(o.roe * 100).toFixed(1)}%。` : ""}</p>`);
+  L.push(`<p><b>强弱</b>：近120天（不含最近一周）${Number.isFinite(o.mom120) ? `${pc(o.mom120)}（${rk(o.m_r)}）` : "—"}；近20天 ${Number.isFinite(o.mom20) ? pc(o.mom20) : "—"}。</p>`);
+  const tips = [];
+  if (!o.uni) tips.push("成交太小、上市不满一年、ST 或财报太旧，不在回测统计范围里，下面的倾向只作参考。");
+  if (bull) {
+    if (o.pool) tips.push(`<b class="ok">在"高成长+增速加快"池子里</b>：牛市里这类股票之后60天平均跑赢全市场约 1.6%（2024-09~2026-05，21个月里17个月跑赢）。`);
+    else if (o.g_r >= 0.7) tips.push("成长快但增速在放慢：牛市里单看高成长，之后60天平均跑赢约 1.5%。");
+    else tips.push("不在高成长那一档：回测里成长靠后的股票没有超额。");
+    if (o.m_r <= 0.3) tips.push(`<b class="bad">近120天跌幅排在后30%</b>：牛市里这类股票之后60天平均跑输约 1.1%（2016–2026，10年里9年跑输），别急着抄底。`);
+  } else {
+    tips.push(`现在 A 股是<b>熊市</b>（等权指数在200日线下）：回测里成长股池子在熊市不跑赢（60天 −1.7%，只有两段熊市、样本少）。`);
+    if (o.m_r >= 0.7) tips.push("这只近120天偏强：熊市里强势股 2021 年以后之后60天平均跑输约 2.2%，但 2016–2020 年没有这个规律。");
+    else if (o.m_r <= 0.3) tips.push("这只近120天跌得多：熊市里跌多了的股票 2021 年以后之后60天平均跑赢约 2.4%，但 2016–2020 年不成立。");
+    if (o.pool) tips.push(`它在"高成长+增速加快"池子里：等大盘重新站上200日线（转牛）再看，牛市里这个池子60天平均跑赢约 1.6%。`);
+  }
+  $("stkOut").innerHTML = `<div class="stk-h"><b>${esc(o.name || o.code)}</b><span>${o.code} · ${esc(o.ind || "")}</span></div>${L.join("")}<div class="stk-tip">${tips.map((t) => `<p>${t}</p>`).join("")}</div>
+    <p class="note">统计倾向：平均每只差 1~2%，不是买卖信号。成长数据目前从 2024 年开始，2021–2023 年补齐后会复核。</p>`;
+}
+function init() {
+  const q = $("stkQ"); if (!q) return;
+  const go = () => load().then(() => search(q.value));
+  q.addEventListener("focus", () => load());
+  q.addEventListener("input", go);
+  $("stkList").addEventListener("click", (e) => { const b = e.target.closest("button[data-c]"); if (b) { q.value = b.querySelector("b").textContent; show(b.dataset.c); } });
+  if (window.JSQ_ENV) summary();
+  document.addEventListener("jsq-env-ready", summary);
 }
 init();
 })();
