@@ -40,7 +40,7 @@ def signals(df, L, entry):
     return long_sig, short_sig, cross_up, cross_dn, hiL, loL
 
 
-def simulate(df, L, variant, entry="cross", max_hold_days=10, bars_per_day=7):
+def simulate(df, L, variant, entry="cross", max_hold_days=10, bars_per_day=7, stop_L=None, stop_atr=0.0, max_risk=MAX_RISK):
     """返回每笔交易（R为单位）。variant:
     A 固定止损拿大波段；B 1R平一半+剩余保本并跟踪24h低点；C 1R后保本+跟踪24h低点；D 1.5R全部止盈。
     所有版本：小时线趋势反向（EMA20/50反穿）或持仓满10个交易日也离场。"""
@@ -51,6 +51,11 @@ def simulate(df, L, variant, entry="cross", max_hold_days=10, bars_per_day=7):
     LS, SS, CU, CD = (x.to_numpy() for x in (long_sig, short_sig, cross_up, cross_dn))
     HI, LO = hiL.to_numpy(), loL.to_numpy()
     HI3 = df["high"].rolling(3 * L).max().to_numpy()
+    _pc = df["close"].shift(1).fillna(df["close"])
+    _tr = np.maximum(df["high"] - df["low"], np.maximum((df["high"] - _pc).abs(), (df["low"] - _pc).abs()))
+    ATR = _tr.ewm(alpha=1 / 14, adjust=False).mean().to_numpy()
+    SL_HI = df["high"].rolling(stop_L or L).max().to_numpy()
+    SL_LO = df["low"].rolling(stop_L or L).min().to_numpy()
     LO3 = df["low"].rolling(3 * L).min().to_numpy()
     max_bars = max_hold_days * bars_per_day
     trades = []
@@ -61,9 +66,9 @@ def simulate(df, L, variant, entry="cross", max_hold_days=10, bars_per_day=7):
             i += 1
             continue
         entry_px = c[i]
-        stop = LO[i] * (1 - BUF) if side == 1 else HI[i] * (1 + BUF)
+        stop = (SL_LO[i] * (1 - BUF) - stop_atr * ATR[i]) if side == 1 else (SL_HI[i] * (1 + BUF) + stop_atr * ATR[i])
         R = (entry_px - stop) * side
-        if not (MIN_RISK * entry_px <= R <= MAX_RISK * entry_px):
+        if not (MIN_RISK * entry_px <= R <= max_risk * entry_px):
             i += 1
             continue
         pos = 1.0               # 剩余仓位

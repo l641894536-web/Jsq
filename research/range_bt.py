@@ -27,7 +27,7 @@ def atr14(h, l, c):
     return a
 
 
-def sim(df, N, maxbars):
+def sim(df, N, maxbars, buf=0.3):
     df = df.sort_values("ts").reset_index(drop=True)
     o, h, l, c = (df[k].to_numpy(float) for k in ["open", "high", "low", "close"])
     ts = pd.to_datetime(df.ts, utc=True)
@@ -58,7 +58,7 @@ def sim(df, N, maxbars):
             if side == 0:
                 continue
             E0 = c[t]
-            stop = (min(L[t], l[t]) - 0.3 * a[t]) if side == 1 else (max(H[t], h[t]) + 0.3 * a[t])
+            stop = (min(L[t], l[t]) - buf * a[t]) if side == 1 else (max(H[t], h[t]) + buf * a[t])
             R = side * (E0 - stop)
             mid = L[t] + 0.5 * W
             far = (H[t] - 0.1 * W) if side == 1 else (L[t] + 0.1 * W)
