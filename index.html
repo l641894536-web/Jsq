@@ -262,6 +262,8 @@ td.n { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
 .lean.flat { color: var(--muted); background: var(--sunk); }
 .card-plan { margin: 0; font-size: 13.5px; background: var(--sunk); border-radius: 8px; padding: 8px 10px; }
 .card-hist { margin: 0; font-size: 12.5px; color: var(--muted); }
+.card-plan .plan-bt { display: inline-block; margin-top: 4px; font-size: 12.5px; color: var(--muted); }
+.card-plan .plan-bt b { color: var(--ink); }
 .card-vol { margin: 0; font-size: 12.5px; color: var(--muted); line-height: 1.6; }
 .card-vol b { color: var(--ink); font-weight: 600; }
 .card-vol:empty { display: none; }
@@ -401,7 +403,8 @@ details.fold-in > summary { cursor: pointer; font-size: 13px; font-weight: 600; 
         <p class="note trend-note" id="trendNote"></p>
       </section>
       <section class="panel">
-        <div class="panel-h"><h2>当前价格附近的形态</h2><span class="sub" id="setupSub"></span></div>
+        <div class="panel-h"><h2>当前价格附近的位置（看位置用，不当进场信号）</h2><span class="sub" id="setupSub"></span></div>
+        <p class="note" style="padding:6px 14px 0;margin:0">支撑阻力反弹、24小时高低点反弹、双底双顶这几种形态，在黄金15分钟和1小时上回测过，<b>扣费后都亏</b>（和随便开单一样，白交手续费）；其他品种没回测过。所以这里只告诉你价格离这些位置多远。</p>
         <div class="setups" id="setups"><div class="empty">等K线载入后自动识别。</div></div>
       </section>
       </details>
@@ -410,8 +413,8 @@ details.fold-in > summary { cursor: pointer; font-size: 13px; font-weight: 600; 
         <div class="panel-h"><h2>下单前：仓位和成本</h2><span class="sub">币安合约普通费率</span></div>
         <form class="calc" id="calc" autocomplete="off">
           <div class="row-btns">
-            <button type="button" class="btn" id="useLong">按 1 小时结构做多</button>
-            <button type="button" class="btn" id="useShort">按 1 小时结构做空</button>
+            <button type="button" class="btn" id="useLong" hidden>按 1 小时结构做多</button>
+            <button type="button" class="btn" id="useShort" hidden>按 1 小时结构做空</button>
             <button type="button" class="btn" id="use24L">按 24 小时最低点止损做多</button>
             <button type="button" class="btn" id="use24S">按 24 小时最高点止损做空</button>
           </div>
@@ -428,7 +431,7 @@ details.fold-in > summary { cursor: pointer; font-size: 13px; font-weight: 600; 
             <div class="field"><label for="fType">入场方式</label>
               <select id="fType"><option value="maker" selected>挂单 0.02%</option><option value="taker">市价 0.05%</option></select></div>
             <div class="field"><label for="fStop">止损价</label><input id="fStop" inputmode="decimal" value="3999.01"></div>
-            <div class="field"><label for="fTarget">止盈价</label><input id="fTarget" inputmode="decimal" value="3994.01"></div>
+            <div class="field"><label for="fTarget">先平一半的价位（默认2倍止损距离）</label><input id="fTarget" inputmode="decimal" value="3994.01"></div>
             <div class="field"><label for="fMargin">保证金 (USDT)</label><input id="fMargin" inputmode="decimal" value="1000"></div>
             <div class="field"><label for="fLev">杠杆 (倍)</label><input id="fLev" inputmode="decimal" value="10"></div>
             <div class="field full"><label for="fRisk">这笔最多愿意亏保证金的 (%)</label><input id="fRisk" inputmode="decimal" value="2"></div>
@@ -438,7 +441,7 @@ details.fold-in > summary { cursor: pointer; font-size: 13px; font-weight: 600; 
         </form>
       </section>
       </details>
-      <details class="fold"><summary>回测成绩：图上这些信号历史上赚不赚钱</summary>
+      <details class="fold"><summary>研究存档：早期验证过的信号（大部分没通过，只作记录）</summary>
       <section class="panel">
         <div class="panel-h">
           <h2>各信号的回测成绩</h2>
@@ -1038,6 +1041,7 @@ const VLOG = [
   ["顺着结构做：转向收盘进场，最近反向摆动点认错，结构反转离场", "同上（2026-11），扣来回 0.1% 和多单资金费；对照 = 结构已同向时随便进场", "赚的平均 +1.3~1.6 份、亏的平均 −0.8~−0.9 份；4 小时黄金 +0.20、白银 +0.19 份/笔（前后两段都赚，对照 −0.03/−0.07）；1 小时大多持平，AMD/美光/戴尔牛市做多 +0.31；15 分钟全部亏（−0.06~−0.22），多周期同向也救不回来", "warn", "4小时金银有用，15分钟不行"],
   ["历史相似行情：找过去最像的20段（离200/50日线、20/60日涨幅、波动、离一年高点），看之后5天/20天", "黄金、白银、铜、纳指、标普、AMD、美光、沪深300；只用当时以前的历史匹配，2021-11~2026-10逐日检验；换3个特征、50段复核", "方向：类比结果和实际涨跌的相关接近0，没有一个品种在两种设定下都显著；股票类常常反着来（类比说跌之后反而大涨）。范围：类比给的区间只罩住62~78%（应80%），不如直接按当前20日波动推算（75~80%）", "bad", "没通过"],
   ["按最近20天波动估区间、算止损/目标被正常波动碰到的概率", "金银、7个主流币、币安上111只股票合约对应的美股、铂钯铜天然气，2021-11~2026-10；前半段校准、后半段检验", "明天的8成区间约 ±1.23~1.30 倍日波动、5天约 ±1.28~1.42 倍√5；用前半段定的倍数，后半段实际罩住 76%~82%；离现价1倍日波动，24小时内被碰到约 27%~31%，2倍约 6%~9%，前后两段一致", "good", "通过，已放进结论卡"],
+  ["出场方式：固定止盈 vs 分批 vs 跟踪止损（同一个突破进场，按品种分开）", "黄金、白银、7个主流币、AMD/美光/戴尔、22只科技股，2021-11~2026-10，前后两段", "固定2倍全平最差（黄金牛市做多 +0.21 vs 跟踪 +0.30；加密 +0.03 vs +0.14；AMD等 +0.15 vs +0.28~0.39）；1倍先平一半胜率升到约5成但每笔只剩一半；2倍先平一半+剩下跟踪：黄金几乎不损失，加密、白银少赚三到五成", "good", "通过：1倍保本+跟踪3天高低点，不设固定止盈"],
   ["完整结构体系：4h 结构 → 1h 回调 → 5 分钟转强 → 回调低点止损 → 前高平一半 + 结构持有", "开发 2021–2023；检验 2024–2026 黄金、2021–2026 白银", "开发期不算成本 +0.12R；检验期黄金 +0.01R、扣费 −0.18R，白银扣费 −0.19R；不如随机进场", "bad", "没通过"],
   ["上级周期过滤（必须顺 4 小时结构）", "同上", "开发期顺 4h 每天多走约 0.3 个 ATR、方向对 55%；检验期变回 50%", "bad", "没通过"],
   ["结构延续持有 vs 固定 2R vs 拿 24 小时", "同上", "差别都在 ±0.1R 以内，没有哪种稳定更好", "warn", "没区别"],
@@ -1139,12 +1143,29 @@ function swingStructure(rows, theta = 2) {
   if (lH && pH && lL && pL) pattern = lH.p > pH.p && lL.p > pL.p ? 1 : (lH.p < pH.p && lL.p < pL.p ? -1 : 0);
   return { trend, since, pattern, lastH: lH ? lH.p : null, lastL: lL ? lL.p : null, hh: lH && pH ? lH.p > pH.p : null, hl: lL && pL ? lL.p > pL.p : null, atr: a[n - 1] };
 }
+// 15分钟结构转向的组合回测（research/structure_bt.py），每个品种只看自己的：回调结束顺势 / 三周期同向 / 逆4小时
+const COMBO15 = { gold: { pull: -0.27, all3: -0.08, against: -0.28 }, silver: { pull: -0.13, all3: -0.13, against: -0.17 }, crypto: { pull: -0.07, all3: 0.0, against: -0.08 } };
 const SGNAME = { gold: "黄金", silver: "白银", crypto: "加密", stock_main: "AMD/美光/戴尔", stock_other: "科技股", stock_nontech: "非科技股", commod: "铂钯铜天然气" };
 function structGroup(sym) {
   if (["XAUUSDT", "XAUTUSDT", "PAXGUSDT"].includes(sym)) return "gold";
   if (sym === "XAGUSDT") return "silver";
   const k = window.JSQ_STATKEY ? window.JSQ_STATKEY(sym) : null;
   return k === "XAUUSD" ? "gold" : k === "XAGUSD" ? "silver" : k;
+}
+function structSummary(sym) {
+  const g = structGroup(sym), T = SSTATS[g], nm = SGNAME[g];
+  if (!T) return "这个品种没回测过结构。";
+  const sg = (x) => (x >= 0 ? "+" : "") + x.toFixed(2), L = { "4h": "4小时", "1h": "1小时", "15m": "15分钟" };
+  const parts = ["4h", "1h", "15m"].map((tf) => T[tf] ? `${L[tf]}翻多 ${sg(T[tf].long.avg)}、翻空 ${sg(T[tf].short.avg)}` : `${L[tf]}没有长历史`);
+  return `<b>${nm}</b>（只看它自己那一类）顺着结构做、到认错位离场，每笔份止损：${parts.join("；")}。`;
+}
+function comboNote(kind, waiting) {
+  const g = structGroup(state.sym), C = COMBO15[g], nm = SGNAME[g] || "这个品种";
+  const T4 = SSTATS[g] && SSTATS[g]["4h"], sg = (x) => (x >= 0 ? "+" : "") + x.toFixed(2);
+  const four = T4 ? `${nm}看4小时结构顺着做：翻多每笔 ${sg(T4.long.avg)}、翻空 ${sg(T4.short.avg)} 份止损。` : "";
+  if (!C) return `${nm}没有15分钟的长历史，这种组合没回测。${four}`;
+  const w = { pull: "4小时定方向、等1小时回调、15分钟转回来就进场", all3: "三个周期同向时跟着15分钟进场", against: "逆着4小时做15分钟" }[kind];
+  return `${waiting ? "等15分钟转回来再进场也不赚。" : ""}${nm}近5年回测：${w}，每笔 ${sg(C[kind])} 份止损${C[kind] < 0.03 ? "，不赚" : ""}。${four}`;
 }
 function structHist(sym, tf, up) {
   const g = structGroup(sym), T = SSTATS[g] && SSTATS[g][tf];
@@ -1180,14 +1201,14 @@ async function renderTrend() {
     if (a && b && c && a.trend && b.trend && c.trend) {
       const dir = a.trend === 1 ? "多" : "空";
       let text, note;
-      if (b.trend === -a.trend && c.trend === a.trend) { text = `4小时${a.trend === 1 ? "上涨" : "下跌"}，1小时${a.trend === 1 ? "回调" : "反弹"}中，15分钟已经转回顺势：这正是"${a.trend === 1 ? "回调结束顺势做多" : "反弹结束顺势做空"}"的样子`; note = "检验过：近5年这样进场（15分钟转回来就做），黄金每笔 −0.27 份止损、白银 −0.13 份、加密 −0.07 份，都不赚。"; }
-      else if (b.trend === -a.trend) { text = `4小时${a.trend === 1 ? "上涨" : "下跌"}，1小时${a.trend === 1 ? "回调" : "反弹"}中，15分钟还没转回来`; note = "等15分钟转回来再进场也不赚（黄金 −0.27、白银 −0.13、加密 −0.07 份/笔）。要做就看4小时结构。"; }
-      else if (b.trend === a.trend && c.trend === a.trend) { text = `三个周期都是${a.trend === 1 ? "上涨" : "下跌"}结构，方向一致`; note = "三个周期同向时跟着15分钟做：黄金 −0.08、白银 −0.13、加密 0.00 份/笔；看4小时结构做反而好（黄金4小时翻多 +0.42、白银 +0.21 份/笔）。"; }
-      else { text = "周期之间方向不一致，属于过渡或震荡阶段"; note = "这时候逆着4小时做15分钟最亏（黄金 −0.28、白银 −0.17 份/笔）；震荡区间边缘的假突破也检验过，扣费后不赚钱。"; }
+      if (b.trend === -a.trend && c.trend === a.trend) { text = `4小时${a.trend === 1 ? "上涨" : "下跌"}，1小时${a.trend === 1 ? "回调" : "反弹"}中，15分钟已经转回顺势：这正是"${a.trend === 1 ? "回调结束顺势做多" : "反弹结束顺势做空"}"的样子`; note = comboNote("pull"); }
+      else if (b.trend === -a.trend) { text = `4小时${a.trend === 1 ? "上涨" : "下跌"}，1小时${a.trend === 1 ? "回调" : "反弹"}中，15分钟还没转回来`; note = comboNote("pull", true); }
+      else if (b.trend === a.trend && c.trend === a.trend) { text = `三个周期都是${a.trend === 1 ? "上涨" : "下跌"}结构，方向一致`; note = comboNote("all3"); }
+      else { text = "周期之间方向不一致，属于过渡或震荡阶段"; note = comboNote("against"); }
       combo.innerHTML = `<b>${text}</b><span>${note}</span>`; combo.hidden = false;
     } else combo.hidden = true;
     $("trendSub").textContent = (SGNAME[structGroup(sym)] || "") + " · 4小时 · 1小时 · 15分钟";
-    $("trendNote").innerHTML = `结构用摆动高低点判断：收盘突破最近确认的高点算上涨结构，跌破最近确认的低点算下跌结构（摆动 = 反向走出 2 倍平均波幅）。回测近5年约5.3万次结构转向（金银、7个主流币、48只美股、铂钯铜天然气）：<b>转向后24小时往哪走基本一半对一半</b>，K线的用处在别处——告诉你错了在哪认（亏得小），对了让它跑（赚的平均比亏的多走一半以上）。合起来：<b>4小时对金银有用（黄金翻多每笔 +0.42 份止损，白银多空都约 +0.2 份），AMD/美光/戴尔翻多 +0.27~0.29 份；1小时大多持平；15分钟全部亏钱</b>。股票用的是美股交易时段K线，没有15分钟长历史。`;
+    $("trendNote").innerHTML = `结构用摆动高低点判断：收盘突破最近确认的高点算上涨结构，跌破最近确认的低点算下跌结构（摆动 = 反向走出 2 倍平均波幅）。回测近5年约5.3万次结构转向（金银、7个主流币、48只美股、铂钯铜天然气）：<b>转向后24小时往哪走基本一半对一半</b>，K线的用处在别处——告诉你错了在哪认（亏得小），对了让它跑（赚的平均比亏的多走一半以上）。${structSummary(sym)}`;
   } finally { trendBusy = false; }
 }
 
@@ -1294,9 +1315,9 @@ function calc() {
   const side = state.side, E = num("fEntry"), S = num("fStop"), Tg = num("fTarget"), M = num("fMargin"), Lv = num("fLev"), Rk = num("fRisk") / 100;
   const out = $("calcOut"), vd = $("verdict");
   const bad = (msg) => { vd.className = "verdict warn"; vd.innerHTML = `<strong>${msg}</strong>`; out.innerHTML = ""; state.lastCalc = null; };
-  if (![E, S, Tg].every(isFinite) || E <= 0) return bad("请填入入场、止损、止盈价格");
-  if (side === 1 && !(S < E && E < Tg)) return bad("做多时应该：止损 < 入场 < 止盈");
-  if (side === -1 && !(Tg < E && E < S)) return bad("做空时应该：止盈 < 入场 < 止损");
+  if (![E, S, Tg].every(isFinite) || E <= 0) return bad("请填入入场价、止损价和先平一半的价位");
+  if (side === 1 && !(S < E && E < Tg)) return bad("做多时应该：止损 < 入场 < 平一半的价位");
+  if (side === -1 && !(Tg < E && E < S)) return bad("做空时应该：平一半的价位 < 入场 < 止损");
   const fin = $("fType").value === "maker" ? FEE.maker : FEE.taker + FEE.slip;
   const stopD = Math.abs(E - S), tgtD = Math.abs(Tg - E);
   const feeIn = E * fin, feeTP = Tg * FEE.maker, feeSL = S * (FEE.taker + FEE.slip);
@@ -1315,17 +1336,17 @@ function calc() {
   state.lastCalc = { side, E, S, Tg, risk: riskAmt, k: tgtD / stopD };
   let cls, title, text;
   if (!liqOK) { cls = "bad"; title = "止损在强平价外面"; text = `按 ${Lv} 倍杠杆，价格到 ${fmt(liq, dp)} 附近就会被强平，止损根本等不到。降低杠杆，或者把止损收近。`; }
-  else if (win <= 0) { cls = "bad"; title = "止盈还不够付手续费"; text = "就算打到止盈，扣完手续费也是亏的。"; }
+  else if (win <= 0) { cls = "bad"; title = "目标还不够付手续费"; text = "就算打到这个价位，扣完手续费也是亏的。"; }
   else if (feeShare >= 0.5) { cls = "bad"; title = "止损太窄，手续费吃掉利润"; text = `手续费相当于止损的 ${(feeShare * 100).toFixed(0)}%，要 ${(be * 100).toFixed(0)}% 的胜率才保本。回测里这类单子实际胜率约三成。`; }
   else if (be > 0.55) { cls = "warn"; title = "需要很高的胜率才保本"; text = `保本胜率 ${(be * 100).toFixed(0)}%。可以把止盈放远一点，或者把止损放宽、仓位减小。`; }
   else { cls = "good"; title = "成本可控"; text = `保本胜率 ${(be * 100).toFixed(0)}%。成本这关过了，能不能赚钱还要看这个信号本身有没有优势。`; }
   vd.className = "verdict " + cls; vd.innerHTML = `<strong>${title}</strong><p>${text}</p>`;
   out.innerHTML = `
     <dt>止损距离</dt><dd>${fmt(stopD, dp)}（${(stopD / E * 100).toFixed(3)}%）</dd>
-    <dt>止盈距离</dt><dd>${fmt(tgtD, dp)}（盈亏比 ${(tgtD / stopD).toFixed(2)}）</dd>
+    <dt>到平一半位置的距离</dt><dd>${fmt(tgtD, dp)}（${(tgtD / stopD).toFixed(2)} 倍止损距离）</dd>
     <dt>一来一回手续费</dt><dd>${fmt(feeIn + feeSL, dp)}（止损时）</dd>
     <div class="sep"></div>
-    <dt>打到止盈，扣费后净赚</dt><dd class="${win > 0 ? "pos" : "neg"}">${fmt(win, dp)}</dd>
+    <dt>全仓走到这个位置，扣费后净赚</dt><dd class="${win > 0 ? "pos" : "neg"}">${fmt(win, dp)}</dd>
     <dt>打到止损，扣费后净亏</dt><dd class="neg">${fmt(loss, dp)}</dd>
     <dt>扣费后盈亏比</dt><dd>${win > 0 ? (win / loss).toFixed(2) : "—"}</dd>
     <dt>保本需要的胜率</dt><dd><b>${(be * 100).toFixed(0)}%</b></dd>
@@ -1337,7 +1358,8 @@ function calc() {
     <dt>按愿亏 ${isFinite(Rk) ? (Rk * 100).toFixed(1) : "—"}% 算的仓位</dt><dd>${isFinite(qty) ? fmt(qty, qty < 10 ? 3 : 1) + " 个" : "—"}</dd>
     <dt>仓位价值 / 占用保证金</dt><dd>${isFinite(notional) ? fmt(notional, 0) + " / " + fmt(marginUsed, 0) : "—"}</dd>
     ${capped ? `<dt style="grid-column:1/-1;color:var(--warn)">保证金不够按这个风险开仓，已按满仓算，止损实亏 ${fmt(riskAmt, 2)} USDT</dt>` : ""}
-    ${histLine(tgtD / stopD, be)}`;
+    <div class="sep"></div>
+    <dt>出场计划</dt><dd>到 ${fmt(E + side * stopD, dp)} 挪保本；到 ${fmt(Tg, dp)} 可平一半；剩下跟踪止损</dd>`;
 }
 function nyHour() {
   try { return +new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", hour: "numeric", hourCycle: "h23" }).format(new Date()) % 24; }
@@ -1405,14 +1427,15 @@ async function fillFrom24h(side) {
   const hi = Math.max(E, ...last.map(r => r.h)), lo = Math.min(E, ...last.map(r => r.l));
   let a = null;
   for (let i = 0; i < rows.length; i++) { const r = rows[i], pc = i ? rows[i - 1].c : r.c; const tr = Math.max(r.h - r.l, Math.abs(r.h - pc), Math.abs(r.l - pc)); a = a == null ? tr : a + (tr - a) / 14; }
-  const stop = side === 1 ? lo - 0.2 * a : hi + 0.2 * a, T = side === 1 ? hi : lo;
-  const R = side * (E - stop), rew = side * (T - E), dp = VIEW.dp;
+  const P = window.JSQ_PLAN ? window.JSQ_PLAN() : null;
+  let stop = side === 1 ? lo - 0.2 * a : hi + 0.2 * a, E0 = E;
+  if (P && P.side === side) { stop = P.stop; E0 = P.E0; }            // 和结论卡用同一套价位
+  const R = side * (E0 - stop), dp = VIEW.dp, T = E0 + side * 2 * R;
   if (!(R > 0)) return msg("现价已经越过 24 小时极值，这个止损没有意义");
-  if (!(rew > 0)) return msg(`现价就在 24 小时${side === 1 ? "最高" : "最低"}点，没有目标空间`);
-  setFields(side, E, stop, T, "maker");
+  setFields(side, E0, stop, T, "maker");
   const tag = $("exampleTag");
-  tag.innerHTML = `你的做法：止损在 24 小时${side === 1 ? "最低" : "最高"} ${fmt(side === 1 ? lo : hi, dp)} 外 0.2 个 ATR，目标是 24 小时${side === 1 ? "最高" : "最低"} ${fmt(T, dp)}（${(rew / R).toFixed(2)}R）。` +
-    (rew < R ? "<b>盈亏比不到 1。</b>" : "") + `回测（金银 2021–2026、92 个股票合约）：胜率约 40%，扣费后每笔约 −0.18R，和随机时间进场一样；这里只用来定止损和仓位。`;
+  tag.innerHTML = `止损在 24 小时${side === 1 ? "最低" : "最高"}点外 ${fmt(stop, dp)}${E0 !== E ? `（入场按突破价 ${fmt(E0, dp)} 算）` : ""}。出场计划：浮盈到 <b>${fmt(E0 + side * R, dp)}</b>（1倍）挪保本；之后止损跟着过去3天${side === 1 ? "最低" : "最高"}点挪，不设固定止盈；想分批就在 <b>${fmt(T, dp)}</b>（2倍）先平一半。` +
+    `下面的"保本胜率"按这个2倍位置算，只用来检查成本和仓位。`;
   tag.hidden = false;
 }
 
@@ -2120,6 +2143,7 @@ function grade(st) {
 const rTxt = (x) => `${x >= 0 ? "赚" : "亏"}${Math.abs(x).toFixed(2)}份止损`;
 const halfTxt = (s) => `2021-11到2024-04平均每笔${rTxt(s.h1)}，2024-05以后${rTxt(s.h2)}`;
 window.JSQ_STATKEY = statKey; window.JSQ_ENVFOR = (sym) => envFor(sym);
+window.JSQ_PLAN = () => PLANNUM;
 function histLine(st, label) {
   if (!st) return "";
   const s = st.s, w = Math.round(s.win * 10), net = s.avg;
@@ -2131,21 +2155,32 @@ function usMarketClosed() {
   const wd = g("weekday"), hm = (+g("hour") % 24) * 60 + +g("minute");
   return wd === "Sat" || wd === "Sun" || hm < 9 * 60 + 30 || hm >= 16 * 60;
 }
-function plan(V, side, tf, at) {
-  const E0 = at || V.last, dp = V.dp, day = tf === "1d" ? "20日" : "24小时";
+// 出场方式回测（research/exit_bt.py）：同一进场，按品种×环境×方向比较
+// F=1R保本+跟踪3天低点（不设固定止盈） G=固定2R全平 B=1R先平一半 J=2R先平一半+剩下跟踪3天低点 A=只放初始止损
+const EXIT = {"stock_main":{"bear|long":{"F":{"n":69,"avg":0.113,"win":39,"h1":-0.074,"h2":1.001},"G":{"n":77,"avg":0.048,"win":31,"h1":-0.104,"h2":0.794},"B":{"n":78,"avg":0.098,"win":53,"h1":-0.038,"h2":0.848},"J":{"n":69,"avg":0.139,"win":41,"h1":-0.028,"h2":0.935},"A":{"n":61,"avg":0.217,"win":38,"h1":-0.083,"h2":1.44}},"bear|short":{"F":{"n":79,"avg":-0.171,"win":32,"h1":-0.13,"h2":-0.38},"G":{"n":78,"avg":0.007,"win":29,"h1":0.057,"h2":-0.243},"B":{"n":88,"avg":-0.14,"win":42,"h1":-0.112,"h2":-0.28},"J":{"n":79,"avg":-0.143,"win":33,"h1":-0.111,"h2":-0.307},"A":{"n":62,"avg":0.043,"win":34,"h1":-0.041,"h2":0.479}},"bull|long":{"F":{"n":261,"avg":0.284,"win":36,"h1":0.286,"h2":0.283},"G":{"n":310,"avg":0.155,"win":32,"h1":0.245,"h2":0.106},"B":{"n":313,"avg":0.135,"win":51,"h1":0.151,"h2":0.126},"J":{"n":261,"avg":0.213,"win":38,"h1":0.262,"h2":0.181},"A":{"n":222,"avg":0.386,"win":35,"h1":0.437,"h2":0.354}},"bull|short":{"F":{"n":196,"avg":-0.263,"win":23,"h1":-0.373,"h2":-0.193},"G":{"n":216,"avg":-0.254,"win":20,"h1":-0.297,"h2":-0.227},"B":{"n":220,"avg":-0.203,"win":40,"h1":-0.273,"h2":-0.161},"J":{"n":196,"avg":-0.228,"win":26,"h1":-0.313,"h2":-0.175},"A":{"n":165,"avg":-0.298,"win":24,"h1":-0.424,"h2":-0.224}}},"stock_other":{"bear|long":{"F":{"n":537,"avg":0.034,"win":35,"h1":-0.059,"h2":0.395},"G":{"n":594,"avg":0.03,"win":32,"h1":-0.034,"h2":0.295},"B":{"n":624,"avg":-0.018,"win":50,"h1":-0.064,"h2":0.179},"J":{"n":537,"avg":0.017,"win":37,"h1":-0.05,"h2":0.277},"A":{"n":495,"avg":-0.018,"win":29,"h1":-0.157,"h2":0.512}},"bear|short":{"F":{"n":608,"avg":-0.057,"win":33,"h1":-0.009,"h2":-0.26},"G":{"n":694,"avg":-0.028,"win":27,"h1":-0.012,"h2":-0.095},"B":{"n":702,"avg":-0.052,"win":46,"h1":-0.048,"h2":-0.069},"J":{"n":608,"avg":-0.02,"win":34,"h1":0.009,"h2":-0.139},"A":{"n":514,"avg":0.001,"win":31,"h1":0.034,"h2":-0.145}},"bull|long":{"F":{"n":1869,"avg":0.051,"win":34,"h1":0.048,"h2":0.053},"G":{"n":2153,"avg":0.026,"win":33,"h1":0.029,"h2":0.024},"B":{"n":2175,"avg":0.024,"win":50,"h1":0.042,"h2":0.013},"J":{"n":1869,"avg":0.046,"win":37,"h1":0.026,"h2":0.06},"A":{"n":1625,"avg":0.077,"win":33,"h1":0.16,"h2":0.018}},"bull|short":{"F":{"n":1540,"avg":-0.097,"win":30,"h1":-0.119,"h2":-0.082},"G":{"n":1717,"avg":-0.09,"win":26,"h1":-0.106,"h2":-0.081},"B":{"n":1744,"avg":-0.071,"win":46,"h1":-0.073,"h2":-0.07},"J":{"n":1540,"avg":-0.077,"win":32,"h1":-0.093,"h2":-0.066},"A":{"n":1368,"avg":-0.109,"win":28,"h1":-0.193,"h2":-0.054}}},"crypto":{"bear|long":{"F":{"n":845,"avg":0.16,"win":25,"h1":0.168,"h2":0.152},"G":{"n":922,"avg":-0.0,"win":27,"h1":-0.02,"h2":0.018},"B":{"n":902,"avg":0.025,"win":41,"h1":-0.022,"h2":0.069},"J":{"n":845,"avg":0.071,"win":27,"h1":0.053,"h2":0.088},"A":{"n":810,"avg":0.183,"win":30,"h1":0.184,"h2":0.181}},"bear|short":{"F":{"n":792,"avg":0.093,"win":29,"h1":0.178,"h2":0.01},"G":{"n":917,"avg":0.065,"win":30,"h1":0.13,"h2":0.002},"B":{"n":906,"avg":0.057,"win":45,"h1":0.088,"h2":0.026},"J":{"n":792,"avg":0.093,"win":32,"h1":0.175,"h2":0.011},"A":{"n":764,"avg":0.152,"win":34,"h1":0.251,"h2":0.052}},"bull|long":{"F":{"n":935,"avg":0.142,"win":24,"h1":0.132,"h2":0.151},"G":{"n":1096,"avg":0.032,"win":28,"h1":0.03,"h2":0.033},"B":{"n":1034,"avg":0.081,"win":43,"h1":0.084,"h2":0.079},"J":{"n":935,"avg":0.074,"win":27,"h1":0.075,"h2":0.074},"A":{"n":906,"avg":0.131,"win":29,"h1":0.131,"h2":0.131}},"bull|short":{"F":{"n":925,"avg":0.042,"win":28,"h1":-0.011,"h2":0.081},"G":{"n":1007,"avg":0.048,"win":30,"h1":-0.059,"h2":0.124},"B":{"n":1002,"avg":0.02,"win":43,"h1":-0.056,"h2":0.075},"J":{"n":925,"avg":0.042,"win":30,"h1":-0.052,"h2":0.11},"A":{"n":892,"avg":0.033,"win":33,"h1":-0.018,"h2":0.07}}},"XAGUSD":{"bear|long":{"F":{"n":68,"avg":0.063,"win":37,"h1":0.145,"h2":-0.183},"G":{"n":78,"avg":0.056,"win":36,"h1":0.099,"h2":-0.086},"B":{"n":72,"avg":0.004,"win":40,"h1":0.052,"h2":-0.142},"J":{"n":68,"avg":0.076,"win":38,"h1":0.153,"h2":-0.152},"A":{"n":68,"avg":0.071,"win":37,"h1":0.153,"h2":-0.175}},"bear|short":{"F":{"n":64,"avg":-0.027,"win":27,"h1":-0.084,"h2":0.16},"G":{"n":73,"avg":-0.083,"win":27,"h1":-0.126,"h2":0.038},"B":{"n":74,"avg":-0.079,"win":38,"h1":-0.143,"h2":0.153},"J":{"n":64,"avg":-0.05,"win":28,"h1":-0.123,"h2":0.188},"A":{"n":63,"avg":-0.033,"win":30,"h1":-0.095,"h2":0.167}},"bull|long":{"F":{"n":124,"avg":0.213,"win":28,"h1":-0.041,"h2":0.343},"G":{"n":154,"avg":0.114,"win":31,"h1":-0.07,"h2":0.21},"B":{"n":144,"avg":0.082,"win":42,"h1":-0.14,"h2":0.196},"J":{"n":124,"avg":0.161,"win":29,"h1":-0.096,"h2":0.292},"A":{"n":122,"avg":0.234,"win":34,"h1":0.002,"h2":0.356}},"bull|short":{"F":{"n":107,"avg":-0.07,"win":34,"h1":-0.034,"h2":-0.097},"G":{"n":115,"avg":-0.054,"win":31,"h1":-0.034,"h2":-0.069},"B":{"n":115,"avg":-0.022,"win":43,"h1":0.027,"h2":-0.055},"J":{"n":107,"avg":-0.043,"win":34,"h1":-0.017,"h2":-0.062},"A":{"n":100,"avg":-0.025,"win":38,"h1":0.011,"h2":-0.053}}},"XAUUSD":{"bear|long":{"F":{"n":45,"avg":-0.119,"win":31,"h1":-0.058,"h2":-0.255},"G":{"n":48,"avg":-0.023,"win":38,"h1":0.023,"h2":-0.125},"B":{"n":48,"avg":-0.173,"win":33,"h1":-0.121,"h2":-0.275},"J":{"n":45,"avg":-0.099,"win":33,"h1":-0.05,"h2":-0.209},"A":{"n":44,"avg":-0.154,"win":30,"h1":-0.108,"h2":-0.252}},"bear|short":{"F":{"n":39,"avg":0.005,"win":26,"h1":0.25,"h2":-0.228},"G":{"n":47,"avg":0.044,"win":30,"h1":0.198,"h2":-0.117},"B":{"n":44,"avg":0.009,"win":43,"h1":0.088,"h2":-0.077},"J":{"n":39,"avg":0.001,"win":28,"h1":0.225,"h2":-0.211},"A":{"n":37,"avg":0.027,"win":30,"h1":0.261,"h2":-0.195}},"bull|long":{"F":{"n":143,"avg":0.303,"win":39,"h1":-0.005,"h2":0.591},"G":{"n":180,"avg":0.214,"win":41,"h1":0.022,"h2":0.37},"B":{"n":167,"avg":0.159,"win":48,"h1":-0.09,"h2":0.394},"J":{"n":143,"avg":0.281,"win":43,"h1":0.016,"h2":0.527},"A":{"n":143,"avg":0.293,"win":45,"h1":-0.014,"h2":0.586}},"bull|short":{"F":{"n":133,"avg":-0.091,"win":27,"h1":-0.07,"h2":-0.11},"G":{"n":143,"avg":-0.141,"win":27,"h1":-0.114,"h2":-0.167},"B":{"n":141,"avg":-0.085,"win":35,"h1":-0.035,"h2":-0.13},"J":{"n":133,"avg":-0.13,"win":27,"h1":-0.082,"h2":-0.176},"A":{"n":132,"avg":-0.107,"win":27,"h1":-0.095,"h2":-0.118}}}};
+function exitLine(sym, env, side) {
+  if (!env) return "";
+  const k = statKey(sym), T = EXIT[k] && EXIT[k][`${env.bull ? "bull" : "bear"}|${side === 1 ? "long" : "short"}`];
+  if (!T || T.F.n < 60) return "";
+  const sg = (x) => (x >= 0 ? "+" : "") + x.toFixed(2);
+  const keep = T.J.avg >= 0.85 * T.F.avg;
+  return `回测（${SAMPLE[k] || k}，${env.bull ? "牛市" : "熊市"}${side === 1 ? "做多" : "做空"}）：这样出场平均每笔 <b>${sg(T.F.avg)}</b> 份止损；2倍先平一半 ${sg(T.J.avg)}；` +
+    `固定2倍全平 ${sg(T.G.avg)}；1倍就平一半 ${sg(T.B.avg)}（胜率 ${T.B.win}%，但赚得少）。` +
+    (T.F.avg <= 0 ? "这个方向怎么出场都不赚。" : keep ? "分批影响不大，按习惯来。" : "<b>这类品种分批会少赚不少</b>（钱主要来自少数大行情），能扛住就别分批。");
+}
+function plan(V, side, tf, at, sym, env) {
+  const E0 = at || V.last, dp = V.dp, day = tf === "1d" ? "20日" : "24小时", trail = tf === "1d" ? "过去10天" : "过去3天";
   const stop = side === 1 ? V.L * 0.999 : V.H * 1.001, R = side * (E0 - stop);
   if (!(R > 0) || !isFinite(R)) return `现价已经越过${day}${side === 1 ? "最低" : "最高"}点，按你的规则没法放止损。`;
-  const cands = [];
-  const lv = ((side === 1 ? V.res : V.sup) || []).find((x) => side * (x.p - E0) >= 0.5 * R);
-  if (lv) cands.push({ p: lv.p, w: side === 1 ? "阻力" : "支撑" });
-  const ext = side === 1 ? V.H : V.L;
-  if (isFinite(ext) && side * (ext - E0) >= 0.5 * R) cands.push({ p: ext, w: `${day}${side === 1 ? "最高" : "最低"}` });
-  cands.sort((a, b) => side * (a.p - b.p));
-  const tg = cands[0] || { p: E0 + side * 2 * R, w: "两倍止损距离" };
-  const rr = side * (tg.p - E0) / R;
+  const be = E0 + side * R, half = E0 + side * 2 * R;
+  PLANNUM = { E0, stop, target: half, side };
   const head = at ? `${side === 1 ? "站上" : "跌破"} ${fmt(at, dp)} 之后${side === 1 ? "做多" : "做空"}参考` : `${side === 1 ? "做多" : "做空"}参考`;
-  PLANNUM = { E0, stop, target: tg.p, side };
-  return `${head}：止损 <b>${fmt(stop, dp)}</b>（亏 ${pabs(R / E0, 2)}）→ 目标 <b>${fmt(tg.p, dp)}</b>（${esc(tg.w)}，赚 ${pabs((tg.p - E0) / E0, 2)}），盈亏比 1:${rr.toFixed(1)}${rr < 1 ? "，<b>不划算</b>" : ""}。浮盈到 ${fmt(E0 + side * R, dp)} 就把止损挪到开仓价。`;
+  const ex = exitLine(sym, env, side);
+  return `${head}：止损 <b>${fmt(stop, dp)}</b>（${day}${side === 1 ? "最低" : "最高"}点外，亏 ${pabs(R / E0, 2)}）。` +
+    `<br>① 浮盈到 <b>${fmt(be, dp)}</b>（1倍止损距离）把止损挪到开仓价；` +
+    `<br>② 之后止损跟着"${trail}${side === 1 ? "最低" : "最高"}点"${side === 1 ? "往上" : "往下"}挪，只挪不退，碰到就走——<b>不设固定止盈</b>，让大行情自己跑；` +
+    `<br>③ 想分批：到 <b>${fmt(half, dp)}</b>（2倍止损距离，赚 ${pabs((half - E0) / E0, 2)}）先平一半，剩下照样跟踪。` +
+    (ex ? `<br><span class="plan-bt">${ex}</span>` : "");
 }
 // 波动参考：最近20天日波动 σ；80%区间倍数和"碰到概率"表按近5年历史校准（research/vol_range_bt.py，后半段实际罩住76%~82%）
 const VOLT = {"ks":[0.25,0.5,0.75,1.0,1.25,1.5,1.75,2.0,2.25,2.5,2.75,3.0,3.25,3.5,3.75,4.0],"g":{"commod":{"k1":1.3,"k5":1.307,"t1":[0.778,0.587,0.427,0.301,0.21,0.146,0.1,0.068,0.046,0.031,0.022,0.015,0.012,0.009,0.007,0.005],"t5":[0.789,0.597,0.439,0.315,0.22,0.149,0.104,0.071,0.05,0.036,0.026,0.018,0.013,0.01,0.008,0.005]},"silver":{"k1":1.269,"k5":1.422,"t1":[0.779,0.594,0.44,0.307,0.216,0.146,0.104,0.07,0.051,0.034,0.026,0.02,0.014,0.012,0.007,0.006],"t5":[0.806,0.607,0.44,0.323,0.232,0.168,0.12,0.085,0.065,0.043,0.031,0.017,0.013,0.008,0.005,0.005]},"gold":{"k1":1.293,"k5":1.39,"t1":[0.763,0.578,0.425,0.295,0.209,0.15,0.103,0.069,0.051,0.035,0.026,0.02,0.015,0.011,0.008,0.007],"t5":[0.782,0.596,0.434,0.316,0.218,0.158,0.12,0.089,0.064,0.046,0.035,0.024,0.019,0.016,0.011,0.009]},"crypto":{"k1":1.229,"k5":1.285,"t1":[0.778,0.571,0.41,0.297,0.215,0.156,0.115,0.086,0.066,0.051,0.04,0.032,0.025,0.021,0.018,0.015],"t5":[0.787,0.59,0.436,0.317,0.23,0.169,0.126,0.098,0.077,0.063,0.05,0.042,0.036,0.03,0.025,0.022]},"stock_other":{"k1":1.254,"k5":1.339,"t1":[0.685,0.525,0.384,0.274,0.192,0.134,0.093,0.065,0.046,0.033,0.024,0.019,0.015,0.011,0.009,0.008],"t5":[0.757,0.575,0.421,0.302,0.214,0.152,0.107,0.075,0.054,0.039,0.029,0.022,0.017,0.013,0.011,0.008]},"stock_nontech":{"k1":1.254,"k5":1.358,"t1":[0.706,0.548,0.403,0.288,0.203,0.143,0.099,0.07,0.049,0.035,0.026,0.02,0.015,0.012,0.009,0.008],"t5":[0.771,0.591,0.436,0.314,0.224,0.157,0.111,0.079,0.055,0.04,0.029,0.022,0.016,0.012,0.01,0.008]},"stock_main":{"k1":1.271,"k5":1.371,"t1":[0.673,0.514,0.376,0.272,0.188,0.131,0.09,0.063,0.045,0.032,0.024,0.018,0.013,0.01,0.008,0.007],"t5":[0.757,0.575,0.425,0.303,0.215,0.148,0.104,0.074,0.054,0.039,0.029,0.02,0.016,0.012,0.009,0.007]}}};
@@ -2184,9 +2219,9 @@ function volText(sym, V) {
   if (PLANNUM) {
     const { E0, stop, target } = PLANNUM, ds = Math.abs(Math.log(stop / E0)), dt = Math.abs(Math.log(target / E0));
     const p1 = touchP(G.t1, ds / sd), p5 = touchP(G.t5, ds / sd / Math.sqrt(5)), q1 = touchP(G.t1, dt / sd), q5 = touchP(G.t5, dt / sd / Math.sqrt(5));
-    t += `<br>止损离开仓价 ${(Math.abs(stop - E0) / E0 * 100).toFixed(2)}%（${(ds / sd).toFixed(1)} 倍日波动）：光是正常来回，24 小时内被碰到约 <b>${pc(p1)}</b>，5 天内约 ${pc(p5)}。目标离开仓价 ${(Math.abs(target - E0) / E0 * 100).toFixed(2)}%：24 小时内碰到约 ${pc(q1)}，5 天内约 ${pc(q5)}。`;
+    t += `<br>止损离开仓价 ${(Math.abs(stop - E0) / E0 * 100).toFixed(2)}%（${(ds / sd).toFixed(1)} 倍日波动）：光是正常来回，24 小时内被碰到约 <b>${pc(p1)}</b>，5 天内约 ${pc(p5)}。先平一半的位置离开仓价 ${(Math.abs(target - E0) / E0 * 100).toFixed(2)}%：24 小时内碰到约 ${pc(q1)}，5 天内约 ${pc(q5)}。`;
     if (p1 >= 0.45) t += `<b>止损偏近，正常波动就容易扫到</b>，要么等更好的位置，要么仓位减半。`;
-    else if (q5 < 0.15) t += `目标偏远，5 天内碰到的机会不大，可以先在近一点的位置减仓。`;
+    else if (q5 < 0.15) t += `2倍的位置5天内碰到的机会不大，主要靠跟踪止损出场。`;
   }
   return t;
 }
@@ -2243,7 +2278,7 @@ function renderCard(force) {
   setDir(dir, cls);
   $("cardWhy").innerHTML = why + (env ? `<span class="src">（${esc(env.src)}）</span>` : "");
   // 价位
-  $("cardPlan").innerHTML = side ? plan(V, side, tf, planAt && isFinite(planAt) && side * (planAt - V.last) > 0 ? planAt : 0) : (noPlan || "方向不明，不给参考价位。") + "想做的话用下面的计算器，按24小时高低点自动算。";
+  $("cardPlan").innerHTML = side ? plan(V, side, tf, planAt && isFinite(planAt) && side * (planAt - V.last) > 0 ? planAt : 0, sym, env) : (noPlan || "方向不明，不给参考价位。") + "想做的话用下面的计算器，按24小时高低点自动算。";
   // 历史
   const hl = [];
   if (env) {
