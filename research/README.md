@@ -11,6 +11,7 @@
 | `newsyms_bt.py` | 加密7币（比特币200日线）、23只非科技蓝筹（标普200日线） |
 | `commod_bt.py` | 铂金、钯金、铜、天然气（Dukascopy 商品CFD，自身200日线） |
 | `build_contract_stats.py` | 汇总成 gh-pages `env_static.json` 的 `contract_stats`（含前后两段 h1/h2） |
+| `feat_bt.py` | 美股：能不能用开单前就知道的条件（波动、涨幅、强弱、自身战绩）挑出适合做突破的股票（结论：不能） |
 | `bear.py` | 美股跌破200日线：长熊还是短恐慌，认错线 |
 | `build_panel.py`, `sentiment.py`, `test_sent.py`, `build_env.py` | A股情绪温度（11个指标） |
 | `ashare_vs_us.py`, `stock_bt.py`, `stock_split.py`, `stock_signals.py`, `trendstart.py` | 抄底、个股信号、趋势起点 |
