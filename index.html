@@ -1076,7 +1076,8 @@ const VLOG = [
   ["震荡区间边缘假突破", "黄金 2021–2023", "不算成本 −0.2~0R，扣费后 −0.5R 以上", "bad", "没通过"],
   ["大跌后分批买（3 批，拿 10 天）", "ETF 日线，持有 10 天（不是合约周期）；发现：2021–26 年 8 只；检验：同期另 6 只 + 2016–21 年全部 14 只", "发现期 +0.91% vs 随机 +0.32%；检验：换品种 +0.07% vs 随机 +0.07%，换时间 −0.04% vs 随机 +0.22%", "bad", "没通过"],
   ["分批买 vs 一次买满", "同上（ETF 日线）", "分批让持有期最深浮亏平均减半（−1.6% vs −3.8%），但平均收益更低；最差一次仍 −31%（2020 年 3 月）", "warn", "能控风险，不增加收益"],
-  ["大跌后分批买，拿 20 天", "同上（看到 10 天结果后才测的，不是合约周期）", "换品种 +1.18% vs 随机 +0.23%，换时间 +0.87% vs 随机 +0.65%（不显著）；不设止损时最差浮亏 −52%", "flat", "不跟进"]
+  ["大跌后分批买，拿 20 天", "同上（看到 10 天结果后才测的，不是合约周期）", "换品种 +1.18% vs 随机 +0.23%，换时间 +0.87% vs 随机 +0.65%（不显著）；不设止损时最差浮亏 −52%", "flat", "不跟进"],
+  ["其余73只股票合约逐只回测（突破做多/做空，自己的小时线）", "Yahoo 小时线 2024-10~2026-11（META 用 Dukascopy 2021起）", "单只两年只有14~46笔牛市突破，全部样本太少；72只里前一年灵的后一年反而偏差（相关系数 −0.25）。合起来：牛市做多 +0.11R 但后一年 0.00，牛市做空 −0.14R", "warn", "每只卡片显示自己的成绩，结论标'样本太少'；牛市不做空照旧"]
 ];
 function renderLog() {
   $("repTable").innerHTML = `<thead><tr><th>打法</th><th>数据</th><th>结果</th><th>结论</th></tr></thead><tbody>` +
@@ -2158,13 +2159,18 @@ function grade(st) {
   return s.avg > -0.03 ? "flat" : "lose";
 }
 const rTxt = (x) => `${x >= 0 ? "赚" : "亏"}${Math.abs(x).toFixed(2)}份止损`;
-const halfTxt = (s) => `2021-11到2024-04平均每笔${rTxt(s.h1)}，2024-05以后${rTxt(s.h2)}`;
+const symMeta = (key) => key && key.startsWith("sym_") ? ((((window.JSQ_ENV || {}).contract_stats || {})[key] || {})._meta || null) : null;
+const symNote = (st) => st && st.key.startsWith("sym_") ? "（单只股票自己的历史太短；查过72只这类股票，前一年突破灵的、后一年反而偏差，单只的成绩只能当参考。）" : "";
+const ymTxt = (d) => `${d.slice(0, 4)}年${+d.slice(5, 7)}月`;
+const halfTxt = (s, key) => { const m = symMeta(key);
+  if (m && m.mid) return `${ymTxt(m.start)}到${ymTxt(m.mid)}平均每笔${rTxt(s.h1)}，之后${rTxt(s.h2)}`;
+  return `2021-11到2024-04平均每笔${rTxt(s.h1)}，2024-05以后${rTxt(s.h2)}`; };
 window.JSQ_STATKEY = statKey; window.JSQ_ENVFOR = (sym) => envFor(sym);
 window.JSQ_PLAN = () => PLANNUM;
 function histLine(st, label) {
   if (!st) return "";
   const s = st.s, w = Math.round(s.win * 10), net = s.avg;
-  const smp = SAMPLE[st.key] || (st.key.startsWith("sym_") ? `${st.key.slice(4)}自己${(((window.JSQ_ENV || {}).contract_stats || {})[st.key] || {})._meta ? "从" + window.JSQ_ENV.contract_stats[st.key]._meta.start.slice(0, 4) + "年起" : ""}的小时线` : st.key);
+  const m = symMeta(st.key), smp = SAMPLE[st.key] || (st.key.startsWith("sym_") ? `${st.key.slice(4)}自己${m ? "从" + ymTxt(m.start) + "起" : ""}的小时线` : st.key);
   return `${label}：10笔里赚${w}笔，平均每笔${net >= 0 ? "净赚" : "净亏"} ${Math.abs(net).toFixed(2)} 份止损（${smp}，${s.n}笔）`;
 }
 function usMarketClosed() {
@@ -2334,8 +2340,9 @@ function renderCard(force) {
     side = up ? 1 : -1;
     const head = `大方向${envWord}（${env.what}），${leanTxt}。`;
     if (g1 === "edge") { dir = `可以${w}`; cls = up ? "up" : "down"; why = head + `回测里这种环境${w}前后两段都赚钱。`; }
-    else if (g1 === "unstable") { dir = `可以${w}（轻仓）`; cls = up ? "up" : "down"; why = head + `回测${w}整体赚钱，但时灵时不灵：${halfTxt(st.s)}。`; }
-    else if (g1 === "few") { dir = `技术面${T.lean}`; cls = "warn"; why = head + `这种环境回测样本太少（${st.s.n}笔），结论不可靠，只能参考技术面、轻仓。`; }
+    else if (g1 === "unstable") { dir = `可以${w}（轻仓）`; cls = up ? "up" : "down"; why = head + `回测${w}整体赚钱，但时灵时不灵：${halfTxt(st.s, st.key)}。`; }
+    else if (g1 === "few" && !up && env.bull && st.key.startsWith("sym_")) { dir = "别做空"; cls = "warn"; side = 0; noPlan = "牛市不做空，不给参考价位。"; why = head + `这只自己的样本太少（${st.s.n}笔）；但牛市里做空突破，所有回测过的分组都是亏的，这只也别做空。` + symNote(st); }
+    else if (g1 === "few") { dir = `技术面${T.lean}`; cls = "warn"; why = head + `这种环境回测样本太少（${st.s.n}笔），结论不可靠，只能参考技术面、轻仓。` + symNote(st); }
     else {
       const avoid = g1 === "lose" ? `回测里这种环境${w}是亏的（平均每笔${rTxt(st.s.avg)}）` : `回测里这种环境${w}基本不赚（平均每笔${rTxt(st.s.avg)}，扣完手续费白忙）`;
       side = 0; noPlan = "回测不支持这个方向，不给参考价位。";
@@ -2347,7 +2354,7 @@ function renderCard(force) {
     if (ok(gL) && ok(gS)) { dir = "等方向出来"; cls = "flat"; side = 0; why = head + `站上${dayW}最高点 ${H} 做多、跌破最低点 ${Lw} 做空，回测这种环境两边都赚。`; }
     else if (ok(gL)) { dir = "等突破再做多"; cls = "warn"; side = 1; planAt = V.H; why = head + `等价格站上${dayW}最高点 ${H} 再做多${gS === "lose" || gS === "flat" ? "，不做空（回测这种环境做空不赚）" : ""}。`; }
     else if (ok(gS)) { dir = "等跌破再做空"; cls = "warn"; side = -1; planAt = V.L; why = head + `等价格跌破${dayW}最低点 ${Lw} 再做空${gL === "lose" || gL === "flat" ? "，不做多（回测这种环境做多不赚）" : ""}。`; }
-    else { dir = "观望"; cls = "flat"; side = 0; why = head + (gL === "few" || gS === "few" ? "这种环境回测样本太少，多空都没有可靠优势。" : "回测里这种环境多空都不赚钱。"); }
+    else { dir = "观望"; cls = "flat"; side = 0; why = head + (gL === "few" || gS === "few" ? "这种环境回测样本太少，多空都没有可靠优势。" + symNote(stL || stS) : "回测里这种环境多空都不赚钱。"); }
   }
   let dipPlan = "";
   if (dipMode) {
