@@ -42,7 +42,7 @@ jobs:
           du -sh data
           if git ls-remote --exit-code --heads "$REPO_URL" fund >/dev/null; then
             git clone -q --depth 1 --filter=blob:none --sparse --branch fund "$REPO_URL" fund
-            git -C fund sparse-checkout set --no-cone /us
+            git -C fund sparse-checkout set --no-cone /us /a_share
           else mkdir -p fund; fi
 
       - name: Install
@@ -71,6 +71,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add env.json
+          if [ -f stocks_a.json ]; then git add stocks_a.json; fi
           if git diff --cached --quiet; then echo "env.json unchanged"; exit 0; fi
           git commit -q -m "env: $(head -2 ../build.log | tail -1)"
           git push -q origin HEAD:gh-pages

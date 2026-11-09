@@ -278,7 +278,52 @@ if args.fund and os.path.exists(f"{args.fund}/us/earnings.csv"):
         nxt = sorted(d for d in g.date.astype(str) if d >= _today)
         if nxt:
             earn[t] = nxt[0]
-env = dict(asof=max(a_today["date"], us_today["date"]), a=dict(today=a_today, stats=stats, series=a_series),
+# ============================================================ A股个股：成长和强弱（页面"查个股"用，写 stocks_a.json）
+# 回测见 research/ashare_pick_bt.py：只用已公告的财报；可选范围 = 正常交易、非ST、上市满约一年、近20日日均成交额 ≥ 3000万
+stocks_note = None
+def _stocks():
+    _g = pd.read_csv(f"{args.fund}/a_share/growth.csv.xz", dtype={"code": str}, parse_dates=["pubDate", "statDate"])
+    _p = pd.read_csv(f"{args.fund}/a_share/profit.csv.xz", dtype={"code": str}, parse_dates=["pubDate", "statDate"])
+    _f = _g.merge(_p[["code", "statDate", "roeAvg"]], on=["code", "statDate"], how="left").sort_values(["code", "statDate"])
+    _f["prev"] = _f.groupby("code").YOYPNI.shift(1)
+    _f = _f[_f.pubDate.notna() & (_f.pubDate <= dates[-1])]
+    _last = _f.groupby("code").tail(1).set_index("code").reindex(codes)
+    _t = len(dates) - 1
+    _lr = np.log1p(np.where(traded, P["pctChg"] / 100.0, 0.0)).cumsum(0)
+    _mom120 = np.expm1(_lr[_t - 5] - _lr[_t - 125])
+    _mom20 = np.expm1(_lr[_t] - _lr[_t - 20])
+    _a20 = np.where(traded[_t - 19:_t + 1], P["amount"][_t - 19:_t + 1], 0).astype("float64").mean(0)
+    _fresh = ((dates[-1] - _last.statDate).dt.days < 200).to_numpy()
+    _uni = elig & (age[-1] >= 200) & (_a20 >= 3e7) & _fresh & np.isfinite(_last.YOYPNI.to_numpy())
+    _gr, _ac = _last.YOYPNI.to_numpy(float), (_last.YOYPNI - _last.prev).to_numpy(float)
+    def _rank(x):                                 # 在可选范围里的百分位（范围外的股票也按同一分布定位）
+        ref = np.sort(x[_uni & np.isfinite(x)])
+        out = np.searchsorted(ref, x, side="right") / max(len(ref), 1)
+        return np.where(np.isfinite(x), out, np.nan)
+    _g_r, _a_r, _m_r = _rank(_gr), _rank(_ac), _rank(_mom120)
+    _sb = pd.read_csv(f"{args.data}/a_share/meta/stock_basic.csv", dtype=str).set_index("code").code_name
+    _pool = _uni & (_g_r >= 0.7) & (_a_r >= 0.7)
+    rows = []
+    for i, c in enumerate(codes):
+        if not (np.isfinite(_gr[i]) or elig[i]):
+            continue
+        rows.append([c[3:], _sb.get(c, ""), ind_of[i] if isinstance(ind_of[i], str) else "", r(_gr[i], 3), r(_ac[i], 3), r(_g_r[i], 3), r(_a_r[i], 3),
+                     r(_mom120[i], 3), r(_m_r[i], 3), r(_mom20[i], 3), r(_last.roeAvg.iloc[i], 3),
+                     str(_last.statDate.iloc[i].date()) if pd.notna(_last.statDate.iloc[i]) else "", int(_uni[i]), int(_pool[i])])
+    _pi = pd.Series([x for x, p in zip(ind_of, _pool) if p and isinstance(x, str) and x]).value_counts().head(8)
+    stocks = dict(date=str(dates[-1].date()), regime=a_today["regime"], n_uni=int(_uni.sum()), n_pool=int(_pool.sum()),
+                  pool_ind=[[k, int(v)] for k, v in _pi.items()],
+                  fields=["code", "name", "ind", "growth", "accel", "g_r", "a_r", "mom120", "m_r", "mom20", "roe", "stat", "uni", "pool"], rows=rows)
+    json.dump(stocks, open(os.path.join(os.path.dirname(os.path.abspath(args.out)), "stocks_a.json"), "w"), ensure_ascii=False, separators=(",", ":"), allow_nan=False)
+    stocks_note = dict(date=stocks["date"], n_uni=stocks["n_uni"], n_pool=stocks["n_pool"], pool_ind=stocks["pool_ind"])
+    print(f"stocks_a.json: {len(rows)} rows, universe {stocks['n_uni']}, pool {stocks['n_pool']}")
+    return stocks_note
+if args.fund and os.path.exists(f"{args.fund}/a_share/growth.csv.xz"):
+    try:
+        stocks_note = _stocks()
+    except Exception as e:
+        print("stocks_a.json skipped:", repr(e))
+env = dict(asof=max(a_today["date"], us_today["date"]), stocks_a=stocks_note, a=dict(today=a_today, stats=stats, series=a_series),
            us=dict(today=us_today, series=us_series), live=live, findings=findings,
            contract_stats=static.get("contract_stats"), contract_stats_note=static.get("contract_stats_note"), earnings=earn)
 json.dump(env, open(args.out, "w"), ensure_ascii=False, separators=(",", ":"))

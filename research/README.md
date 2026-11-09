@@ -16,6 +16,7 @@
 | `structure_bt.py`, `structure_report.py` | K线结构（摆动高低点）转向：方向、幅度、顺着做到认错位的盈亏，多周期组合 |
 | `analog_bt.py` | 历史相似行情（找最像的20段历史看之后怎么走），方向和波动范围检验（结论：没通过） |
 | `vol_range_bt.py` | 按最近20天波动估明天/5天的区间和"被碰到概率"，校准表给结论卡用 |
+| `ashare_pick_bt.py`, `ashare_pick_report.py` | A股选股：成长、增速变化、行业热度、强弱，按已公告财报每月选，牛熊分开 |
 | `bear.py` | 美股跌破200日线：长熊还是短恐慌，认错线 |
 | `build_panel.py`, `sentiment.py`, `test_sent.py`, `build_env.py` | A股情绪温度（11个指标） |
 | `ashare_vs_us.py`, `stock_bt.py`, `stock_split.py`, `stock_signals.py`, `trendstart.py` | 抄底、个股信号、趋势起点 |
