@@ -278,6 +278,30 @@ if args.fund and os.path.exists(f"{args.fund}/us/earnings.csv"):
         nxt = sorted(d for d in g.date.astype(str) if d >= _today)
         if nxt:
             earn[t] = nxt[0]
+# ============================================================ 美股放量跳空（research/ep_bt.py）：币安有合约的股票，最近15个交易日
+# 回测：纳指牛市里，开盘比前收高≥8%、成交量≥50日均量3倍 → 第二天开盘做多，止损=跳空当天最低价，拿20个交易日：每笔 +3.3%（前后两段 +5.1%/+2.2%），同批股票随机日子 +0.4%；纳指熊市里是亏的
+ep_events = []
+try:
+    _st = json.load(open(f"{args.data}/status.json"))
+    _etf = {"SOXL", "TQQQ", "SQQQ", "QQQ", "SPY", "IWM", "SMH", "GDX", "XLE", "DIA"}     # ETF 跳空是大盘带的，不算个股消息
+    _perps = sorted({p[:-4] for p in _st["stages"]["binance"].get("stock_perps", [])} - _etf)
+    _u = load.us_daily(_perps)
+    _u["date"] = pd.to_datetime(_u.date)
+    for t, g in _u.groupby("ticker"):
+        g = g.sort_values("date").reset_index(drop=True)
+        if len(g) < 60: continue
+        v50 = g.volume.rolling(50).mean().shift(1); pc = g.close.shift(1)
+        for i in range(max(51, len(g) - 15), len(g)):
+            gap = g.open[i] / pc[i] - 1
+            if gap >= 0.08 and g.volume[i] >= 3 * v50[i] and pc[i] > 3:
+                nxt = g.open[i + 1] if i + 1 < len(g) else None
+                ep_events.append(dict(t=t, d=str(g.date[i].date()), gap=r(gap, 3), vol=r(g.volume[i] / v50[i], 1), low=r(g.low[i], 2),
+                                      close=r(g.close[i], 2), open1=r(nxt, 2) if nxt is not None else None, last=r(g.close.iloc[-1], 2),
+                                      days=int(len(g) - 1 - i)))
+    ep_events.sort(key=lambda x: x["d"], reverse=True)
+    print(f"ep events: {len(ep_events)}")
+except Exception as e:
+    print("ep events skipped:", repr(e))
 # ============================================================ A股个股：成长和强弱（页面"查个股"用，写 stocks_a.json）
 # 回测见 research/ashare_pick_bt.py：只用已公告的财报；可选范围 = 正常交易、非ST、上市满约一年、近20日日均成交额 ≥ 3000万
 stocks_note = None
@@ -325,7 +349,7 @@ if args.fund and os.path.exists(f"{args.fund}/a_share/growth.csv.xz"):
         print("stocks_a.json skipped:", repr(e))
 env = dict(asof=max(a_today["date"], us_today["date"]), stocks_a=stocks_note, a=dict(today=a_today, stats=stats, series=a_series),
            us=dict(today=us_today, series=us_series), live=live, findings=findings,
-           contract_stats=static.get("contract_stats"), contract_stats_note=static.get("contract_stats_note"), earnings=earn)
+           contract_stats=static.get("contract_stats"), contract_stats_note=static.get("contract_stats_note"), earnings=earn, ep=ep_events)
 json.dump(env, open(args.out, "w"), ensure_ascii=False, separators=(",", ":"))
 
 # ============================================================ 变化摘要
