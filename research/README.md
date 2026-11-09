@@ -21,6 +21,7 @@
 | `range_bt.py` | 震荡期高抛低吸：先识别震荡再做区间两端，按品种和牛熊分开（结论：没通过） |
 | `range_big_bt.py` | 4小时/日线大箱体高抛低吸（含资金费）（结论：没通过） |
 | `stopwidth_bt.py` | 止损放宽（ATR、3天低点）对突破单和区间单的影响 |
+| `scale_in_bt.py`, `pyramid_bt.py` | 分批抄底（30/30/40）vs 一次性 vs 赚了再加，每次100U×5倍 |
 | `bear.py` | 美股跌破200日线：长熊还是短恐慌，认错线 |
 | `build_panel.py`, `sentiment.py`, `test_sent.py`, `build_env.py` | A股情绪温度（11个指标） |
 | `ashare_vs_us.py`, `stock_bt.py`, `stock_split.py`, `stock_signals.py`, `trendstart.py` | 抄底、个股信号、趋势起点 |
