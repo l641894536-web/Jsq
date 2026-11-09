@@ -11,6 +11,7 @@
 | `newsyms_bt.py` | 加密7币（比特币200日线）、23只非科技蓝筹（标普200日线） |
 | `commod_bt.py` | 铂金、钯金、铜、天然气（Dukascopy 商品CFD，自身200日线） |
 | `per_symbol_bt.py` | 没进分组的股票合约逐只用自己的小时线回测（Dukascopy 满3年用它，否则 Yahoo 约两年），写进 contract_stats 的 `sym_<代码>`；`--apply` 直接更新交易台。结论：单只两年样本太少，前一年灵的后一年反而偏差 |
+| `dip_manage_bt.py` | 熊市回调企稳做多（AMD/美光/戴尔）到1R以后怎么管：保本 / 提到半份 / 跟踪3天低点 / 先平一半不封顶 |
 | `build_contract_stats.py` | 汇总成 gh-pages `env_static.json` 的 `contract_stats`（含前后两段 h1/h2） |
 | `feat_bt.py` | 美股：能不能用开单前就知道的条件（波动、涨幅、强弱、自身战绩）挑出适合做突破的股票（结论：不能） |
 | `daily_bt.py` | 美股日线突破（20日高低点进场、10日反向离场）对比随便进场，扣资金费（结论：没有普遍优势） |
