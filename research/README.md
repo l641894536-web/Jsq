@@ -15,6 +15,7 @@
 | `daily_bt.py` | 美股日线突破（20日高低点进场、10日反向离场）对比随便进场，扣资金费（结论：没有普遍优势） |
 | `structure_bt.py`, `structure_report.py` | K线结构（摆动高低点）转向：方向、幅度、顺着做到认错位的盈亏，多周期组合 |
 | `analog_bt.py` | 历史相似行情（找最像的20段历史看之后怎么走），方向和波动范围检验（结论：没通过） |
+| `vol_range_bt.py` | 按最近20天波动估明天/5天的区间和"被碰到概率"，校准表给结论卡用 |
 | `bear.py` | 美股跌破200日线：长熊还是短恐慌，认错线 |
 | `build_panel.py`, `sentiment.py`, `test_sent.py`, `build_env.py` | A股情绪温度（11个指标） |
 | `ashare_vs_us.py`, `stock_bt.py`, `stock_split.py`, `stock_signals.py`, `trendstart.py` | 抄底、个股信号、趋势起点 |
