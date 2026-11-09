@@ -2123,13 +2123,20 @@ function tech(V, tf) {
 
 // ================================================================ 结论卡
 const STATKEY = { XAUUSDT: "XAUUSD", XAGUSDT: "XAGUSD", XPTUSDT: "commod", XPDUSDT: "commod", COPPERUSDT: "commod", NATGASUSDT: "commod" };
+// 只有真在回测样本里的股票才用那一组的统计；样本外的（SPCX、PLTR、COIN……）一律算"没回测过"，不借别人的数
+const TESTED_MAIN = ["AMDUSDT", "MUUSDT", "DELLUSDT"];
+const TESTED_TECH = ["AAPL", "ADBE", "ADI", "AMAT", "AMZN", "AVGO", "CRM", "CSCO", "GOOGL", "IBM", "INTC", "INTU", "LRCX", "MRVL",
+  "MSFT", "NFLX", "NVDA", "ORCL", "PYPL", "QCOM", "TSLA", "TXN"].map((x) => x + "USDT");
+const TESTED_NONTECH = ["BA", "BAC", "COST", "CVX", "DIS", "GS", "HD", "JNJ", "JPM", "KO", "LLY", "MA", "MCD", "MRK", "NKE", "PEP",
+  "PFE", "PG", "UNH", "V", "WFC", "WMT", "XOM"].map((x) => x + "USDT");
+const TESTED_CRYPTO = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT", "DOGEUSDT", "ADAUSDT"];
 function statKey(sym) {
-  const g = U.groupOfSym(sym);
   if (STATKEY[sym]) return STATKEY[sym];
-  if (g === "crypto") return "crypto";
-  if (["AMDUSDT", "MUUSDT", "DELLUSDT", "SPCXUSDT"].includes(sym)) return "stock_main";
-  if (NONTECH.includes(sym)) return "stock_nontech";
-  return g === "stock" ? "stock_other" : null;
+  if (TESTED_CRYPTO.includes(sym)) return "crypto";
+  if (TESTED_MAIN.includes(sym)) return "stock_main";
+  if (TESTED_TECH.includes(sym)) return "stock_other";
+  if (TESTED_NONTECH.includes(sym)) return "stock_nontech";
+  return null;
 }
 function statFor(sym, bull, side) {
   const E = window.JSQ_ENV; if (!E || !E.contract_stats) return null;
@@ -2138,7 +2145,7 @@ function statFor(sym, bull, side) {
   const s = E.contract_stats[key][`breakout|E|${bull ? "bull" : "bear"}|${side}`];
   return s ? { key, s } : null;
 }
-const SAMPLE = { stock_main: "AMD/美光/戴尔近5年", stock_other: "25只大型科技股近5年", stock_nontech: "23只非科技蓝筹近5年", crypto: "7个主流币近5年", commod: "铂金/钯金/铜/天然气近5年",
+const SAMPLE = { stock_main: "AMD/美光/戴尔近5年", stock_other: "22只大型科技股近5年", stock_nontech: "23只非科技蓝筹近5年", crypto: "7个主流币近5年", commod: "铂金/钯金/铜/天然气近5年",
   XAUUSD: "黄金近5年", XAGUSD: "白银近5年", XPTCMDUSD: "铂金近5年", XPDCMDUSD: "钯金近5年", COPPERCMDUSD: "铜近5年", GASCMDUSD: "天然气近5年" };
 // 回测评级：样本少 / 稳定赚 / 时灵时不灵 / 基本不赚 / 亏
 function grade(st) {
@@ -2244,7 +2251,16 @@ async function needH1(sym) {
   H1[sym] = { rows: k.slice(0, -1).map((x) => ({ t: +x[0], h: +x[2], l: +x[3], c: +x[4] })), at: Date.now() };
   return true;
 }
-function dipState(sym, V) {
+function ndxDipped() {
+  const us = ((window.JSQ_ENV || {}).us || {}).series || [];
+  if (us.length < 22) return false;
+  const c = us.slice(-21).map((x) => x.ndx), lr = c.slice(1).map((x, i) => Math.log(x / c[i]));
+  const m = lr.reduce((a, b) => a + b, 0) / lr.length, sd = Math.sqrt(lr.reduce((a, b) => a + (b - m) ** 2, 0) / (lr.length - 1));
+  const last5 = c.slice(-5), top = Math.max(...last5);
+  return Math.log(c[c.length - 1] / top) <= -2 * sd;
+}
+function dipState(sym, V, mode) {
+  const bear = mode !== "bull";
   const X = H1[sym], v = VOL[sym];
   if (!X || !v) return null;
   const R = X.rows, N = R.length - 1, sd = v.sd, dp = V.dp;
@@ -2255,7 +2271,8 @@ function dipState(sym, V) {
   const need = top * Math.exp(-2 * sd), deep = Math.log(top / low) / sd, stop = low * Math.exp(-0.3 * sd);
   const hi12 = (i) => Math.max(...R.slice(i - 12, i).map((x) => x.h));
   const pc = (x) => (x * 100).toFixed(1) + "%";
-  const head = `熊市里 AMD/美光/戴尔 只做"回调企稳"：从5天最高 ${fmt(top, dp)} 跌够 2 倍日波动（${fmt(need, dp)} 以下），再等1小时收盘止跌站上前12小时最高价才进。`;
+  const head = bear ? `熊市里 AMD/美光/戴尔 只做"回调企稳"：从5天最高 ${fmt(top, dp)} 跌够 2 倍日波动（${fmt(need, dp)} 以下），再等1小时收盘止跌站上前12小时最高价才进。`
+    : `纳指100整体回调中（5天内跌够2倍日波动）：这时候科技股"回调企稳"做多更好——从5天最高 ${fmt(top, dp)} 跌到 ${fmt(need, dp)} 以下，再等1小时收盘站上前12小时最高价。`;
   if (deep < 2) return { dir: "观望（跌得还不够）", cls: "flat", why: head + `这一轮最低只到 ${fmt(low, dp)}（跌了 ${pc(1 - low / top)}），还没跌够。` };
   let si = -1;
   for (let i = li + 1; i <= N; i++) if (R[i].c > hi12(i) && R[i].c < top) { si = i; break; }
@@ -2268,11 +2285,12 @@ function dipState(sym, V) {
   if (!(Rk > 0) || !(top > E0)) return { dir: "观望", cls: "flat", why: head + "现价已经离开这一轮的范围。" };
   // 纳指100参照：上一个交易日纳指是涨的时候进场，历史上反而亏（research/ndx_ref_bt.py）
   const us = ((window.JSQ_ENV || {}).us || {}).series || [], a = us[us.length - 1], b = us[us.length - 2];
-  if (a && b && a.ndx > b.ndx) return { dir: "先不进（纳指前一天在涨）", cls: "warn", why: head + `已经止跌，但纳指100上一个交易日（${a.d.slice(5)}）是涨的：历史上这种时候进场14次平均每次亏16.7U；纳指前一天在跌、它自己先止跌的69次平均赚9.2U。等纳指收一根跌的日线、它还站得住再说。` };
+  if (bear && a && b && a.ndx > b.ndx) return { dir: "先不进（纳指前一天在涨）", cls: "warn", why: head + `已经止跌，但纳指100上一个交易日（${a.d.slice(5)}）是涨的：历史上这种时候进场14次平均每次亏16.7U；纳指前一天在跌、它自己先止跌的69次平均赚9.2U。等纳指收一根跌的日线、它还站得住再说。` };
   PLANNUM = { E0, stop, target: top, side: 1 };
   const plan = `回调企稳做多参考：止损 <b>${fmt(stop, dp)}</b>（这波最低点下方，亏 ${pc(Rk / E0)}）→ 目标 <b>${fmt(top, dp)}</b>（回到5天高点，赚 ${pc((top - E0) / E0)}）。浮盈到 <b>${fmt(E0 + Rk, dp)}</b> 把止损挪到开仓价。` +
-    `<br><span class="plan-bt">回测（AMD/美光/戴尔，熊市，每次100U×5倍，纳指前一天在跌）：69次，平均每次 +9.2U，10次赚5次；2022年那段 +5.2U/次，2024年以后 +35.6U/次（大头是2025年4月急跌后的反弹），样本不大。其他科技股同样条件只有 +1.8U，非科技股亏。</span>`;
-  return { dir: "可以做多（回调企稳）", cls: "up", why: head + `已经跌够、${N - si === 0 ? "刚刚" : (N - si) + "小时前"}止跌站上前12小时高点。`, plan };
+    (bear ? `<br><span class="plan-bt">回测（AMD/美光/戴尔，熊市，每次100U×5倍，纳指前一天在跌）：69次，平均每次 +9.2U，10次赚5次；2022年那段 +5.2U/次，2024年以后 +35.6U/次（大头是2025年4月急跌后的反弹），样本不大。其他科技股同样条件只有 +1.8U，非科技股亏。</span>`
+      : `<br><span class="plan-bt">回测（牛市、纳指整体回调时，每次100U×5倍）：${statKey(sym) === "stock_main" ? "AMD/美光/戴尔 95次，平均每次 +5.8U（前后两段 +5.7/+5.9）" : "22只科技股 645次，平均每次 +1.5U（前后两段 +1.5/+1.6，13只赚）"}；个股自己跌、大盘没跌的时候做反而不赚。</span>`);
+  return { dir: bear ? "可以做多（回调企稳）" : "可以做多（大盘回调后企稳）", cls: "up", why: head + `已经跌够、${N - si === 0 ? "刚刚" : (N - si) + "小时前"}止跌站上前12小时高点。`, plan };
 }
 function setDir(text, cls) { const d = $("cardDir"); d.textContent = text; d.className = "card-dir " + cls; }
 function renderCard(force) {
@@ -2288,7 +2306,8 @@ function renderCard(force) {
   PLANNUM = null;
   needVol(sym).then((ch) => { if (ch && window.JSQ.state.sym === sym) renderCard(true); }).catch(() => {});
   const dipMode = statKey(sym) === "stock_main" && env && !env.bull;
-  if (dipMode) needH1(sym).then((ch) => { if (ch && window.JSQ.state.sym === sym) renderCard(true); }).catch(() => {});
+  const bullDip = env && env.bull && ["stock_main", "stock_other"].includes(statKey(sym)) && ndxDipped();
+  if (dipMode || bullDip) needH1(sym).then((ch) => { if (ch && window.JSQ.state.sym === sym) renderCard(true); }).catch(() => {});
   if (g !== "stock") needDMA(g === "crypto" ? "BTCUSDT" : sym).then(() => { if (!env && envFor(sym)) renderCard(true); });
   // 技术面一行一行
   $("cardTech").innerHTML = T.items.map((x) => `<li><span class="lean ${x.lean === "多" ? "up" : x.lean === "空" ? "down" : "flat"}">${x.lean}</span><b>${x.k}</b>${esc(x.txt)}</li>`).join("");
@@ -2328,8 +2347,12 @@ function renderCard(force) {
   }
   let dipPlan = "";
   if (dipMode) {
-    const d = dipState(sym, V);
+    const d = dipState(sym, V, "bear");
     if (d) { dir = d.dir; cls = d.cls; why = d.why; side = 0; dipPlan = d.plan || ""; noPlan = d.plan ? "" : "熊市里这3只只做回调企稳，现在不给价位。"; }
+  } else if (bullDip) {
+    const d = dipState(sym, V, "bull");
+    if (d && d.plan) { dir = d.dir; cls = d.cls; why = d.why; side = 0; dipPlan = d.plan; }
+    else if (d && d.dir.startsWith("等企稳")) why += `<br>另外：${d.why}`;
   }
   setDir(dir, cls);
   $("cardWhy").innerHTML = why + (env ? `<span class="src">（${esc(env.src)}）</span>` : "");
