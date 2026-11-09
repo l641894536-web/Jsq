@@ -5,7 +5,7 @@
 "24小时高低点" = 最近 L 根小时线的最高/最低（正股时段数据 L=7 ≈ 1个交易日；永续 L=24）。
 """
 import sys, os
-sys.path.insert(0, "/home/claude/src/Jsq")
+sys.path.insert(0, "/home/claude/jsq")
 os.environ["MARKET_DATA"] = "/home/claude/market-data"
 from market_data import load
 import numpy as np
@@ -83,27 +83,27 @@ def simulate(df, L, variant, entry="cross", max_hold_days=10, bars_per_day=7):
                 exit_reason = "stop"
                 break
             mfe = max(mfe, (fav - entry_px) * side / R)
-            if variant == "D":
-                tgt = entry_px + side * 1.5 * R
+            if variant in ("D", "G"):           # D 1.5R / G 2R 全部止盈（固定目标）
+                tgt = entry_px + side * (1.5 if variant == "D" else 2.0) * R
                 if (fav - tgt) * side >= 0:
                     px = tgt if (tgt - o[j]) * side > 0 else o[j]
                     realized += pos * (px - entry_px) * side / R
                     pos = 0
                     exit_reason = "target"
                     break
-            if variant == "B" and not armed:
-                tgt = entry_px + side * 1.0 * R
+            if variant in ("B", "I", "H", "J") and pos == 1.0:   # B/I：1R 先平一半；H/J：2R 先平一半
+                tgt = entry_px + side * (2.0 if variant in ("H", "J") else 1.0) * R
                 if (fav - tgt) * side >= 0:
                     px = tgt if (tgt - o[j]) * side > 0 else o[j]
                     realized += 0.5 * (px - entry_px) * side / R
                     pos = 0.5
-            if variant in ("B", "C", "E", "F") and mfe >= 1.0:
+            if variant in ("B", "C", "E", "F", "G", "H", "I", "J") and mfe >= 1.0:
                 armed = True
             # ---- 收盘后更新止损 / 检查离场
             if armed:
-                if variant == "E":          # 只保本，不跟踪
+                if variant in ("E", "G"):   # 只保本，不跟踪
                     trail = entry_px
-                elif variant == "F":        # 用3天高低点跟踪（大周期）
+                elif variant in ("F", "I", "J"):  # 用3天高低点跟踪（大周期）
                     trail = LO3[j] * (1 - BUF) if side == 1 else HI3[j] * (1 + BUF)
                 else:
                     trail = LO[j] * (1 - BUF) if side == 1 else HI[j] * (1 + BUF)

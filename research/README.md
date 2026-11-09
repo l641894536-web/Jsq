@@ -17,6 +17,7 @@
 | `analog_bt.py` | 历史相似行情（找最像的20段历史看之后怎么走），方向和波动范围检验（结论：没通过） |
 | `vol_range_bt.py` | 按最近20天波动估明天/5天的区间和"被碰到概率"，校准表给结论卡用 |
 | `ashare_pick_bt.py`, `ashare_pick_report.py` | A股选股：成长、增速变化、行业热度、强弱，按已公告财报每月选，牛熊分开 |
+| `exit_bt.py` | 出场方式：固定止盈 vs 分批 vs 跟踪止损，按品种和牛熊分开 |
 | `bear.py` | 美股跌破200日线：长熊还是短恐慌，认错线 |
 | `build_panel.py`, `sentiment.py`, `test_sent.py`, `build_env.py` | A股情绪温度（11个指标） |
 | `ashare_vs_us.py`, `stock_bt.py`, `stock_split.py`, `stock_signals.py`, `trendstart.py` | 抄底、个股信号、趋势起点 |
