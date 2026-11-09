@@ -6,6 +6,7 @@
     a_share/state.csv      每个 (code, year, quarter) 是否已查过、查到没有（没查到的最近两个季度每次重查）
   从最近的季度往前补，时间用完就停，下次接着补（回测用 pubDate 做时点，避免偷看）。
 - 美股财报日（yfinance，币安有股票合约的那些美股）：us/earnings.csv  ticker, date, eps_est, eps_act, surprise_pct
+- 美股季度财报（SEC XBRL companyfacts，营收/净利润/EPS/毛利/营业利润，带 filed 公告日）：us/financials.csv.xz（状态 us/financials_status.json）
 
 用法: python pages/fundamentals.py --out <fund 目录> --status <data 分支 status.json> --minutes 300 [--flag continue.flag]
 时间用完还没补完时写出 --flag 文件，工作流据此再触发一次。
@@ -133,7 +134,69 @@ def a_share():
     return complete
 
 
+# ------------------------------------------------------------------ 美股季度财报（SEC XBRL，带公告日 filed，回测不偷看）
+SEC_UA = {"User-Agent": "Jsq market research (github.com/l641894536-web/Jsq)", "Accept-Encoding": "gzip, deflate"}
+REV = ["Revenues", "RevenueFromContractWithCustomerExcludingAssessedTax", "SalesRevenueNet", "RevenueFromContractWithCustomerIncludingAssessedTax"]
+CONCEPTS = REV + ["NetIncomeLoss", "EarningsPerShareDiluted", "GrossProfit", "OperatingIncomeLoss"]
+RESEARCH = ["AMD", "MU", "DELL", "AAPL", "ADBE", "ADI", "AMAT", "AMZN", "AVGO", "CRM", "CSCO", "GOOGL", "IBM", "INTC", "INTU", "LRCX",
+            "MRVL", "MSFT", "NFLX", "NVDA", "ORCL", "PYPL", "QCOM", "TSLA", "TXN", "META", "KLAC", "NXPI",
+            "BA", "BAC", "COST", "CVX", "DIS", "GS", "HD", "JNJ", "JPM", "KO", "LLY", "MA", "MCD", "MRK", "NKE", "PEP", "PFE", "PG", "UNH", "V", "WFC", "WMT", "XOM"]
+
+
+def us_financials():
+    import urllib.request, gzip
+    def get(url):
+        req = urllib.request.Request(url, headers=SEC_UA)
+        with urllib.request.urlopen(req, timeout=30) as r:
+            b = r.read()
+            if r.headers.get("Content-Encoding") == "gzip":
+                b = gzip.decompress(b)
+            return json.loads(b)
+    stat = dict(time=time.strftime("%Y-%m-%d %H:%M:%S"), ok=0, failed=[], no_cik=[])
+    try:
+        m = get("https://www.sec.gov/files/company_tickers.json")
+    except Exception as e:
+        stat["error"] = f"ticker map: {e}"[:300]
+        json.dump(stat, open(OUT / "us" / "financials_status.json", "w"), ensure_ascii=False, indent=1)
+        log("sec ticker map fail", e); return
+    cik = {v["ticker"].upper(): int(v["cik_str"]) for v in m.values()}
+    tickers = set(RESEARCH)
+    if args.status and os.path.exists(args.status):
+        st = json.load(open(args.status))
+        tickers |= {p.replace("USDT", "") for p in st.get("stages", {}).get("binance", {}).get("stock_perps", [])}
+    rows = []
+    for t in sorted(x for x in tickers if x.isalpha()):
+        c = cik.get(t)
+        if c is None:
+            stat["no_cik"].append(t); continue
+        try:
+            facts = get(f"https://data.sec.gov/api/xbrl/companyfacts/CIK{c:010d}.json").get("facts", {}).get("us-gaap", {})
+            for con in CONCEPTS:
+                units = facts.get(con, {}).get("units", {})
+                for unit, items in units.items():
+                    for it in items:
+                        if it.get("form") not in ("10-Q", "10-K", "10-Q/A", "10-K/A") or "end" not in it:
+                            continue
+                        rows.append(dict(ticker=t, concept=con, unit=unit, start=it.get("start"), end=it["end"], val=it.get("val"),
+                                         fy=it.get("fy"), fp=it.get("fp"), form=it.get("form"), filed=it.get("filed")))
+            stat["ok"] += 1
+        except Exception as e:
+            stat["failed"].append(f"{t}: {str(e)[:80]}")
+        time.sleep(0.15)
+    if rows:
+        df = pd.DataFrame(rows)
+        df = df[pd.to_datetime(df.end, errors="coerce") >= f"{args.start_year - 1}-01-01"].drop_duplicates()
+        df.to_csv(OUT / "us" / "financials.csv.xz", index=False)
+        stat["rows"] = len(df)
+    json.dump(stat, open(OUT / "us" / "financials_status.json", "w"), ensure_ascii=False, indent=1)
+    log(f"us financials: {stat['ok']} ok, {len(stat['failed'])} failed, {len(stat['no_cik'])} no cik, {len(rows)} rows")
+
+
 us_earnings()
+try:
+    us_financials()
+except Exception as e:
+    log("us financials crashed", e)
 ok = a_share()
 if not ok and args.flag:
     Path(args.flag).write_text("continue")
