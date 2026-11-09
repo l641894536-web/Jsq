@@ -51,7 +51,8 @@ def main() -> None:
         stock_perps = prev.get("stages", {}).get("binance", {}).get("stock_perps", [])
 
     if not only or "dukascopy" in only:
-        status["stages"]["dukascopy"] = dukascopy.run(root, args.mode, min(deadline, time.time() + 45 * 60))
+        dk_min = 150 if prev.get("backfill_complete") else 45      # A-share backfill done → hourly backlog gets the time
+        status["stages"]["dukascopy"] = dukascopy.run(root, args.mode, min(deadline - 30 * 60, time.time() + dk_min * 60))
         write_json(status, status_path)
 
     if not only or "us" in only:
@@ -68,7 +69,9 @@ def main() -> None:
     status["backfill_complete"] = complete
     runs = int(prev.get("continuation_runs", 0))
     a = status["stages"].get("a_share", {})
-    if args.mode == "full" and not complete and a.get("progress_made") and runs < 12:
+    dk = status["stages"].get("dukascopy", {})
+    dk_backlog = (not only or "dukascopy" in only) and dk.get("months_left_1h", 0) > 0 and dk.get("months_fetched", 0) > 0
+    if args.mode == "full" and ((not complete and a.get("progress_made")) or dk_backlog) and runs < 12:
         Path(args.continue_flag).write_text("1")
         status["continuation_runs"] = runs + 1
     else:

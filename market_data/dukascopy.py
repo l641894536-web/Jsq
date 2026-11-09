@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import lzma
 import struct
+import json
 import time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
@@ -152,11 +153,26 @@ def run(root: Path, mode: str, deadline: float) -> dict:
         now = datetime.now(timezone.utc)
         cur = f"{now.year}-{now.month:02d}"
         start = C.DK_START if mode == "full" else months("2000-01", cur)[-2]
-        todo = [(s, m) for s in C.DK_SYMBOLS for m in months(start, cur) if not have(base, s, m)]
+        meta = root / "dukascopy" / "meta"; meta.mkdir(parents=True, exist_ok=True)
+        absent_p = meta / "absent.json"
+        absent = json.loads(absent_p.read_text()) if absent_p.exists() else {"symbols": {}, "months": {}}
+        today = now.date()
+        fresh = lambda d, days: (today - datetime.strptime(d, "%Y-%m-%d").date()).days < days
+        skip_sym = {k for k, d in absent["symbols"].items() if fresh(d, 30)}
+        skip_mon = {k for k, d in absent["months"].items() if fresh(d, 90)}
+        allm = months(start, cur)
+        todo = [(s, m) for s in C.DK_SYMBOLS if s not in skip_sym for m in allm
+                if f"{s}|{m}" not in skip_mon and not have(base, s, m)]
+        # symbols with nothing on disk yet: probe the last complete month first; a 404 there means Dukascopy does not carry it
+        missing = {}
+        for s_, m_ in todo:
+            missing[s_] = missing.get(s_, 0) + 1
+        new_syms = [s_ for s_, k in missing.items() if k >= len(allm) - 1]
+        probe_m = allm[-2] if len(allm) >= 2 else allm[-1]
         # newly added symbols first, so they are not starved behind an old backlog the feed keeps refusing
-        first = set(getattr(C, "DK_COMMOD_1H", []))
-        todo.sort(key=lambda j: j[0] not in first)
-        st.log(f"{len(todo)} symbol-months to fetch")
+        first = set(getattr(C, "DK_COMMOD_1H", [])) | {t + "USUSD" for t in getattr(C, "DK_STOCKS_1H_PERPS", [])}
+        todo.sort(key=lambda j: (j[0] not in first, j[1]), reverse=False)
+        st.log(f"{len(todo)} symbol-months to fetch, probing {len(new_syms)} new symbols, skipping {len(skip_sym)} absent symbols / {len(skip_mon)} absent months")
         fails = {"run": 0}           # consecutive failed months: the feed is refusing us, stop early
         sess = requests.Session()
         sess.headers["User-Agent"] = "Mozilla/5.0 (market-data-bot)"
@@ -184,12 +200,34 @@ def run(root: Path, mode: str, deadline: float) -> dict:
             return job, None, err
 
         parts, n_ok = [], 0
+        gone = set()
         with ThreadPoolExecutor(2) as ex:              # be gentle with a free public feed
-            for (s, m), df, err in ex.map(fetch, todo):
+            for (s, m), df, err in ex.map(fetch, [(s_, probe_m) for s_ in new_syms]):
                 if err:
-                    st.error(f"{s} {m}: {err}")
-                elif df is not None and len(df):
+                    st.error(f"probe {s} {m}: {err}")
+                elif df is None:
+                    gone.add(s); absent["symbols"][s] = str(today)
+                elif len(df):
                     parts.append(df); n_ok += 1
+        st.info["absent_new"] = sorted(gone)
+        todo = [j for j in todo if j[0] not in gone and not (j[0] in new_syms and j[1] == probe_m)]
+
+        def fetch2(job):
+            r = fetch(job)
+            return r
+        with ThreadPoolExecutor(2) as ex:
+            for (s, m), df, err in ex.map(fetch2, todo):
+                if err:
+                    if err != "deadline":
+                        st.error(f"{s} {m}: {err}")
+                elif df is None:
+                    absent["months"][f"{s}|{m}"] = str(today)       # 404: not listed yet that month
+                elif len(df):
+                    parts.append(df); n_ok += 1
+        absent_p.write_text(json.dumps(absent, indent=0, sort_keys=True))
+        left = sum(1 for s_ in C.DK_SYMBOLS if s_ not in skip_sym and s_ not in gone for m_ in allm
+                   if f"{s_}|{m_}" not in absent["months"] and not have(base, s_, m_))
+        st.info["months_left_1h"] = left
         added = merge_partitioned(pd.concat(parts, ignore_index=True), base, ["symbol", "ts"], "ts", SCHEMA) if parts else 0
         st.info.update(months_fetched=n_ok, rows_added=int(added), symbols=C.DK_SYMBOLS)
         st.log(f"1h: +{added} rows from {n_ok} files")

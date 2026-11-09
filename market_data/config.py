@@ -71,7 +71,10 @@ DK_STOCKS_1H_OTHER = ["JPM", "BAC", "WFC", "GS", "V", "MA", "JNJ", "UNH", "PFE",
                       "T", "VZ", "CMCSA"]
 # platinum, palladium, copper, natural gas (Dukascopy commodity CFDs): history for the Binance XPT/XPD/COPPER/NATGAS perps
 DK_COMMOD_1H = ["XPTCMDUSD", "XPDCMDUSD", "COPPERCMDUSD", "GASCMDUSD"]
-DK_SYMBOLS = ["XAUUSD", "XAGUSD"] + [t + "USUSD" for t in DK_STOCKS_1H + DK_STOCKS_1H_OTHER] + DK_COMMOD_1H
+# every other stock / ETF that has a Binance perp (so each contract gets its own 5-year hourly backtest);
+# names Dukascopy does not carry are probed once and skipped for a month (dukascopy/meta/absent.json)
+DK_STOCKS_1H_PERPS = ["SPCX", "QQQ", "SPY", "IWM", "SMH", "TSM", "ASML", "ARM", "SNDK", "WDC", "SMCI", "ANET", "NOW", "SNOW", "PLTR", "CRWD", "PANW", "ZS", "NET", "DDOG", "MDB", "TEAM", "SHOP", "APP", "RDDT", "UBER", "COIN", "HOOD", "MSTR", "MARA", "CRCL", "IONQ", "RKLB", "OKLO", "CEG", "VST", "GEV", "VRT", "CRWV", "COHR", "LITE", "CIEN", "GLW", "HPE", "FLEX", "TER", "SNPS", "AKAM", "BABA", "PDD", "MELI", "BX", "IBKR", "SOFI", "AMGN", "MRNA", "EBAY", "TTWO", "CVNA", "GME", "AMC", "OXY", "EQT", "BE", "ACN", "GDX", "XLE"]
+DK_SYMBOLS = ["XAUUSD", "XAGUSD"] + [t + "USUSD" for t in DK_STOCKS_1H + DK_STOCKS_1H_OTHER] + DK_COMMOD_1H + [t + "USUSD" for t in DK_STOCKS_1H_PERPS]
 DK_START = "2020-01"
 # 1-minute files -> stored as 5-minute bars (dukascopy/5m). AMD/MU/DELL are Dukascopy's US-stock quotes
 # (AMD.US/USD ...), regular session only; they back intraday tests of the Binance stock contracts.
