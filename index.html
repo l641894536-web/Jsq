@@ -663,7 +663,7 @@ const store = {
 };
 const $ = (id) => document.getElementById(id);
 const state = {
-  sym: window.JSQ_UNIVERSE.all.includes(store.get("sym", "")) ? store.get("sym") : "XAUUSDT",
+  sym: (window.JSQ_UNIVERSE.all.includes(store.get("sym", "")) || /^[A-Z0-9]{1,12}USDT$/.test(store.get("sym", ""))) ? store.get("sym") : "XAUUSDT",
   tf: (store.get("mig", "") !== "2" ? (store.set("tf", "1h"), store.set("mig", "2"), "1h") : TF_SEC[store.get("tf", "")] ? store.get("tf") : "1h"),
   ind: "macd", rep: "gold_15m", redUp: store.get("redUp", "0") === "1", side: -1,
   layers: { sr: false, tl: false, r24: false, pat: false }
@@ -1111,7 +1111,8 @@ const VLOG = [
   ["日线趋势组合（海龟法则）", "金银铂钯铜天然气+7个币+纳指标普罗素，2021-11~2026-10，55日突破/20日离场/只在200日线上做多", "每1N亏0.5%：年化 +23%、回撤 −43%，前后两段 +18%/+29%，胜过97~100%的随机进场；单个品种大多不赚，钱来自币(2023-24)和金银(2024-26)两段大趋势；做空亏", "warn", "整篮子做才成立，回撤大"],
   ["美股放量跳空做多（库拉马吉的 episodic pivot）", "币安有合约的美股，纳指牛市，跳空≥8%量≥3倍，第二天开盘进，止损跳空日低点，拿20天", "243笔每笔 +3.3%（前后 +5.1%/+2.2%），同批股票随机进 +0.4%；纳指熊市亏；跳空向下做空亏", "good", "牛市可用，已上交易台"],
   ["连亏后减仓（都铎·琼斯）", "小时线突破的金/银/币/AMD美光戴尔，按进场时间判断不偷看；海龟组合按回撤打折", "黄金、AMD回撤明显变小、少赚不多；币牛市少赚三到五成、币熊市少赚一半；海龟组合年化 23%→16%", "flat", "不通用，仓位一开始定小"],
-  ["牛熊换5种分法（200日线 / 200日线+方向 / 金叉死叉 / 100日线 / 50日线）", "同一批小时线突破单，2021-11~2026-10", "金银、美股：做多差不多，做空换哪种都不赚；币：看比特币50日线最好——线上做多 +0.21R、线下做空 +0.18R（7个币都赚，前后两段都赚）", "good", "币改看50日线，能做空了；其余不变"]
+  ["牛熊换5种分法（200日线 / 200日线+方向 / 金叉死叉 / 100日线 / 50日线）", "同一批小时线突破单，2021-11~2026-10", "金银、美股：做多差不多，做空换哪种都不赚；币：看比特币50日线最好——线上做多 +0.21R、线下做空 +0.18R（7个币都赚，前后两段都赚）", "good", "币改看50日线，能做空了；其余不变"],
+  ["熊市里纳指大涨日追多", "^NDX 日线 2000~2026，纳指在200日线下方时单日涨≥2%", "283次之后5天平均 −0.75%（涨的只有49%）、20天 −1.0%；只有约1/6在20天内站回200日线", "bad", "大涨日别追，卡片会提醒"]
 ];
 function renderLog() {
   $("repTable").innerHTML = `<thead><tr><th>打法</th><th>数据</th><th>结果</th><th>结论</th></tr></thead><tbody>` +
@@ -2422,6 +2423,11 @@ function renderPos(sym, V, env, g, dipMode, okDir) {
   if (!okDir) L.push(`<span class="plan-bt">提醒：按回测，现在这种环境${up ? "做多" : "做空"}这个品种本来不做（或样本太少）；已经在里面就按上面管，别加仓。</span>`);
   out.innerHTML = L.join("<br>");
 }
+// 币安后来新上的股票合约：数据管线每天检测（和美股价格对得上才算），这里补进'全部品种'
+function mergePerps() {
+  const L = (window.JSQ_ENV || {}).stock_perps; if (!Array.isArray(L)) return;
+  for (const s of L) if (!U.all.includes(s)) { U.STOCKS.push(s); U.all.push(s); U.names[s] = U.names[s] || s.replace(/USDT$/, ""); }
+}
 // ---------------------------------------------------------------- 美股放量跳空（research/ep_bt.py）
 function renderEP() {
   const E = window.JSQ_ENV || {}, L = E.ep, el = $("epList"), note = $("epNote");
@@ -2537,6 +2543,10 @@ function renderCard(force) {
     const ed = ((window.JSQ_ENV || {}).earnings || {})[sym.replace("USDT", "")];
     if (ed) { const days = Math.round((new Date(ed + "T00:00:00Z") - new Date()) / 864e5); if (days >= -1 && days <= 10) warns.push(`${ed} 出财报（${days <= 0 ? "就在这两天" : days + "天后"}），前后容易跳空。`); }
     const u = usNow(); if (u && u.stopDist < 0.05) warns.push(`纳指离认错线只差 ${pabs(u.stopDist)}，到了就按长熊处理。`);
+    // 熊市里纳指大涨：回测（^NDX 2000年起）熊市里单日涨≥2%之后5天平均 −0.75%，20天内站回200日线的只有约1/6
+    const LQ = window.JSQ_LIVE_US, UQ = ((window.JSQ_ENV || {}).live || {}).us;
+    if (u && !u.bull && LQ && LQ.QQQ && UQ && UQ.QQQ && LQ.QQQ / UQ.QQQ.close - 1 >= 0.02)
+      warns.push(`纳指今天涨了 ${pct(LQ.QQQ / UQ.QQQ.close - 1)}，但还在200日线下方：2000年以来熊市里纳指单日涨2%以上共283次，之后5天平均跌0.75%，20天内站回200日线的只有约六分之一——大涨日别追，等站回200日线再按牛市规则做。`);
   }
   if (["SOXLUSDT", "TQQQUSDT", "SQQQUSDT"].includes(sym)) warns.push("这是三倍杠杆ETF，波动是普通股票的三倍。");
   warns.push("每笔最多亏本金的1%（仓位用下面计算器算）。");
@@ -2602,7 +2612,7 @@ function init() {
   $("ckLong").addEventListener("click", () => { $("foldCalc").open = true; const b = $("use24L"); if (b) { b.click(); $("foldCalc").scrollIntoView({ behavior: "smooth", block: "start" }); } });
   $("ckShort").addEventListener("click", () => { $("foldCalc").open = true; const b = $("use24S"); if (b) { b.click(); $("foldCalc").scrollIntoView({ behavior: "smooth", block: "start" }); } });
   document.addEventListener("jsq-view", () => renderCard(false));
-  document.addEventListener("jsq-env-ready", () => { renderBar(); renderCard(true); renderBrief(); renderEP(); });
+  document.addEventListener("jsq-env-ready", () => { mergePerps(); renderBar(); renderCard(true); renderBrief(); renderEP(); });
   document.addEventListener("jsq-live", () => { renderBar(); renderCard(false); renderBrief(); renderEP(); });
   const refresh = async () => { await Promise.allSettled(["XAUUSDT", "XAGUSDT", "BTCUSDT"].map(needDMA)); renderBar(); renderCard(true); };
   refresh(); setInterval(refresh, 5 * 60e3);
