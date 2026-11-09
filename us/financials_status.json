@@ -1,0 +1,7 @@
+{
+ "time": "2026-11-09 13:06:36",
+ "ok": 0,
+ "failed": [],
+ "no_cik": [],
+ "error": "ticker map: HTTP Error 403: Forbidden"
+}
