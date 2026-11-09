@@ -50,7 +50,7 @@ def run_sym(df, bpd, sig, tz, D):
             E0 = c[k]; stop = lowest * np.exp(-0.3 * s)
             res["S"] = sim_pyr(o, h, l, c, k, E0, stop, top, bpd, pyramid=True)
             res["F"] = sim_pyr(o, h, l, c, k, E0, stop, top, bpd, pyramid=False)
-        out.append(dict(ts=ts.iloc[t], **{f"{a}_{m}": v for m, d in res.items() for a, v in d.items()}))
+        out.append(dict(ts=ts.iloc[t], kts=(ts.iloc[k] if k is not None else pd.NaT), **{f"{a}_{m}": v for m, d in res.items() for a, v in d.items()}))
         t = max(t + 1, max(d["end"] for d in res.values()) + 1)
     return pd.DataFrame(out)
 
