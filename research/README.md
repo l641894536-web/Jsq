@@ -10,6 +10,7 @@
 | `gold_env.py` | 黄金白银：日线环境变量 + 小时线短线规则分牛熊 |
 | `newsyms_bt.py` | 加密7币（比特币200日线）、23只非科技蓝筹（标普200日线） |
 | `commod_bt.py` | 铂金、钯金、铜、天然气（Dukascopy 商品CFD，自身200日线） |
+| `per_symbol_bt.py` | 没回测过的股票合约逐只用自己的 Dukascopy 小时线回测（需≥2年），写进 contract_stats 的 `sym_<代码>`；`--apply` 直接更新交易台 |
 | `build_contract_stats.py` | 汇总成 gh-pages `env_static.json` 的 `contract_stats`（含前后两段 h1/h2） |
 | `feat_bt.py` | 美股：能不能用开单前就知道的条件（波动、涨幅、强弱、自身战绩）挑出适合做突破的股票（结论：不能） |
 | `daily_bt.py` | 美股日线突破（20日高低点进场、10日反向离场）对比随便进场，扣资金费（结论：没有普遍优势） |
