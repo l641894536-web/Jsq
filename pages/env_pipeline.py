@@ -278,6 +278,11 @@ if args.fund and os.path.exists(f"{args.fund}/us/earnings.csv"):
         nxt = sorted(d for d in g.date.astype(str) if d >= _today)
         if nxt:
             earn[t] = nxt[0]
+# 币安股票合约名单（交易台'全部品种'用它补上后来新上的）
+try:
+    _perps_all = json.load(open(f"{args.data}/status.json"))["stages"]["binance"].get("stock_perps", [])
+except Exception:
+    _perps_all = []
 # ============================================================ 美股放量跳空（research/ep_bt.py）：币安有合约的股票，最近15个交易日
 # 回测：纳指牛市里，开盘比前收高≥8%、成交量≥50日均量3倍 → 第二天开盘做多，止损=跳空当天最低价，拿20个交易日：每笔 +3.3%（前后两段 +5.1%/+2.2%），同批股票随机日子 +0.4%；纳指熊市里是亏的
 ep_events = []
@@ -349,7 +354,7 @@ if args.fund and os.path.exists(f"{args.fund}/a_share/growth.csv.xz"):
         print("stocks_a.json skipped:", repr(e))
 env = dict(asof=max(a_today["date"], us_today["date"]), stocks_a=stocks_note, a=dict(today=a_today, stats=stats, series=a_series),
            us=dict(today=us_today, series=us_series), live=live, findings=findings,
-           contract_stats=static.get("contract_stats"), contract_stats_note=static.get("contract_stats_note"), earnings=earn, ep=ep_events)
+           contract_stats=static.get("contract_stats"), contract_stats_note=static.get("contract_stats_note"), earnings=earn, ep=ep_events, stock_perps=_perps_all)
 json.dump(env, open(args.out, "w"), ensure_ascii=False, separators=(",", ":"))
 
 # ============================================================ 变化摘要

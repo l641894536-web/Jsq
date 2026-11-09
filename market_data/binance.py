@@ -204,6 +204,61 @@ def validate_stock_perps(root: Path, cands: list[str], stage: Stage) -> list[str
     return keep
 
 
+def detect_new_stock_perps(root: Path, symbols: list[str], known: set[str], stage: Stage,
+                           budget_s: float = 240) -> list[str]:
+    """币安后来上的股票合约（标的不在美股列表里，如 NVO、HIMS、CRDO、EWY…）：
+    2025-06 以后才有日线、名字像美股代码（1–5个大写字母）的合约，拿雅虎近3个月收盘比价：
+    中位比值在 0.97–1.03、日涨跌相关不为负 → 算股票合约。结果缓存在 meta/new_perps.json（不通过的30天后再查）。"""
+    import json, re
+    import yfinance as yf
+    cache_p = root / "binance" / "meta" / "new_perps.json"
+    cache = json.loads(cache_p.read_text()) if cache_p.exists() else {}
+    files = sorted((root / "binance" / "um_1d").glob("*/*.csv.xz"))
+    if not files:
+        return []
+    bn = pd.concat([pd.read_csv(f, usecols=["symbol", "date", "close"], dtype=str) for f in files], ignore_index=True)
+    first = bn.groupby("symbol")["date"].min()
+    today = datetime.now(timezone.utc).date().isoformat()
+    cands = [x for x in symbols if x.endswith("USDT") and x not in known and re.fullmatch(r"[A-Z]{1,5}", x[:-4])
+             and first.get(x, "0000") >= C.BN_STOCK_PERP_SINCE]
+    keep, checked, t0 = [], 0, time.time()
+    for x in cands:
+        c = cache.get(x)
+        if c and (c["ok"] or c["checked"] >= (datetime.now(timezone.utc).date() - timedelta(days=30)).isoformat()):
+            if c["ok"]:
+                keep.append(x)
+            continue
+        if time.time() - t0 > budget_s:
+            break
+        ok, why = False, ""
+        try:
+            h = yf.Ticker(x[:-4]).history(period="3mo", auto_adjust=False)
+            if h is not None and len(h) >= 5:
+                us_ = pd.Series(h["Close"].values, index=pd.DatetimeIndex(h.index).strftime("%Y-%m-%d"))
+                b = bn[bn["symbol"] == x].set_index("date")["close"].astype(float)
+                m = pd.concat([b, us_], axis=1, join="inner").dropna()
+                if len(m) >= 5:
+                    ratio = float((m.iloc[:, 0] / m.iloc[:, 1]).median())
+                    corr = m.iloc[:, 0].pct_change().corr(m.iloc[:, 1].pct_change()) if len(m) >= 20 else 1.0
+                    ok = 0.97 <= ratio <= 1.03 and not (corr < 0)
+                    why = f"ratio {ratio:.3f} corr {corr if pd.isna(corr) else round(float(corr), 2)}"
+                else:
+                    why = f"{len(m)} shared days"
+            else:
+                why = "no yahoo data"
+        except Exception:
+            continue                      # 网络/限流出错：不记缓存，下次再查
+        checked += 1
+        cache[x] = {"ok": ok, "checked": today, "why": why}
+        if ok:
+            keep.append(x)
+    cache_p.parent.mkdir(parents=True, exist_ok=True)
+    cache_p.write_text(json.dumps(cache, ensure_ascii=False, indent=0))
+    stage.info["new_stock_perps"] = keep
+    stage.info["new_perps_checked"] = checked
+    return keep
+
+
 def run(root: Path, mode: str, deadline: float, us_tickers: set[str]) -> tuple[dict, list[str]]:
     st = Stage("binance")
     stock_perps: list[str] = []
@@ -221,6 +276,11 @@ def run(root: Path, mode: str, deadline: float, us_tickers: set[str]) -> tuple[d
 
         stock_perps = detect_stock_perps(sess, symbols, us_tickers, st)
         stock_perps = validate_stock_perps(root, stock_perps, st)
+        if mode != "smoke":
+            try:
+                stock_perps = sorted(set(stock_perps) | set(detect_new_stock_perps(root, symbols, set(stock_perps), st)))
+            except Exception as e:
+                st.error(f"new stock perps: {e!r}")
         st.info["stock_perps"] = stock_perps
         st.log(f"stock perps: {stock_perps}")
         write_csv(pd.DataFrame({"symbol": symbols,
