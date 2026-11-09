@@ -1048,6 +1048,7 @@ const VLOG = [
   ["分批抄底（每次100U×5倍）：跌1个日波动买30%，再跌1个日波动买30%，反弹企稳才买最后40%，回到前高平仓；对照一次性买入、硬抗不止损", "黄金、白银、BTC/ETH/SOL、AMD/美光/戴尔，2021-11~2026-10，牛熊分开", "赚的次数约2/3，但平均：黄金牛市 −0.37U/次、白银 −1.19U、币 +0.21U（后段亏）、AMD等 +1.23U；同期突破做多 +0.9~+5.6U/次。分批比一次性浮亏小一半；不设止损硬抗的最差一次 −64U~−320U，5倍下等于爆仓", "bad", "分批好，抄底不好"],
   ["赚了再加（金字塔）：突破先开30%，浮盈1倍止损距离且保本后加30%，2倍再加40%，共用跟踪止损", "黄金、白银、7个主流币、AMD/美光/戴尔，每次100U×5倍，2021-11~2026-10", "亏的单平均亏损降到一次性的四成左右（AMD等 −7U vs −18U，币 −5U vs −12U）；平均收益：币、白银、AMD等和一次性接近或略低，黄金明显变差（+0.16U vs +0.89U）", "good", "股票和币用分批加仓，黄金一次进"],
   ["熊市怎么做：①分批补到深处（30%下跌时、30%再跌3个日波动、40%企稳才补，补完才设止损）②单日大跌≥2个日波动后抢反弹 ③反弹到20日线做空；每次100U×5倍", "黄金、白银、BTC/ETH/SOL、AMD/美光/戴尔，2021-11~2026-10", "①赚的次数6~8成，但熊市合计：黄金 −70U、白银 −53U、币 −664U（26次爆仓共 −1500U）、AMD等 +255U但2024年后转亏；②③熊市里四类品种基本都亏，只有零星几十笔的组看着赚，前后两段不一致", "bad", "没通过：熊市里合约少做"],
+  ["抄底改良：从5天高点跌够2/3/4倍日波动后，①等1小时收盘站上前12小时最高价（止跌企稳）再进，一次买满或先30%赚了再加；②跌够就分批但进场前定好止损；止损这波最低点下方，目标回到5天高点", "黄金、白银、BTC/ETH/SOL、AMD/美光/戴尔，复核22只科技股、23只非科技股，每次100U×5倍，2021-11~2026-10", "熊市里只有 AMD/美光/戴尔 '企稳后一次买满'三种深度都赚（+5.2~8.2U/次，2022年那段 +2.2~3.0U，2024年后 +19~23U）；其他科技股 +1.0~1.5U 但2022年那段接近0；非科技股、金、银、币熊市都亏。'跌够就分批'不加企稳确认基本不赚", "warn", "只给 AMD/美光/戴尔 熊市用，已放进结论卡"],
   ["完整结构体系：4h 结构 → 1h 回调 → 5 分钟转强 → 回调低点止损 → 前高平一半 + 结构持有", "开发 2021–2023；检验 2024–2026 黄金、2021–2026 白银", "开发期不算成本 +0.12R；检验期黄金 +0.01R、扣费 −0.18R，白银扣费 −0.19R；不如随机进场", "bad", "没通过"],
   ["上级周期过滤（必须顺 4 小时结构）", "同上", "开发期顺 4h 每天多走约 0.3 个 ATR、方向对 55%；检验期变回 50%", "bad", "没通过"],
   ["结构延续持有 vs 固定 2R vs 拿 24 小时", "同上", "差别都在 ±0.1R 以内，没有哪种稳定更好", "warn", "没区别"],
@@ -2231,6 +2232,44 @@ function volText(sym, V) {
   }
   return t;
 }
+// 熊市里 AMD/美光/戴尔 的"回调企稳做多"（research/dip_v2_bt.py）：
+// 从5天最高点跌够 2 倍日波动 → 等1小时收盘站上前12小时最高价（止跌企稳）→ 做多；止损这波最低点下方 0.3 倍日波动；目标回到5天高点；1倍浮盈挪保本
+const H1 = {};
+async function needH1(sym) {
+  if (H1[sym] && Date.now() - H1[sym].at < 3 * 60e3) return false;
+  const r = await fetch(`${REST}/fapi/v1/klines?symbol=${sym}&interval=1h&limit=200`, { cache: "no-store" });
+  if (!r.ok) return false;
+  const k = await r.json(); if (!Array.isArray(k) || k.length < 140) return false;
+  H1[sym] = { rows: k.slice(0, -1).map((x) => ({ t: +x[0], h: +x[2], l: +x[3], c: +x[4] })), at: Date.now() };
+  return true;
+}
+function dipState(sym, V) {
+  const X = H1[sym], v = VOL[sym];
+  if (!X || !v) return null;
+  const R = X.rows, N = R.length - 1, sd = v.sd, dp = V.dp;
+  let top = -Infinity, ti = N - 120;
+  for (let i = N - 120; i < N; i++) if (R[i].h > top) { top = R[i].h; ti = i; }
+  let low = Infinity, li = ti;
+  for (let i = ti; i <= N; i++) if (R[i].l < low) { low = R[i].l; li = i; }
+  const need = top * Math.exp(-2 * sd), deep = Math.log(top / low) / sd, stop = low * Math.exp(-0.3 * sd);
+  const hi12 = (i) => Math.max(...R.slice(i - 12, i).map((x) => x.h));
+  const pc = (x) => (x * 100).toFixed(1) + "%";
+  const head = `熊市里 AMD/美光/戴尔 只做"回调企稳"：从5天最高 ${fmt(top, dp)} 跌够 2 倍日波动（${fmt(need, dp)} 以下），再等1小时收盘止跌站上前12小时最高价才进。`;
+  if (deep < 2) return { dir: "观望（跌得还不够）", cls: "flat", why: head + `这一轮最低只到 ${fmt(low, dp)}（跌了 ${pc(1 - low / top)}），还没跌够。` };
+  let si = -1;
+  for (let i = li + 1; i <= N; i++) if (R[i].c > hi12(i) && R[i].c < top) { si = i; break; }
+  if (si < 0) {
+    const trig = Math.max(...R.slice(N - 11, N + 1).map((x) => x.h));
+    return { dir: "等企稳再做多", cls: "warn", why: head + `已经跌够（最低 ${fmt(low, dp)}），还没止跌：等1小时收盘站上 <b>${fmt(trig, dp)}</b> 再做多。` };
+  }
+  if (N - si > 3) return { dir: "这轮已经反弹，不追", cls: "flat", why: head + `${fmt(R[si].c, dp)} 那根已经止跌反弹过了，现在追进去止损太远；等下一次回调。` };
+  const E0 = V.last, Rk = E0 - stop;
+  if (!(Rk > 0) || !(top > E0)) return { dir: "观望", cls: "flat", why: head + "现价已经离开这一轮的范围。" };
+  PLANNUM = { E0, stop, target: top, side: 1 };
+  const plan = `回调企稳做多参考：止损 <b>${fmt(stop, dp)}</b>（这波最低点下方，亏 ${pc(Rk / E0)}）→ 目标 <b>${fmt(top, dp)}</b>（回到5天高点，赚 ${pc((top - E0) / E0)}）。浮盈到 <b>${fmt(E0 + Rk, dp)}</b> 把止损挪到开仓价。` +
+    `<br><span class="plan-bt">回测（AMD/美光/戴尔，熊市，每次100U×5倍）：82次，平均每次 +5.2U，10次赚4次；2022年那段熊市 +2.2U/次，2024年以后 +22.9U/次（主要是2025年4月急跌后的反弹），样本不大。只有这3只有效：其他科技股2022年那段接近不赚，非科技股亏。</span>`;
+  return { dir: "可以做多（回调企稳）", cls: "up", why: head + `已经跌够、${N - si === 0 ? "刚刚" : (N - si) + "小时前"}止跌站上前12小时高点。`, plan };
+}
 function setDir(text, cls) { const d = $("cardDir"); d.textContent = text; d.className = "card-dir " + cls; }
 function renderCard(force) {
   const J = window.JSQ; if (!J) return;
@@ -2244,6 +2283,8 @@ function renderCard(force) {
   const T = tech(V, tf), env = envFor(sym);
   PLANNUM = null;
   needVol(sym).then((ch) => { if (ch && window.JSQ.state.sym === sym) renderCard(true); }).catch(() => {});
+  const dipMode = statKey(sym) === "stock_main" && env && !env.bull;
+  if (dipMode) needH1(sym).then((ch) => { if (ch && window.JSQ.state.sym === sym) renderCard(true); }).catch(() => {});
   if (g !== "stock") needDMA(g === "crypto" ? "BTCUSDT" : sym).then(() => { if (!env && envFor(sym)) renderCard(true); });
   // 技术面一行一行
   $("cardTech").innerHTML = T.items.map((x) => `<li><span class="lean ${x.lean === "多" ? "up" : x.lean === "空" ? "down" : "flat"}">${x.lean}</span><b>${x.k}</b>${esc(x.txt)}</li>`).join("");
@@ -2281,13 +2322,21 @@ function renderCard(force) {
     else if (ok(gS)) { dir = "等跌破再做空"; cls = "warn"; side = -1; planAt = V.L; why = head + `等价格跌破${dayW}最低点 ${Lw} 再做空${gL === "lose" || gL === "flat" ? "，不做多（回测这种环境做多不赚）" : ""}。`; }
     else { dir = "观望"; cls = "flat"; side = 0; why = head + (gL === "few" || gS === "few" ? "这种环境回测样本太少，多空都没有可靠优势。" : "回测里这种环境多空都不赚钱。"); }
   }
+  let dipPlan = "";
+  if (dipMode) {
+    const d = dipState(sym, V);
+    if (d) { dir = d.dir; cls = d.cls; why = d.why; side = 0; dipPlan = d.plan || ""; noPlan = d.plan ? "" : "熊市里这3只只做回调企稳，现在不给价位。"; }
+  }
   setDir(dir, cls);
   $("cardWhy").innerHTML = why + (env ? `<span class="src">（${esc(env.src)}）</span>` : "");
   // 价位
-  $("cardPlan").innerHTML = side ? plan(V, side, tf, planAt && isFinite(planAt) && side * (planAt - V.last) > 0 ? planAt : 0, sym, env) : (noPlan || "方向不明，不给参考价位。") + "想做的话用下面的计算器，按24小时高低点自动算。";
+  $("cardPlan").innerHTML = dipPlan ? dipPlan : side ? plan(V, side, tf, planAt && isFinite(planAt) && side * (planAt - V.last) > 0 ? planAt : 0, sym, env) : (noPlan || "方向不明，不给参考价位。") + "想做的话用下面的计算器，按24小时高低点自动算。";
   // 历史
   const hl = [];
-  if (env) {
+  if (dipMode) {
+    hl.push("熊市里回调企稳做多：82次，每次（100U×5倍）平均 +5.2U，10次赚4次（AMD/美光/戴尔 2021-11~2026-10）");
+    hl.push(histLine(stS, "熊市里跌破做空"));
+  } else if (env) {
     hl.push(histLine(stL, `${envWord}里突破做多`));
     hl.push(histLine(stS, `${envWord}里跌破做空`));
   }
