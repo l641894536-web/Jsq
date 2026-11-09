@@ -264,6 +264,11 @@ td.n { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
 .card-hist { margin: 0; font-size: 12.5px; color: var(--muted); }
 .card-plan .plan-bt { display: inline-block; margin-top: 4px; font-size: 12.5px; color: var(--muted); }
 .card-plan .plan-bt b { color: var(--ink); }
+#epPanel { margin-top: 12px; }
+.ep-h { font-size: 15px; margin: 0 0 6px; }
+.ep-row { border-top: 1px solid var(--line); padding: 8px 0; font-size: 13.5px; line-height: 1.6; }
+.ep-row b.t { font-size: 15px; }
+.ep-row .st { color: var(--muted); }
 .pos { margin: 10px 0 4px; border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; background: var(--panel); }
 .pos summary { cursor: pointer; font-weight: 600; font-size: 14px; }
 .pos-in { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; margin-top: 8px; }
@@ -376,6 +381,11 @@ details.fold-in > summary { cursor: pointer; font-size: 13px; font-weight: 600; 
       <button type="button" class="btn" id="ckShort">按这个填入做空</button>
     </div>
     <div hidden><div class="chips" id="stateChips"></div><span class="advice" id="advice"></span></div>
+  </section>
+  <section class="panel" id="epPanel" aria-labelledby="epTitle">
+    <h2 id="epTitle" class="ep-h">美股放量跳空（日线，纳指牛市才做）</h2>
+    <p class="note" id="epNote">正在载入…</p>
+    <div id="epList"></div>
   </section>
 
 
@@ -1098,6 +1108,9 @@ const VLOG = [
   ["其余73只股票合约逐只回测（突破做多/做空，自己的小时线）", "Yahoo 小时线 2024-10~2026-11（META 用 Dukascopy 2021起）", "单只两年只有14~46笔牛市突破，全部样本太少；72只里前一年灵的后一年反而偏差（相关系数 −0.25）。合起来：牛市做多 +0.11R 但后一年 0.00，牛市做空 −0.14R", "warn", "每只卡片显示自己的成绩，结论标'样本太少'；牛市不做空照旧"],
   ["回调企稳做多到了1R以后怎么管（AMD/美光/戴尔熊市，纳指前一天在跌）", "Dukascopy 交易时段小时线 2021-11~2026-10，90次，其中46次先到了1R", "保本+回5天高点全平：到过1R的平均 +24.1U、57%赚；止损提到开仓价上方约半份 +23.0U、91%赚；改跟踪3天低点 +22.9U；先平一半剩下不封顶 +23.4U 但靠2025年4月一段", "good", "保本或提到半份都行，目标仍是跌够那一刻的5天高点"],
   ["卡片和回测口径对齐（自检）", "AMD/美光/戴尔的回调企稳、突破价位", "原来卡片用币安24小时连续的小时线、5天高点随时间滚动；回测用的是美股交易时段（每天7根），5天高点在跌够那一刻定死。改成和回测一样以后，AMD 这一轮目标从 536 变成 576、企稳点从 433 变成 458；回测成绩按'一笔平仓再找下一笔'重算：熊市 90次 +6.2U（原来写 69次 +9.2U）", "warn", "已改，卡片、每日简报、回测同一套算法"],
+  ["日线趋势组合（海龟法则）", "金银铂钯铜天然气+7个币+纳指标普罗素，2021-11~2026-10，55日突破/20日离场/只在200日线上做多", "每1N亏0.5%：年化 +23%、回撤 −43%，前后两段 +18%/+29%，胜过97~100%的随机进场；单个品种大多不赚，钱来自币(2023-24)和金银(2024-26)两段大趋势；做空亏", "warn", "整篮子做才成立，回撤大"],
+  ["美股放量跳空做多（库拉马吉的 episodic pivot）", "币安有合约的美股，纳指牛市，跳空≥8%量≥3倍，第二天开盘进，止损跳空日低点，拿20天", "243笔每笔 +3.3%（前后 +5.1%/+2.2%），同批股票随机进 +0.4%；纳指熊市亏；跳空向下做空亏", "good", "牛市可用，已上交易台"],
+  ["连亏后减仓（都铎·琼斯）", "小时线突破的金/银/币/AMD美光戴尔，按进场时间判断不偷看；海龟组合按回撤打折", "黄金、AMD回撤明显变小、少赚不多；币牛市少赚三到五成、币熊市少赚一半；海龟组合年化 23%→16%", "flat", "不通用，仓位一开始定小"]
 ];
 function renderLog() {
   $("repTable").innerHTML = `<thead><tr><th>打法</th><th>数据</th><th>结果</th><th>结论</th></tr></thead><tbody>` +
@@ -2405,6 +2418,27 @@ function renderPos(sym, V, env, g, dipMode, okDir) {
   if (!okDir) L.push(`<span class="plan-bt">提醒：按回测，现在这种环境${up ? "做多" : "做空"}这个品种本来不做（或样本太少）；已经在里面就按上面管，别加仓。</span>`);
   out.innerHTML = L.join("<br>");
 }
+// ---------------------------------------------------------------- 美股放量跳空（research/ep_bt.py）
+function renderEP() {
+  const E = window.JSQ_ENV || {}, L = E.ep, el = $("epList"), note = $("epNote");
+  if (!el || !note) return;
+  if (!Array.isArray(L)) { note.textContent = "数据下次更新后出现。"; el.innerHTML = ""; return; }
+  const u = usNow(), bull = !!(u && u.bull);
+  note.innerHTML = `规则：币安有合约的美股，开盘比前一天收盘高8%以上、成交量是50天平均的3倍以上（多半是财报或大消息）→ <b>第二天开盘做多</b>，止损放在跳空那天最低价，拿满20个交易日。` +
+    `回测（2021-11~2026-10，纳指牛市）：243笔，每笔平均 +3.3%（前后两段 +5.1%/+2.2%），同一批股票随便哪天进只有 +0.4%；10笔里赚3~4笔，赚的是少数大涨。<b>纳指熊市里这招是亏的</b>。` +
+    `<br>现在：${bull ? "纳指在200日线上方，可以做。" : "<b>纳指在200日线下方，不做</b>，下面只是记录。"}`;
+  if (!L.length) { el.innerHTML = `<p class="note">最近15个交易日没有符合条件的跳空。</p>`; return; }
+  const addTD = (d, n) => { let x = new Date(d + "T12:00:00Z"), k = 0; while (k < n) { x = new Date(x.getTime() + 864e5); const w = x.getUTCDay(); if (w !== 0 && w !== 6) k++; } return `${x.getUTCMonth() + 1}月${x.getUTCDate()}日`; };
+  el.innerHTML = L.map((e) => {
+    const nm = esc((U.names[e.t + "USDT"] || e.t)), md = `${+e.d.slice(5, 7)}月${+e.d.slice(8, 10)}日`, end = addTD(e.d, 21);
+    let st;
+    if (e.last < e.low) st = `已经跌破止损位 ${e.low}，这次作废。`;
+    else if (!bull) st = `纳指熊市，不做。`;
+    else if (e.days === 0) st = `<b>下一个美股开盘做多</b>，止损 <b>${e.low}</b>（跳空那天最低价），拿到 <b>${end}</b> 收盘。仓位按止损距离算（每笔亏本金1%）。`;
+    else st = `进场时机已过（只在第二天开盘进，当时 ${e.open1 ?? "—"}）。已经在里面的：止损 ${e.low}，拿到 ${end} 收盘。`;
+    return `<div class="ep-row"><b class="t">${nm}</b> ${md} 跳空 +${(e.gap * 100).toFixed(1)}%，量 ${e.vol} 倍，现 ${e.last}<br><span class="st">${st}</span></div>`;
+  }).join("");
+}
 function initPos() {
   ["posSide", "posE", "posS", "posN"].forEach((id) => { const e = $(id); if (e) e.addEventListener("input", () => renderCard(true)); });
 }
@@ -2564,8 +2598,8 @@ function init() {
   $("ckLong").addEventListener("click", () => { $("foldCalc").open = true; const b = $("use24L"); if (b) { b.click(); $("foldCalc").scrollIntoView({ behavior: "smooth", block: "start" }); } });
   $("ckShort").addEventListener("click", () => { $("foldCalc").open = true; const b = $("use24S"); if (b) { b.click(); $("foldCalc").scrollIntoView({ behavior: "smooth", block: "start" }); } });
   document.addEventListener("jsq-view", () => renderCard(false));
-  document.addEventListener("jsq-env-ready", () => { renderBar(); renderCard(true); renderBrief(); });
-  document.addEventListener("jsq-live", () => { renderBar(); renderCard(false); renderBrief(); });
+  document.addEventListener("jsq-env-ready", () => { renderBar(); renderCard(true); renderBrief(); renderEP(); });
+  document.addEventListener("jsq-live", () => { renderBar(); renderCard(false); renderBrief(); renderEP(); });
   const refresh = async () => { await Promise.allSettled(["XAUUSDT", "XAGUSDT", "BTCUSDT"].map(needDMA)); renderBar(); renderCard(true); };
   refresh(); setInterval(refresh, 5 * 60e3);
   renderBar();
