@@ -264,6 +264,17 @@ td.n { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
 .card-hist { margin: 0; font-size: 12.5px; color: var(--muted); }
 .card-plan .plan-bt { display: inline-block; margin-top: 4px; font-size: 12.5px; color: var(--muted); }
 .card-plan .plan-bt b { color: var(--ink); }
+.scan { padding: 4px 14px 0; }
+.scan-g { font-size: 12px; color: var(--muted); margin: 10px 0 2px; font-weight: 600; }
+.scan-g.t0 { color: var(--brass); }
+.scan-row { display: flex; gap: 10px; align-items: baseline; width: 100%; padding: 8px 0; border: 0; border-top: 1px solid var(--line); background: none; text-align: left; color: var(--ink); font: inherit; font-size: 13.5px; line-height: 1.5; cursor: pointer; }
+.scan-row b { flex: 0 0 4.6em; }
+.scan-row.t0 { background: var(--brass-soft); padding-left: 8px; padding-right: 8px; border-radius: 8px; border-top-color: transparent; }
+.scan-row.t4 span, .scan-row.t3 span, .scan-row.t9 span { color: var(--muted); }
+.scan-note { padding: 0 14px 12px; }
+.scan-more summary { cursor: pointer; }
+#posAcct { font: inherit; font-size: 13px; padding: 2px 6px; border: 1px solid var(--line); border-radius: 6px; background: transparent; color: var(--ink); margin-left: 4px; }
+#scanPanel, #posPanel { margin-bottom: 12px; }
 #epPanel { margin-top: 12px; }
 .ep-h { font-size: 15px; margin: 0 0 6px; }
 .ep-row { border-top: 1px solid var(--line); padding: 8px 0; font-size: 13.5px; line-height: 1.6; }
@@ -331,6 +342,7 @@ details.fold-in > summary { cursor: pointer; font-size: 13px; font-weight: 600; 
     <div class="seg tabs" id="tabs" role="tablist" aria-label="页面">
       <button type="button" role="tab" data-tab="contract" aria-selected="true" aria-pressed="true">合约</button>
       <button type="button" role="tab" data-tab="stock" aria-selected="false" aria-pressed="false">正股</button>
+      <button type="button" role="tab" data-tab="research" aria-selected="false" aria-pressed="false">研究</button>
     </div>
   </header>
 
@@ -347,6 +359,16 @@ details.fold-in > summary { cursor: pointer; font-size: 13px; font-weight: 600; 
 
 
   <div class="tab" id="tab-contract">
+  <section class="panel" id="scanPanel" aria-labelledby="scanTitle">
+    <div class="panel-h"><h2 id="scanTitle">今天能做什么</h2><span class="sub" id="scanHead">正在扫描…</span></div>
+    <div class="scan" id="scanList"></div>
+    <p class="note scan-note" id="scanNote"></p>
+  </section>
+  <section class="panel" id="posPanel" hidden aria-labelledby="posTitle">
+    <div class="panel-h"><h2 id="posTitle">我的持仓</h2><label class="sub">本金 U（选填）<input id="posAcct" inputmode="decimal" autocomplete="off" style="width:5.5em"></label></div>
+    <div class="scan" id="posList"></div>
+    <p class="note scan-note" id="posSum"></p>
+  </section>
   <div class="controls">
     <div class="syms" id="syms" role="group" aria-label="品种"></div>
     <button type="button" class="btn pick-open" id="pickOpen">全部品种</button>
@@ -423,19 +445,6 @@ details.fold-in > summary { cursor: pointer; font-size: 13px; font-weight: 600; 
     </div>
 
     <div class="col">
-      <details class="fold" id="foldTech"><summary>技术指标明细：4小时 / 1小时 / 15分钟结构和价格附近的形态</summary>
-      <section class="panel" id="trendPanel">
-        <div class="panel-h"><h2>K线结构</h2><span class="sub" id="trendSub">4小时 · 1小时 · 15分钟</span></div>
-        <div class="trend" id="trendRows"><div class="empty">等K线载入后计算。</div></div>
-        <div class="combo" id="combo" hidden></div>
-        <p class="note trend-note" id="trendNote"></p>
-      </section>
-      <section class="panel">
-        <div class="panel-h"><h2>当前价格附近的位置（看位置用，不当进场信号）</h2><span class="sub" id="setupSub"></span></div>
-        <p class="note" style="padding:6px 14px 0;margin:0">支撑阻力反弹、24小时高低点反弹、双底双顶这几种形态，在黄金15分钟和1小时上回测过，<b>扣费后都亏</b>（和随便开单一样，白交手续费）；其他品种没回测过。所以这里只告诉你价格离这些位置多远。</p>
-        <div class="setups" id="setups"><div class="empty">等K线载入后自动识别。</div></div>
-      </section>
-      </details>
       <details class="fold" id="foldCalc"><summary>下单计算器：仓位和成本</summary>
       <section class="panel" id="calcPanel">
         <div class="panel-h"><h2>下单前：仓位和成本</h2><span class="sub">币安合约普通费率</span></div>
@@ -467,24 +476,6 @@ details.fold-in > summary { cursor: pointer; font-size: 13px; font-weight: 600; 
           <div class="verdict" id="verdict"></div>
           <dl class="kv" id="calcOut"></dl>
         </form>
-      </section>
-      </details>
-      <details class="fold"><summary>研究存档：早期验证过的信号（大部分没通过，只作记录）</summary>
-      <section class="panel">
-        <div class="panel-h">
-          <h2>各信号的回测成绩</h2>
-          <div class="seg" id="repTabs" role="group" aria-label="回测样本">
-            <button type="button" data-rep="gold_15m" aria-pressed="true">黄金 15分</button>
-            <button type="button" data-rep="silver_15m" aria-pressed="false">白银 15分</button>
-            <button type="button" data-rep="gold_1h" aria-pressed="false">黄金 1小时</button>
-            <button type="button" data-rep="trend" aria-pressed="false">趋势规则</button>
-            <button type="button" data-rep="log" aria-pressed="false">验证记录</button>
-          </div>
-        </div>
-        <div class="report">
-          <div class="tablewrap"><table id="repTable"></table></div>
-          <p class="note" id="repNote"></p>
-        </div>
       </section>
       </details>
       <details class="fold"><summary>交易日志（只存在这台手机）</summary>
@@ -558,12 +549,47 @@ details.fold-in > summary { cursor: pointer; font-size: 13px; font-weight: 600; 
     <div class="report">
       <h3 class="env-sub">A股情绪温度各档：之后60天全A等权的平均涨跌 · 上涨概率（2016年以来）</h3>
       <div class="tablewrap"><table id="envStats"></table></div>
-      <details class="fold-in"><summary>已经回测过的规则（点开看证据）</summary>
-      <div class="env-rules" id="envRules"></div>
-      </details>
       <p class="note">这一块只显示市场状态和历史回测结果，<b>不给买卖信号</b>。情绪温度由全部A股（剔除ST和次新股）的11个指标算出：涨停占比、跌停占比、涨停减跌停、炸板率、连板高度、昨日涨停今日表现、上涨家数占比、成交额热度、创一年新高减新低、站上20日线和60日线的比例，各自换算成在过去一年里的位置后取平均。</p>
     </div>
   </section>
+  </div>
+
+  <div class="tab" id="tab-research" hidden>
+  <p class="note" style="margin:10px 2px">这一页是研究记录：现在在用的规则和证据、所有测过的做法（包括没通过的）、技术指标明细。平时下单不用看这页。</p>
+      <details class="fold" open><summary>现在在用的规则和证据</summary>
+      <div class="env-rules" id="envRules"></div>
+      </details>
+      <details class="fold" open><summary>研究存档：早期验证过的信号（大部分没通过，只作记录）</summary>
+      <section class="panel">
+        <div class="panel-h">
+          <h2>各信号的回测成绩</h2>
+          <div class="seg" id="repTabs" role="group" aria-label="回测样本">
+            <button type="button" data-rep="gold_15m" aria-pressed="true">黄金 15分</button>
+            <button type="button" data-rep="silver_15m" aria-pressed="false">白银 15分</button>
+            <button type="button" data-rep="gold_1h" aria-pressed="false">黄金 1小时</button>
+            <button type="button" data-rep="trend" aria-pressed="false">趋势规则</button>
+            <button type="button" data-rep="log" aria-pressed="false">验证记录</button>
+          </div>
+        </div>
+        <div class="report">
+          <div class="tablewrap"><table id="repTable"></table></div>
+          <p class="note" id="repNote"></p>
+        </div>
+      </section>
+      </details>
+      <details class="fold" id="foldTech"><summary>技术指标明细：4小时 / 1小时 / 15分钟结构和价格附近的形态</summary>
+      <section class="panel" id="trendPanel">
+        <div class="panel-h"><h2>K线结构</h2><span class="sub" id="trendSub">4小时 · 1小时 · 15分钟</span></div>
+        <div class="trend" id="trendRows"><div class="empty">等K线载入后计算。</div></div>
+        <div class="combo" id="combo" hidden></div>
+        <p class="note trend-note" id="trendNote"></p>
+      </section>
+      <section class="panel">
+        <div class="panel-h"><h2>当前价格附近的位置（看位置用，不当进场信号）</h2><span class="sub" id="setupSub"></span></div>
+        <p class="note" style="padding:6px 14px 0;margin:0">支撑阻力反弹、24小时高低点反弹、双底双顶这几种形态，在黄金15分钟和1小时上回测过，<b>扣费后都亏</b>（和随便开单一样，白交手续费）；其他品种没回测过。所以这里只告诉你价格离这些位置多远。</p>
+        <div class="setups" id="setups"><div class="empty">等K线载入后自动识别。</div></div>
+      </section>
+      </details>
   </div>
 
   <div class="foot"><button class="ghost" id="colorMode" type="button" aria-label="切换涨跌颜色">绿涨红跌</button><span class="note">点它切换涨跌颜色（A股习惯红涨绿跌）。</span></div>
@@ -665,7 +691,7 @@ const $ = (id) => document.getElementById(id);
 const state = {
   sym: (window.JSQ_UNIVERSE.all.includes(store.get("sym", "")) || /^[A-Z0-9]{1,12}USDT$/.test(store.get("sym", ""))) ? store.get("sym") : "XAUUSDT",
   tf: (store.get("mig", "") !== "2" ? (store.set("tf", "1h"), store.set("mig", "2"), "1h") : TF_SEC[store.get("tf", "")] ? store.get("tf") : "1h"),
-  ind: "macd", rep: "gold_15m", redUp: store.get("redUp", "0") === "1", side: -1,
+  ind: "macd", rep: "gold_15m", redUp: store.get("redUp", "1") === "1", side: -1,
   layers: { sr: false, tl: false, r24: false, pat: false }
 };
 let CUR = null;          // { sym, tf, rows, daily, src }
@@ -1112,7 +1138,8 @@ const VLOG = [
   ["美股放量跳空做多（库拉马吉的 episodic pivot）", "币安有合约的美股，纳指牛市，跳空≥8%量≥3倍，第二天开盘进，止损跳空日低点，拿20天", "243笔每笔 +3.3%（前后 +5.1%/+2.2%），同批股票随机进 +0.4%；纳指熊市亏；跳空向下做空亏", "good", "牛市可用，已上交易台"],
   ["连亏后减仓（都铎·琼斯）", "小时线突破的金/银/币/AMD美光戴尔，按进场时间判断不偷看；海龟组合按回撤打折", "黄金、AMD回撤明显变小、少赚不多；币牛市少赚三到五成、币熊市少赚一半；海龟组合年化 23%→16%", "flat", "不通用，仓位一开始定小"],
   ["牛熊换5种分法（200日线 / 200日线+方向 / 金叉死叉 / 100日线 / 50日线）", "同一批小时线突破单，2021-11~2026-10", "金银、美股：做多差不多，做空换哪种都不赚；币：看比特币50日线最好——线上做多 +0.21R、线下做空 +0.18R（7个币都赚，前后两段都赚）", "good", "币改看50日线，能做空了；其余不变"],
-  ["熊市里纳指大涨日追多", "^NDX 日线 2000~2026，纳指在200日线下方时单日涨≥2%", "283次之后5天平均 −0.75%（涨的只有49%）、20天 −1.0%；只有约1/6在20天内站回200日线", "bad", "大涨日别追，卡片会提醒"]
+  ["熊市里纳指大涨日追多", "^NDX 日线 2000~2026，纳指在200日线下方时单日涨≥2%", "283次之后5天平均 −0.75%（涨的只有49%）、20天 −1.0%；只有约1/6在20天内站回200日线", "bad", "大涨日别追，卡片会提醒"],
+  ["页面信号和回测对账（自检）", "比特币、黄金、AMD 各自做多做空，同一批小时线", "首页清单和结论卡改用回测的突破信号本身（原来看的是技术指标偏多偏空，和回测不是一回事）；页面算出的每一笔进场、离场和回测程序 6 组全部一致", "good", "research/parity_check.py，改规则后先跑对账"]
 ];
 function renderLog() {
   $("repTable").innerHTML = `<thead><tr><th>打法</th><th>数据</th><th>结果</th><th>结论</th></tr></thead><tbody>` +
@@ -2027,9 +2054,10 @@ let lastRender = 0, timer = null, lastKey = "";
 
 // ================================================================ 页面切换
 function setTab(t, push) {
-  if (t !== "stock") t = "contract";
+  if (!["stock", "research"].includes(t)) t = "contract";
   $("tab-contract").hidden = t !== "contract";
   $("tab-stock").hidden = t !== "stock";
+  if ($("tab-research")) $("tab-research").hidden = t !== "research";
   $("tabs").querySelectorAll("button").forEach((b) => { const on = b.dataset.tab === t; b.setAttribute("aria-selected", String(on)); b.setAttribute("aria-pressed", String(on)); });
   if (push) { try { history.replaceState(null, "", "#" + t); } catch (e) {} }
   try { localStorage.setItem("tab", t); } catch (e) {}
@@ -2043,9 +2071,9 @@ function initTabs() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }));
   let t = (location.hash || "").replace("#", "");
-  if (t !== "stock" && t !== "contract") { try { t = localStorage.getItem("tab") || "contract"; } catch (e) { t = "contract"; } }
+  if (!["stock", "contract", "research"].includes(t)) { try { t = localStorage.getItem("tab") || "contract"; } catch (e) { t = "contract"; } }
   setTab(t, false);
-  window.addEventListener("hashchange", () => { const h = location.hash.replace("#", ""); if (h === "stock" || h === "contract") setTab(h, false); });
+  window.addEventListener("hashchange", () => { const h = location.hash.replace("#", ""); if (["stock", "contract", "research"].includes(h)) setTab(h, false); });
 }
 
 // ================================================================ 环境
@@ -2184,7 +2212,7 @@ function statFor(sym, bull, side) {
   const key = statKey(sym);
   if (!key || !E.contract_stats[key]) return null;
   const s = E.contract_stats[key][`breakout|E|${bull ? "bull" : "bear"}|${side}`];
-  return s ? { key, s } : null;
+  return s ? { key, s, env: { bull }, side } : null;
 }
 const SAMPLE = { stock_main: "AMD/美光/戴尔近5年", stock_other: "22只大型科技股近5年", stock_nontech: "23只非科技蓝筹近5年", crypto: "7个主流币近5年", commod: "铂金/钯金/铜/天然气近5年",
   XAUUSD: "黄金近5年", XAGUSD: "白银近5年", XPTCMDUSD: "铂金近5年", XPDCMDUSD: "钯金近5年", COPPERCMDUSD: "铜近5年", GASCMDUSD: "天然气近5年" };
@@ -2193,10 +2221,12 @@ function grade(st) {
   if (!st) return "none";
   const s = st.s;
   if (s.n < (st.key.startsWith("sym_") ? 60 : 100)) return "few";
-  if (s.avg >= 0.08) return Math.min(s.h1, s.h2) >= 0.03 ? "edge" : "unstable";
+  if (s.avg >= 0.08) return st.key.startsWith("sym_") ? "few" : Math.min(s.h1, s.h2) >= 0.03 ? "edge" : "unstable";   // 单只股票的好成绩不延续（72只前后一年对比），不当依据
   return s.avg > -0.03 ? "flat" : "lose";
 }
-const rTxt = (x) => `${x >= 0 ? "赚" : "亏"}${Math.abs(x).toFixed(2)}份止损`;
+const rTxt = (x) => `${x >= 0 ? "赚" : "亏"}止损金额的${Math.round(Math.abs(x) * 100)}%`;
+const uOf = (key, bull, side, v) => { const t = (((window.JSQ_ENV || {}).contract_stats || {})[key] || {})[`u|${bull ? "bull" : "bear"}|${side === 1 || side === "long" ? "long" : "short"}`]; return t && t[v || "F"] ? t[v || "F"] : null; };
+const uTxt = (u) => `${u >= 0 ? "赚" : "亏"} ${Math.abs(u).toFixed(1)}U`;
 const symMeta = (key) => key && key.startsWith("sym_") ? ((((window.JSQ_ENV || {}).contract_stats || {})[key] || {})._meta || null) : null;
 const symNote = (st) => st && st.key.startsWith("sym_") ? "（单只股票自己的历史太短；查过72只这类股票，前一年突破灵的、后一年反而偏差，单只的成绩只能当参考。）" : "";
 const ymTxt = (d) => `${d.slice(0, 4)}年${+d.slice(5, 7)}月`;
@@ -2209,7 +2239,8 @@ function histLine(st, label) {
   if (!st) return "";
   const s = st.s, w = Math.round(s.win * 10), net = s.avg;
   const m = symMeta(st.key), smp = SAMPLE[st.key] || (st.key.startsWith("sym_") ? `${st.key.slice(4)}自己${m ? "从" + ymTxt(m.start) + "起" : ""}的小时线` : st.key);
-  return `${label}：10笔里赚${w}笔，平均每笔${net >= 0 ? "净赚" : "净亏"} ${Math.abs(net).toFixed(2)} 份止损（${smp}，${s.n}笔）`;
+  const u = st.env ? uOf(st.key, st.env.bull, st.side, "F") : null;
+  return `${label}：10笔里赚${w}笔，` + (u ? `按100U开5倍平均每次${uTxt(u.u)}` : `平均每笔${rTxt(net)}`) + `（${smp}，${s.n}笔）`;
 }
 function usMarketClosed() {
   const p = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", weekday: "short", hour: "2-digit", minute: "2-digit", hour12: false }).formatToParts(new Date());
@@ -2225,15 +2256,15 @@ function exitLine(sym, env, side) {
   const k = statKey(sym), ek = `${env.bull ? "bull" : "bear"}|${side === 1 ? "long" : "short"}`;
   const T = (EXIT[k] && EXIT[k][ek]) || ((((window.JSQ_ENV || {}).contract_stats || {})[k] || {})["exit|" + ek]);
   if (!T || T.F.n < 60) return "";
-  const sg = (x) => (x >= 0 ? "+" : "") + x.toFixed(2);
-  const keep = T.J.avg >= 0.85 * T.F.avg;
-  return `回测（${SAMPLE[k] || (k.startsWith("sym_") ? k.slice(4) + "自己的小时线" : k)}，${env.w50 ? (env.bull ? "比特币50日线上方" : "比特币50日线下方") : env.bull ? "牛市" : "熊市"}${side === 1 ? "做多" : "做空"}）：这样出场平均每笔 <b>${sg(T.F.avg)}</b> 份止损；2倍先平一半 ${sg(T.J.avg)}；` +
-    `固定2倍全平 ${sg(T.G.avg)}；1倍就平一半 ${sg(T.B.avg)}（胜率 ${T.B.win}%，但赚得少）。` +
+  const keep = T.J.avg >= 0.85 * T.F.avg, UT = (((window.JSQ_ENV || {}).contract_stats || {})[k] || {})["u|" + ek];
+  const sg = (v) => UT && UT[v] ? (UT[v].u >= 0 ? "+" : "") + UT[v].u.toFixed(1) + "U" : (T[v].avg >= 0 ? "赚" : "亏") + "止损金额的" + Math.round(Math.abs(T[v].avg) * 100) + "%";
+  return `回测（${SAMPLE[k] || (k.startsWith("sym_") ? k.slice(4) + "自己的小时线" : k)}，${env.w50 ? (env.bull ? "比特币50日线上方" : "比特币50日线下方") : env.bull ? "牛市" : "熊市"}${side === 1 ? "做多" : "做空"}${UT ? "，按100U开5倍算" : ""}）：这样出场平均每次 <b>${sg("F")}</b>；2倍先平一半 ${sg("J")}；` +
+    `固定2倍全平 ${sg("G")}；1倍就平一半 ${sg("B")}（胜率 ${T.B.win}%，但赚得少）。` +
     (T.F.avg <= 0 ? "这个方向怎么出场都不赚。" : keep ? "分批影响不大，按习惯来。" : "<b>这类品种分批会少赚不少</b>（钱主要来自少数大行情），能扛住就别分批。");
 }
-function plan(V, side, tf, at, sym, env) {
+function plan(V, side, tf, at, sym, env, stp) {
   const E0 = at || V.last, dp = V.dp, day = tf === "1d" ? "20日" : V.sess ? "最近7根交易时段小时线" : "24小时", trail = tf === "1d" ? "过去10天" : "过去3天";
-  const stop = side === 1 ? V.L * 0.999 : V.H * 1.001, R = side * (E0 - stop);
+  const stop = stp || (side === 1 ? V.L * 0.999 : V.H * 1.001), R = side * (E0 - stop);
   if (!(R > 0) || !isFinite(R)) return `现价已经越过${day}${side === 1 ? "最低" : "最高"}点，按你的规则没法放止损。`;
   const be = E0 + side * R, half = E0 + side * 2 * R;
   PLANNUM = { E0, stop, target: half, side };
@@ -2297,7 +2328,8 @@ async function needH1(sym) {
   if (!r.ok) return false;
   const k = await r.json(); if (!Array.isArray(k) || k.length < 140) return false;
   const rows = k.slice(0, -1).map((x) => ({ t: +x[0], h: +x[2], l: +x[3], c: +x[4] }));
-  H1[sym] = { rows, sess: sessRows(rows), at: Date.now() };
+  const last = +k[k.length - 1][4];
+  H1[sym] = { rows, sess: sessRows(rows), at: Date.now(), last, dp: last >= 100 ? 2 : last >= 1 ? 3 : 5 };
   return true;
 }
 // 美股合约按"交易时段小时线"算（回测用的就是美股交易时段：每天7根，纽约时间9点到16点）
@@ -2354,22 +2386,170 @@ function dipState(sym, V, mode) {
   const mgmt = (e) => `止损 <b>${fmt(e.stop, dp)}</b>（这波最低点 ${fmt(e.low, dp)} 下方）；涨到 <b>${fmt(e.E0 + e.Rk, dp)}</b>（1倍止损距离）把止损挪到开仓价${e.E0 ? "，或开仓价上方半份" : ""}；目标 <b>${fmt(e.top, dp)}</b>（跌够那一刻的5天高点）到了全平；最晚 <b>${e.deadline}</b> 美股收盘还没到就平。`;
   if (ep.stage === "none") {
     const need = ep.top * Math.exp(-2 * sd), lastTxt = ep.last ? `上一轮（${nyInfo(ep.last.kt).md}在 ${fmt(ep.last.E0, dp)} 企稳）已经结束：${ep.last.why}。` : "";
-    return { dir: "观望（跌得还不够）", cls: "flat", why: head + lastTxt + `现在5个交易日最高 ${fmt(ep.top, dp)}，要跌到 <b>${fmt(need, dp)}</b> 以下才算跌够（现 ${fmt(last, dp)}）。` };
+    return { tier: 2, short: `等回调：跌到 ${fmt(need, dp)} 以下才算跌够（现 ${fmt(last, dp)}）`, dir: "观望（跌得还不够）", cls: "flat", why: head + lastTxt + `现在5个交易日最高 ${fmt(ep.top, dp)}，要跌到 <b>${fmt(need, dp)}</b> 以下才算跌够（现 ${fmt(last, dp)}）。` };
   }
-  if (ep.stage === "wait") return { dir: "等企稳再做多", cls: "warn", why: head + `已经跌够（5天高点 ${fmt(ep.top, dp)}，最低 ${fmt(ep.low, dp)}），还没企稳：等美股交易时段1小时收盘站上 <b>${fmt(ep.trig, dp)}</b> 再做多。` };
+  if (ep.stage === "wait") return { tier: 1, short: `已跌够，等企稳：交易时段1小时收盘站上 ${fmt(ep.trig, dp)} 做多`, dir: "等企稳再做多", cls: "warn", why: head + `已经跌够（5天高点 ${fmt(ep.top, dp)}，最低 ${fmt(ep.low, dp)}），还没企稳：等美股交易时段1小时收盘站上 <b>${fmt(ep.trig, dp)}</b> 再做多。` };
   const age = R.length - 1 - ep.k, upB = ndxUpBefore(ep.kt), kd = nyInfo(ep.kt).md;
   const holder = `<br><span class="plan-bt">这一轮${kd}在 ${fmt(ep.E0, dp)} 企稳，已经在里面的照这个管：${mgmt(ep)}</span>`;
-  if (age > 3) return { dir: "这轮已经企稳过了，不追", cls: "flat", why: head + `${kd} ${fmt(ep.E0, dp)} 那根已经企稳反弹，现在追进去止损太远；等下一次回调。`, plan: `现在不给新开仓价位。${holder}` };
-  if (bear && upB === true) return { dir: "先不进（纳指前一天在涨）", cls: "warn", why: head + `已经企稳，但纳指100上一个交易日是涨的：历史上这种时候进场19次平均每次亏14.7U；纳指前一天在跌的90次平均赚6.2U。`, plan: `先不进。${holder}` };
+  if (age > 3) return { tier: 3, short: `这轮${kd}已在 ${fmt(ep.E0, dp)} 企稳，不追；等下一次回调`, dir: "这轮已经企稳过了，不追", cls: "flat", why: head + `${kd} ${fmt(ep.E0, dp)} 那根已经企稳反弹，现在追进去止损太远；等下一次回调。`, plan: `现在不给新开仓价位。${holder}` };
+  if (bear && upB === true) return { tier: 3, short: "已企稳，但纳指前一天在涨，先不进", dir: "先不进（纳指前一天在涨）", cls: "warn", why: head + `已经企稳，但纳指100上一个交易日是涨的：历史上这种时候进场19次平均每次亏14.7U；纳指前一天在跌的90次平均赚6.2U。`, plan: `先不进。${holder}` };
   const E0 = last, Rk = E0 - ep.stop;
-  if (!(Rk > 0) || !(ep.top > E0)) return { dir: "观望", cls: "flat", why: head + "现价已经离开这一轮的范围。" };
+  if (!(Rk > 0) || !(ep.top > E0)) return { tier: 3, short: "观望", dir: "观望", cls: "flat", why: head + "现价已经离开这一轮的范围。" };
   PLANNUM = { E0, stop: ep.stop, target: ep.top, side: 1 };
   const e2 = Object.assign({}, ep, { E0, Rk });
   const plan = `回调企稳做多参考（现价 ${fmt(E0, dp)} 进，亏 ${pc(Rk / E0)}，到目标赚 ${pc((ep.top - E0) / E0)}）：${mgmt(e2)}` +
     `到1倍以后止损挪到开仓价或开仓价上方半份（${fmt(E0 + 0.5 * Rk, dp)}）都行：回测平均差不多，提到半份的那种46次里91%最后是赚的。` +
     (bear ? `<br><span class="plan-bt">回测（AMD/美光/戴尔，熊市，纳指前一天在跌，每次100U×5倍）：90次，平均每次 +6.2U，10次赚4次；2021-11~2024-04 +3.6U/次（77次），2024-05以后 +22.0U/次（13次，大头是2025年4月急跌后的反弹）。样本不大，轻仓。</span>`
       : `<br><span class="plan-bt">回测（牛市、纳指整体回调时，每次100U×5倍）：AMD/美光/戴尔 130次，平均每次 +4.7U（前后两段 +2.3/+6.0）；个股自己跌、大盘没跌时做只有 +1.8U；其他22只科技股同样条件只有 +1.4U，所以只给这3只用。</span>`);
-  return { dir: bear ? "可以做多（回调企稳，轻仓）" : "可以做多（大盘回调后企稳，轻仓）", cls: "up", why: head + `已经跌够、${age === 0 ? "刚刚" : age + "根交易时段小时线前"}企稳。`, plan };
+  return { tier: 0, short: `回调企稳做多（轻仓）：现 ${fmt(E0, dp)}，止损 ${fmt(ep.stop, dp)}（亏 ${pc(Rk / E0)}），目标 ${fmt(ep.top, dp)}`, dir: bear ? "可以做多（回调企稳，轻仓）" : "可以做多（大盘回调后企稳，轻仓）", cls: "up", why: head + `已经跌够、${age === 0 ? "刚刚" : age + "根交易时段小时线前"}企稳。`, plan };
+}
+// ---------------------------------------------------------------- 突破信号：和回测 research/contract_bt.py 的 breakout 同一套
+// 进场：1小时收盘 突破前L根最高（做空=跌破最低）、EMA20在EMA50上方（做空=下方）、收盘高于L根前的收盘；L=24（美股合约=7根交易时段线）
+// 止损：L根最低×0.999；浮盈1倍后止损=max(开仓价, 3L根最低)；小时线EMA反穿或满10天离场；止损距离要在0.4%~8%之间
+function brk(sym, side, trace) {
+  const X = H1[sym]; if (!X) return null;
+  const stock = U.groupOfSym(sym) === "stock", R = stock ? X.sess : X.rows, L = stock ? 7 : 24, N = R.length - 1;
+  if (N < 90) return null;
+  const up = []; let e20 = R[0].c, e50 = R[0].c;
+  for (let i = 0; i <= N; i++) { e20 += (R[i].c - e20) * (2 / 21); e50 += (R[i].c - e50) * (2 / 51); up.push(e20 > e50); }
+  const sig = (i) => side === 1 ? (up[i] && R[i].c > maxH(R, i - L, i) && R[i].c > R[i - L].c) : (!up[i] && R[i].c < minL(R, i - L, i) && R[i].c < R[i - L].c);
+  const last = X.last, win = stock ? "最近7根交易时段小时线" : "24小时";
+  let i = 60, open = null;
+  while (i <= N) {
+    if (!sig(i)) { i++; continue; }
+    const E = R[i].c, stop0 = side === 1 ? minL(R, i - L + 1, i + 1) * 0.999 : maxH(R, i - L + 1, i + 1) * 1.001, Rk = side * (E - stop0);
+    if (!(Rk >= 0.004 * E && Rk <= 0.08 * E)) { i++; continue; }
+    let st = stop0, armed = false, mfe = 0, end = -1;
+    for (let j = i + 1; j <= N; j++) {
+      const adv = side === 1 ? R[j].l : R[j].h, fav = side === 1 ? R[j].h : R[j].l;
+      if (side * (adv - st) <= 0) { end = j; break; }
+      mfe = Math.max(mfe, side * (fav - E) / Rk); if (mfe >= 1) armed = true;
+      if (armed) { const tr = side === 1 ? minL(R, j - 3 * L + 1, j + 1) * 0.999 : maxH(R, j - 3 * L + 1, j + 1) * 1.001; st = side === 1 ? Math.max(st, E, tr) : Math.min(st, E, tr); }
+      if ((side === 1 ? (!up[j] && up[j - 1]) : (up[j] && !up[j - 1])) || j - i >= 10 * (stock ? 7 : 24)) { end = j; break; }
+    }
+    if (trace) trace.push({ t: R[i].t, E, stop: stop0, end: end < 0 ? null : R[end].t });
+    if (end < 0) { open = { i, E, stop0, Rk, st, armed, age: N - i, t: R[i].t }; break; }
+    i = end + 1;
+  }
+  if (open && side * (last - open.st) > 0) {
+    const fresh = open.age <= 2 && side * (last - open.E) <= 0.5 * open.Rk;
+    return Object.assign({ stage: fresh ? "fresh" : "open", side, last, dp: X.dp, win, stock }, open);
+  }
+  // 还没有信号：下一根小时线收盘要越过的价位
+  const level = side === 1 ? maxH(R, N - L + 1, N + 1) : minL(R, N - L + 1, N + 1);
+  let atr = 0; for (let j = N - 23; j <= N; j++) atr += Math.max(R[j].h - R[j].l, Math.abs(R[j].h - R[j - 1].c), Math.abs(R[j].l - R[j - 1].c)); atr /= 24;
+  const dist = side * (level - last);
+  return { stage: "flat", side, last, dp: X.dp, win, stock, level, dist, near: dist <= atr, trendOK: side === 1 ? up[N] : !up[N], stopIf: side === 1 ? minL(R, N - L + 2, N + 1) * 0.999 : maxH(R, N - L + 2, N + 1) * 1.001 };
+}
+window.JSQ_BRK = (sym, side) => { const tr = []; brk(sym, side, tr); return tr; };
+const OKG = (x) => x === "edge" || x === "unstable";
+const SCANERR = {};
+// 一个品种现在在哪一步：tier 0 可以做 / 1 快到了 / 2 等信号 / 3 已经在走或暂不进 / 4 不做 / 9 载入中
+function symState(sym) {
+  const env = envFor(sym), X = H1[sym], name = U.names[sym] || sym.replace(/USDT$/, ""), base = { sym, name };
+  if (SCANERR[sym] && !X) return Object.assign(base, { tier: 9, short: "行情没取到，稍后再试" });
+  if (!env || !X) return Object.assign(base, { tier: 9, short: "载入中…" });
+  const key = statKey(sym), f = (x) => fmt(x, X.dp), envW = env.w50 ? (env.bull ? "比特币在50日线上方" : "比特币在50日线下方") : env.bull ? "牛市" : "熊市";
+  if (key === "stock_main" && (!env.bull || ndxDipped())) {
+    const d = VOL[sym] ? dipState(sym, { dp: X.dp, last: X.last }, env.bull ? "bull" : "bear") : null;
+    if (!env.bull) return d ? Object.assign(base, { tier: d.tier, short: `熊市只做回调企稳｜${d.short}`, kind: "dip" }) : Object.assign(base, { tier: 9, short: "载入中…" });
+    if (d && d.tier <= 1) return Object.assign(base, { tier: d.tier, short: `大盘回调｜${d.short}`, kind: "dip" });
+  }
+  const stL = statFor(sym, env.bull, "long"), stS = statFor(sym, env.bull, "short"), gL = grade(stL), gS = grade(stS);
+  const side = OKG(gL) ? 1 : OKG(gS) ? -1 : 0;
+  if (!side) {
+    const why = gL === "none" && gS === "none" ? "没回测过" : (gL === "few" || gS === "few") && !["lose", "flat"].includes(gL) ? `${envW}，回测样本太少` : `${envW}，回测里做多做空都不赚`;
+    return Object.assign(base, { tier: 4, short: why });
+  }
+  const b = brk(sym, side); if (!b) return Object.assign(base, { tier: 9, short: "载入中…" });
+  const w = side === 1 ? "做多" : "做空", brkW = side === 1 ? "突破" : "跌破", bar = b.stock ? "交易时段1小时收盘" : "1小时收盘", light = (side === 1 ? gL : gS) === "unstable" ? "（轻仓）" : "";
+  if (b.stage === "fresh") return Object.assign(base, { tier: 0, side, b, short: `可以${w}${light}（刚${brkW}）：现 ${f(b.last)}，止损 ${f(b.stop0)}（亏 ${pabs(side * (b.last - b.stop0) / b.last)}）` });
+  if (b.stage === "open") return Object.assign(base, { tier: 3, side, b, short: `${b.age}根小时线前已经${brkW}（${f(b.E)}），在走了，不追` });
+  const more = b.trendOK ? "" : `，还要小时线趋势转${side === 1 ? "多" : "空"}`;
+  return Object.assign(base, { tier: b.near ? 1 : 2, side, b, short: `${b.near ? "快到了" : "等" + brkW}：${bar}${side === 1 ? "站上" : "跌破"} ${f(b.level)} 再${w}${light}（还差 ${pabs(b.dist / b.last)}${more}）` });
+}
+const SCAN = { busy: false, at: 0 };
+function scanSyms() {
+  const out = ["XAUUSDT", "XAGUSDT"].concat(TESTED_CRYPTO, TESTED_MAIN);
+  let fv = []; try { fv = typeof U.favs === "function" ? U.favs() : (U.favs || []); } catch (e) {}
+  for (const s of fv) if (!out.includes(s)) out.push(s);
+  return out;
+}
+async function scanAll(force) {
+  if (SCAN.busy || (!force && Date.now() - SCAN.at < 4 * 60e3)) return;
+  SCAN.busy = true;
+  const syms = scanSyms();
+  try {
+    await Promise.all([needDMA("BTCUSDT"), needDMA("XAUUSDT"), needDMA("XAGUSDT")].map((p) => Promise.resolve(p).catch(() => {})));
+    for (let i = 0; i < syms.length; i += 4) {
+      await Promise.all(syms.slice(i, i + 4).map(async (s) => {
+        try {
+          const g = U.groupOfSym(s);
+          if (g === "metal" && !["XAUUSDT", "XAGUSDT"].includes(s)) await Promise.resolve(needDMA(s)).catch(() => {});
+          await needH1(s); if (!H1[s]) SCANERR[s] = true;
+          if (TESTED_MAIN.includes(s)) await needVol(s);
+        } catch (e) { SCANERR[s] = true; }
+      }));
+      renderScan();
+    }
+    SCAN.at = Date.now();
+  } finally { SCAN.busy = false; renderScan(); }
+}
+function renderScan() {
+  const el = $("scanList"); if (!el) return;
+  const rows = scanSyms().map(symState), E = window.JSQ_ENV || {}, u = usNow();
+  // 美股放量跳空：只有纳指牛市、今天是"第二天开盘前"才算能做
+  if (u && u.bull && Array.isArray(E.ep)) for (const e of E.ep) if (e.days === 0 && e.last >= e.low) rows.push({ sym: e.t + "USDT", name: U.names[e.t + "USDT"] || e.t, tier: 0, short: `放量跳空：下一个美股开盘做多，止损 ${e.low}，拿20个交易日`, kind: "ep" });
+  const G = [["可以做", 0], ["快到了", 1], ["等信号", 2], ["已经在走 / 暂时不进", 3], ["不做", 4], ["载入中", 9]];
+  let html = "";
+  for (const [title, t] of G) {
+    const xs = rows.filter((r) => r.tier === t); if (!xs.length) continue;
+    const body = xs.map((r) => `<button type="button" class="scan-row t${t}" data-sym="${esc(r.sym)}"><b>${esc(r.name)}</b><span>${esc(r.short)}</span></button>`).join("");
+    html += t === 4 ? `<details class="scan-more"><summary class="scan-g">${title}（${xs.length}）：${esc(xs.map((r) => r.name).join("、"))}</summary>${body}</details>` : `<div class="scan-g t${t}">${title}（${xs.length}）</div>` + body;
+  }
+  const n0 = rows.filter((r) => r.tier === 0).length, n1 = rows.filter((r) => r.tier === 1).length, loading = rows.some((r) => r.tier === 9 && !SCANERR[r.sym]);
+  $("scanHead").textContent = loading ? "正在扫描…" : n0 ? `现在有 ${n0} 个可以做` : n1 ? `现在没有可以做的，${n1} 个快到了` : "现在没有可以做的";
+  el.innerHTML = html;
+  const rest = U.all.length - new Set(rows.map((r) => r.sym)).size;
+  $("scanNote").innerHTML = `只列有回测依据的品种（黄金、白银、7个主流币、AMD/美光/戴尔）和你收藏的。其余 ${rest} 只合约按规则都<b>不做</b>：回测没有优势、单只样本太少或没回测过。点一行看详细计划。` + (SCAN.at ? `（${new Date(SCAN.at).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" })} 更新，每5分钟刷新）` : "");
+  el.querySelectorAll("button").forEach((b) => b.addEventListener("click", () => { const s = b.dataset.sym; if (U.all.includes(s) && window.JSQ) { window.JSQ.select(s); const c = $("card"); if (c) c.scrollIntoView({ behavior: "smooth", block: "start" }); } }));
+}
+// ---------------------------------------------------------------- 持仓总览（所有填过的仓位）
+const PX = { at: 0, m: {} };
+async function needPrices() {
+  if (Date.now() - PX.at < 30e3) return;
+  const r = await fetch(`${REST}/fapi/v1/ticker/price`, { cache: "no-store" }); if (!r.ok) return;
+  const a = await r.json(); if (!Array.isArray(a)) return;
+  PX.m = {}; for (const x of a) PX.m[x.symbol] = +x.price; PX.at = Date.now();
+}
+function allPos() {
+  const out = [];
+  try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && k.startsWith("jsq.pos.")) { const o = JSON.parse(localStorage.getItem(k) || "{}"); if (o && numv(o.E) > 0) out.push({ sym: k.slice(8), side: +o.side || 1, E: numv(o.E), S: numv(o.S), N: numv(o.N) }); } } } catch (e) {}
+  return out;
+}
+async function renderPosList() {
+  const box = $("posPanel"); if (!box) return;
+  const P = allPos(); box.hidden = !P.length; if (!P.length) return;
+  try { await needPrices(); } catch (e) {}
+  const GN = { metal: "金银等商品", crypto: "币", stock: "股票" }, sum = {}, miss = [];
+  let tot = 0, totNow = 0, known = true;
+  const rows = P.map((p) => {
+    const last = PX.m[p.sym], nm = U.names[p.sym] || p.sym.replace(/USDT$/, ""), dp = last >= 100 ? 2 : last >= 1 ? 3 : 5, f = (x) => fmt(x, dp);
+    const qty = p.N > 0 && last > 0 ? p.N / last : NaN, pn = isFinite(qty) ? qty * p.side * (last - p.E) : NaN, ps = isFinite(qty) && isFinite(p.S) ? qty * p.side * (p.S - p.E) : NaN;
+    if (!isFinite(ps)) { miss.push(nm); known = false; } else { const g = U.groupOfSym(p.sym); sum[g] = (sum[g] || 0) + ps; tot += ps; }
+    if (isFinite(pn)) totNow += pn;
+    const u1 = (x) => isFinite(x) ? `${x >= 0 ? "+" : "−"}${Math.abs(x).toFixed(1)}U` : "—";
+    return `<button type="button" class="scan-row" data-sym="${esc(p.sym)}"><b>${esc(nm)} ${p.side === 1 ? "多" : "空"}</b><span>开 ${f(p.E)} → 现 ${last ? f(last) : "—"}｜现在 ${u1(pn)}｜${isFinite(p.S) ? `止损 ${f(p.S)}：打到是 ${u1(ps)}` : "没填止损"}</span></button>`;
+  });
+  $("posList").innerHTML = rows.join("");
+  const acct = numv(($("posAcct") || {}).value), pc = (x) => acct > 0 ? `，本金的 ${(Math.abs(x) / acct * 100).toFixed(1)}%` : "";
+  const parts = Object.keys(sum).map((g) => `${GN[g]} ${sum[g] >= 0 ? "+" : "−"}${Math.abs(sum[g]).toFixed(1)}U`);
+  let t = `${P.length} 个仓位，现在合计 ${totNow >= 0 ? "+" : "−"}${Math.abs(totNow).toFixed(1)}U。<b>如果全部打到止损：${tot >= 0 ? "还赚" : "一共亏"} ${Math.abs(tot).toFixed(1)}U</b>${tot < 0 ? pc(tot) : ""}` + (parts.length > 1 ? `（${parts.join("，")}）` : "") + "。";
+  if (miss.length) t += ` ${miss.join("、")} 没填止损或持仓价值，没算进去。`;
+  const worst = Object.keys(sum).filter((g) => sum[g] < 0 && acct > 0 && -sum[g] / acct > 0.03);
+  if (worst.length) t += ` <b>${worst.map((g) => GN[g]).join("、")}这一类合计超过本金3%</b>：同一类常常一起涨跌，等于一笔大单（这是风控习惯，不是回测结论）。`;
+  $("posSum").innerHTML = t;
+  $("posList").querySelectorAll("button").forEach((b) => b.addEventListener("click", () => { const s2 = b.dataset.sym; if (window.JSQ) { window.JSQ.select(s2); const c = $("posBox"); if (c) { c.open = true; c.scrollIntoView({ behavior: "smooth", block: "center" }); } } }));
 }
 // ---------------------------------------------------------------- 我的持仓：按规则算止损、止盈和后续（只存在这台手机）
 const numv = (x) => { const v = parseFloat(String(x || "").replace(/[,，\s]/g, "")); return isFinite(v) ? v : NaN; };
@@ -2450,7 +2630,10 @@ function renderEP() {
   }).join("");
 }
 function initPos() {
-  ["posSide", "posE", "posS", "posN"].forEach((id) => { const e = $(id); if (e) e.addEventListener("input", () => renderCard(true)); });
+  let tm = 0;
+  ["posSide", "posE", "posS", "posN"].forEach((id) => { const e = $(id); if (e) e.addEventListener("input", () => { renderCard(true); clearTimeout(tm); tm = setTimeout(renderPosList, 800); }); });
+  const a = $("posAcct"); if (a) { try { a.value = localStorage.getItem("jsq.acct") || ""; } catch (e) {} a.addEventListener("input", () => { try { localStorage.setItem("jsq.acct", a.value.trim()); } catch (e) {} renderPosList(); }); }
+  setInterval(() => { if (!document.hidden) { scanAll(false); renderPosList(); } }, 60e3);
 }
 function setDir(text, cls) { const d = $("cardDir"); d.textContent = text; d.className = "card-dir " + cls; }
 function renderCard(force) {
@@ -2468,7 +2651,7 @@ function renderCard(force) {
   needVol(sym).then((ch) => { if (ch && window.JSQ.state.sym === sym) renderCard(true); }).catch(() => {});
   const dipMode = statKey(sym) === "stock_main" && env && !env.bull;
   const bullDip = env && env.bull && statKey(sym) === "stock_main" && ndxDipped();   // 其他22只科技股同样条件只有 +1.4U/次，不用
-  if (g === "stock" || dipMode || bullDip) needH1(sym).then((ch) => { if (ch && window.JSQ.state.sym === sym) renderCard(true); }).catch(() => {});
+  needH1(sym).then((ch) => { if (ch && window.JSQ.state.sym === sym) renderCard(true); }).catch(() => {});
   // 美股合约：突破价位按"最近7根交易时段小时线"算（回测口径），不用24小时
   const SS = g === "stock" && H1[sym] && H1[sym].sess.length >= 7 ? H1[sym].sess : null;
   if (SS && tf !== "1d") V = Object.assign({}, V, { H: maxH(SS, SS.length - 7, SS.length), L: minL(SS, SS.length - 7, SS.length), sess: true });
@@ -2512,6 +2695,22 @@ function renderCard(force) {
     else if (ok(gS)) { dir = "等跌破再做空"; cls = "warn"; side = -1; planAt = V.L; why = head + `等价格跌破${dayW}最低点 ${Lw} 再做空${gL === "lose" || gL === "flat" ? "，不做多（回测这种环境做多不赚）" : ""}。`; }
     else { dir = "观望"; cls = "flat"; side = 0; why = head + (gL === "few" || gS === "few" ? "这种环境回测样本太少，多空都没有可靠优势。" + symNote(stL || stS) : "回测里这种环境多空都不赚钱。"); }
   }
+  // 有回测依据的方向：结论只看回测用的那个突破信号，不看技术指标偏多偏空（和"今天能做什么"清单同一套算法）
+  let stpOv = 0;
+  if (env && !dipMode && (ok(gL) || ok(gS))) {
+    const sd = ok(gL) ? 1 : -1, b = brk(sym, sd), w = sd === 1 ? "做多" : "做空", bw = sd === 1 ? "突破" : "跌破", gg = sd === 1 ? gL : gS, st = sd === 1 ? stL : stS;
+    const head = `大方向${envWord}（${env.what}）。`, light = gg === "unstable" ? "（轻仓）" : "", other = `不${sd === 1 ? "做空" : "做多"}（回测这种环境${sd === 1 ? "做空" : "做多"}不赚）`;
+    const note = gg === "unstable" ? `回测${w}整体赚钱，但时灵时不灵：${halfTxt(st.s, st.key)}。` : `回测里这种环境${w}前后两段都赚钱。`;
+    if (!b) { dir = "等小时线载入…"; cls = "flat"; side = 0; why = head; noPlan = "正在取小时线。"; }
+    else if (b.stage === "fresh") { dir = `可以${w}${light}`; cls = sd === 1 ? "up" : "down"; side = sd; planAt = 0; stpOv = b.stop0;
+      why = head + `${b.age === 0 ? "刚刚" : b.age + "根小时线前"}1小时收盘${bw}了${b.win}${sd === 1 ? "最高" : "最低"}点，符合回测的进场条件。` + note + other + "。"; }
+    else if (b.stage === "open") { dir = `已经${bw}，不追`; cls = "flat"; side = 0;
+      why = head + `${b.age}根小时线前已经${bw}（当时 ${fmt(b.E, V.dp)}），现在追进去止损太远，等下一次。`;
+      noPlan = `不给新开仓价位。已经在里面的：止损放 <b>${fmt(b.st, V.dp)}</b>` + (b.armed ? `（已过1倍止损距离，跟着3天${sd === 1 ? "最低" : "最高"}点挪）。` : `，${sd === 1 ? "涨" : "跌"}到 ${fmt(b.E + sd * b.Rk, V.dp)} 再挪到开仓价。`); }
+    else { dir = `${b.near ? "快到了：" : ""}等${bw}再${w}${light}`; cls = "warn"; side = sd; planAt = b.level; stpOv = b.stopIf;
+      why = head + `等${b.stock ? "交易时段" : ""}1小时收盘${sd === 1 ? "站上" : "跌破"}${b.win}${sd === 1 ? "最高" : "最低"}点 <b>${fmt(b.level, V.dp)}</b>（还差 ${pabs(b.dist / b.last)}）再${w}` +
+        (b.trendOK ? "" : `，同时要小时线趋势转${sd === 1 ? "多" : "空"}（短均线${sd === 1 ? "上" : "下"}穿长均线）`) + `；${other}。` + note; }
+  }
   let dipPlan = "";
   if (dipMode) {
     const d = dipState(sym, V, "bear");
@@ -2524,7 +2723,7 @@ function renderCard(force) {
   setDir(dir, cls);
   $("cardWhy").innerHTML = why + (env ? `<span class="src">（${esc(env.src)}）</span>` : "");
   // 价位
-  $("cardPlan").innerHTML = dipPlan ? dipPlan : side ? plan(V, side, tf, planAt && isFinite(planAt) && side * (planAt - V.last) > 0 ? planAt : 0, sym, env) : (noPlan || "方向不明，不给参考价位。");
+  $("cardPlan").innerHTML = dipPlan ? dipPlan : side ? plan(V, side, tf, planAt && isFinite(planAt) && side * (planAt - V.last) > 0 ? planAt : 0, sym, env, stpOv) : (noPlan || "方向不明，不给参考价位。");
   // 历史
   const hl = [];
   if (dipMode) {
@@ -2612,7 +2811,7 @@ function init() {
   $("ckLong").addEventListener("click", () => { $("foldCalc").open = true; const b = $("use24L"); if (b) { b.click(); $("foldCalc").scrollIntoView({ behavior: "smooth", block: "start" }); } });
   $("ckShort").addEventListener("click", () => { $("foldCalc").open = true; const b = $("use24S"); if (b) { b.click(); $("foldCalc").scrollIntoView({ behavior: "smooth", block: "start" }); } });
   document.addEventListener("jsq-view", () => renderCard(false));
-  document.addEventListener("jsq-env-ready", () => { mergePerps(); renderBar(); renderCard(true); renderBrief(); renderEP(); });
+  document.addEventListener("jsq-env-ready", () => { mergePerps(); renderBar(); renderCard(true); renderBrief(); renderEP(); scanAll(true); renderPosList(); });
   document.addEventListener("jsq-live", () => { renderBar(); renderCard(false); renderBrief(); renderEP(); });
   const refresh = async () => { await Promise.allSettled(["XAUUSDT", "XAGUSDT", "BTCUSDT"].map(needDMA)); renderBar(); renderCard(true); };
   refresh(); setInterval(refresh, 5 * 60e3);
