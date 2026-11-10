@@ -219,6 +219,7 @@ function exitLine(sym, env, side) {
   const sg = (v) => UT && UT[v] ? (UT[v].u >= 0 ? "+" : "") + UT[v].u.toFixed(1) + "U" : (T[v].avg >= 0 ? "赚" : "亏") + "止损金额的" + Math.round(Math.abs(T[v].avg) * 100) + "%";
   return `回测（${SAMPLE[k] || (k.startsWith("sym_") ? k.slice(4) + "自己的小时线" : k)}，${env.w50 ? (env.bull ? "比特币50日线上方" : "比特币50日线下方") : env.bull ? "牛市" : "熊市"}${side === 1 ? "做多" : "做空"}${UT ? "，按100U开5倍算" : ""}）：这样出场平均每次 <b>${sg("F")}</b>；2倍先平一半 ${sg("J")}；` +
     `固定2倍全平 ${sg("G")}；1倍就平一半 ${sg("B")}（胜率 ${T.B.win}%，但赚得少）。` +
+    (T.A ? `<b>不想算1倍2倍</b>：止损放好不动，等小时线短均线下穿长均线（死叉）再走，平均每次 ${sg("A")}，差不多。` : "") +
     (T.F.avg <= 0 ? "这个方向怎么出场都不赚。" : keep ? "分批影响不大，按习惯来。" : "<b>这类品种分批会少赚不少</b>（钱主要来自少数大行情），能扛住就别分批。");
 }
 function plan(V, side, tf, at, sym, env, stp) {

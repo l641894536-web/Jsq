@@ -41,3 +41,4 @@
 | `parity_check.py` + `parity_page.js` | 对账：交易台页面的突破信号（`workbench_card.js` 里的 `brk`）和 `contract_bt.simulate`（出场F）在同一批K线上逐笔比较进场/离场，必须完全一致；改规则或改页面后先跑 |
 | `workbench_card.js` | 交易台结论卡/首页清单/持仓总览的源码（内联在 gh-pages 的 index.html 里） |
 | `indicator_bt.py` | 技术指标逐个拆开检验（均线、MACD、RSI、位置、日线、综合分）：指标看多/看空之后24小时的涨跌；每个指标翻多/翻空当进场信号的成绩（牛熊、前后段、U/次）。结论：只在顺大方向时有用 |
+| `intraday_bt.py` | 金银日内短线（5分钟线，当天进当天出）：假跌破昨低收回、回踩日内低点不破、突破亚洲盘区间、突破昨高顺势；32组全亏 |
