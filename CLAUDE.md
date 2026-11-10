@@ -51,3 +51,8 @@ Local pandas has no pyarrow, so storage is CSV + xz, monthly partitions (`<datas
   using `pages/env_pipeline.py` (A-share sentiment temperature + bull/bear, US 200-day lines / VIX /
   stop line, plus `live` baselines). The page then updates intraday on its own: A-share quotes from
   qt.gtimg.cn (`s_` format, 400 codes per request), US from Binance QQQUSDT / SPYUSDT perps.
+- 首页"今天能做什么"清单和结论卡用同一个突破信号函数（`brk`，源码 `research/workbench_card.js`），和 `research/contract_bt.py` 出场F逐笔对账
+  （`research/parity_check.py`）。只有回测有优势的才会显示"可以做"：黄金/白银（自身200日线上方做多）、7个主流币（比特币50日线上做多/下做空）、
+  AMD/美光/戴尔（牛市突破做多、熊市回调企稳）。单只股票自己的成绩（`sym_*`）不当依据。成绩统一写成"100U开5倍每次赚亏多少U"（`contract_stats` 的 `u|环境|方向`）。
+- market-data 续跑（机器人 workflow_dispatch）结束后不会触发 env-page 的 workflow_run，所以 market-data 最后一步显式触发 env-page。
+

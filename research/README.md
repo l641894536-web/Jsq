@@ -38,3 +38,5 @@
 | `ep_bt.py`（+`ep_check.py`） | 美股放量跳空（episodic pivot）：跳空≥8%量≥3倍，当天收盘/次日开盘进，止损跳空日低点，20天或破10日线离场；牛熊、前后段、随机日子对照；跳空向下做空 |
 | `streak_bt.py` | 连亏减仓：按进场时间、只用已平仓的单子判断，连亏2/3笔半仓、资金曲线过滤 |
 | `regime_def_bt.py` | 牛熊换5种分法（200日线/200日线+方向/金叉死叉/100日线/50日线）比较顺势做多、做空；结论：币改看比特币50日线可以做空，金银美股不变 |
+| `parity_check.py` + `parity_page.js` | 对账：交易台页面的突破信号（`workbench_card.js` 里的 `brk`）和 `contract_bt.simulate`（出场F）在同一批K线上逐笔比较进场/离场，必须完全一致；改规则或改页面后先跑 |
+| `workbench_card.js` | 交易台结论卡/首页清单/持仓总览的源码（内联在 gh-pages 的 index.html 里） |
