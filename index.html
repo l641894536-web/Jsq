@@ -264,6 +264,8 @@ td.n { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
 .card-hist { margin: 0; font-size: 12.5px; color: var(--muted); }
 .card-plan .plan-bt { display: inline-block; margin-top: 4px; font-size: 12.5px; color: var(--muted); }
 .card-plan .plan-bt b { color: var(--ink); }
+.ind-bt { display: block; color: var(--muted); font-size: 12px; margin-left: 5.2em; }
+.ind-sum { color: var(--muted); font-size: 12.5px; list-style: none; margin-top: 4px; }
 .scan { padding: 4px 14px 0; }
 .scan-g { font-size: 12px; color: var(--muted); margin: 10px 0 2px; font-weight: 600; }
 .scan-g.t0 { color: var(--brass); }
@@ -1139,7 +1141,8 @@ const VLOG = [
   ["连亏后减仓（都铎·琼斯）", "小时线突破的金/银/币/AMD美光戴尔，按进场时间判断不偷看；海龟组合按回撤打折", "黄金、AMD回撤明显变小、少赚不多；币牛市少赚三到五成、币熊市少赚一半；海龟组合年化 23%→16%", "flat", "不通用，仓位一开始定小"],
   ["牛熊换5种分法（200日线 / 200日线+方向 / 金叉死叉 / 100日线 / 50日线）", "同一批小时线突破单，2021-11~2026-10", "金银、美股：做多差不多，做空换哪种都不赚；币：看比特币50日线最好——线上做多 +0.21R、线下做空 +0.18R（7个币都赚，前后两段都赚）", "good", "币改看50日线，能做空了；其余不变"],
   ["熊市里纳指大涨日追多", "^NDX 日线 2000~2026，纳指在200日线下方时单日涨≥2%", "283次之后5天平均 −0.75%（涨的只有49%）、20天 −1.0%；只有约1/6在20天内站回200日线", "bad", "大涨日别追，卡片会提醒"],
-  ["页面信号和回测对账（自检）", "比特币、黄金、AMD 各自做多做空，同一批小时线", "首页清单和结论卡改用回测的突破信号本身（原来看的是技术指标偏多偏空，和回测不是一回事）；页面算出的每一笔进场、离场和回测程序 6 组全部一致", "good", "research/parity_check.py，改规则后先跑对账"]
+  ["页面信号和回测对账（自检）", "比特币、黄金、AMD 各自做多做空，同一批小时线", "首页清单和结论卡改用回测的突破信号本身（原来看的是技术指标偏多偏空，和回测不是一回事）；页面算出的每一笔进场、离场和回测程序 6 组全部一致", "good", "research/parity_check.py，改规则后先跑对账"],
+  ["技术指标逐个拆开检验（均线、MACD、RSI、位置、综合分）", "黄金、白银、7个主流币、AMD/美光/戴尔，小时线 2021-11~2026-10，每个指标翻多/翻空当进场信号", "顺大方向时哪个指标翻多都赚（AMD等牛市做多 +4.9~6.8U/次，主流币 +0.7~2.3U，黄金只有 +0.5~1.1U），逆大方向哪个都亏；黄金熊市两边都在0附近", "good", "'技术面翻多'加为 AMD/美光/戴尔（牛市）和主流币（比特币50日线上方）的第二种进场；卡片每个指标后面写自己的成绩"]
 ];
 function renderLog() {
   $("repTable").innerHTML = `<thead><tr><th>打法</th><th>数据</th><th>结果</th><th>结论</th></tr></thead><tbody>` +
@@ -2406,13 +2409,55 @@ function dipState(sym, V, mode) {
 // ---------------------------------------------------------------- 突破信号：和回测 research/contract_bt.py 的 breakout 同一套
 // 进场：1小时收盘 突破前L根最高（做空=跌破最低）、EMA20在EMA50上方（做空=下方）、收盘高于L根前的收盘；L=24（美股合约=7根交易时段线）
 // 止损：L根最低×0.999；浮盈1倍后止损=max(开仓价, 3L根最低)；小时线EMA反穿或满10天离场；止损距离要在0.4%~8%之间
-function brk(sym, side, trace) {
+// 日线（币安1d）：给"技术面"综合分里的"日线方向"用——收盘在50日均线上方且均线比5天前高=+1，下方且更低=−1；股票合约去掉周末
+const D1 = {};
+async function needD1(sym) {
+  if (D1[sym] && Date.now() - D1[sym].at < 30 * 60e3) return;
+  const r = await fetch(`${REST}/fapi/v1/klines?symbol=${sym}&interval=1d&limit=130`, { cache: "no-store" }); if (!r.ok) return;
+  const k = await r.json(); if (!Array.isArray(k) || k.length < 60) return;
+  let rows = k.slice(0, -1).map((x) => ({ t: +x[0], c: +x[4] }));
+  if (U.groupOfSym(sym) === "stock") rows = rows.filter((x) => { const w = new Date(x.t).getUTCDay(); return w !== 0 && w !== 6; });
+  const tr = rows.map((x, i) => { if (i < 54) return 0; let m = 0, m5 = 0; for (let j = i - 49; j <= i; j++) m += rows[j].c; for (let j = i - 54; j <= i - 5; j++) m5 += rows[j].c; m /= 50; m5 /= 50; return x.c > m && m > m5 ? 1 : x.c < m && m < m5 ? -1 : 0; });
+  D1[sym] = { rows, tr, at: Date.now() };
+}
+function dayTrendAt(sym, t) {   // 用这根小时线所在那天之前最近一个日线的方向（不偷看）
+  const d = D1[sym]; if (!d) return 0;
+  const day0 = Math.floor(t / 864e5) * 864e5; let v = 0;
+  for (let i = d.rows.length - 1; i >= 0; i--) if (d.rows[i].t < day0) { v = d.tr[i]; break; }
+  return v;
+}
+// 技术面综合分（和 research/indicator_bt.py 的"综合分"同一套）：均线±1、MACD柱±1、RSI档位(55~70 +1 / 30~45 −1)、突破前L根高低点±1、日线方向±1
+function techScore(sym, R, L, up) {
+  const n = R.length, sc = new Array(n), parts = new Array(n);
+  let e12 = R[0].c, e26 = R[0].c, sg = 0, u = 0, dn = 0;
+  for (let i = 0; i < n; i++) {
+    const c = R[i].c;
+    e12 += (c - e12) * (2 / 13); e26 += (c - e26) * (2 / 27);
+    const macd = e12 - e26; sg = i === 0 ? macd : sg + (macd - sg) * (2 / 10); const hist = macd - sg;
+    let band = 0, rsi = NaN;
+    if (i >= 1) { const d = c - R[i - 1].c, g = Math.max(d, 0), l = Math.max(-d, 0);
+      if (i === 1) { u = g; dn = l; } else { u += (g - u) / 14; dn += (l - dn) / 14; }
+      rsi = dn === 0 ? NaN : 100 - 100 / (1 + u / dn);
+      band = rsi >= 70 ? 0 : rsi >= 55 ? 1 : rsi > 45 ? 0 : rsi > 30 ? -1 : 0; }
+    const bk = i >= L ? (c > maxH(R, i - L, i) ? 1 : c < minL(R, i - L, i) ? -1 : 0) : 0, dt = dayTrendAt(sym, R[i].t);
+    parts[i] = { ma: up[i] ? 1 : -1, macd: hist > 0 ? 1 : -1, rsi: band, rsiV: rsi, brk: bk, day: dt };
+    sc[i] = parts[i].ma + parts[i].macd + band + bk + dt;
+  }
+  return { sc, parts };
+}
+// ---------------------------------------------------------------- 信号引擎：和回测同一套（research/contract_bt.py 出场F；对账 research/parity_check.py）
+// kind="brk"：1小时收盘突破前L根最高（做空=跌破最低）、EMA20在EMA50上方（做空=下方）、收盘高于L根前的收盘
+// kind="tech"：技术面综合分从<2变成≥2（做空：从>−2变成≤−2）
+// L=24（美股合约=7根交易时段线）。止损：L根最低×0.999；浮盈1倍后止损=max(开仓价, 3L根最低)；小时线EMA反穿或满10天离场；止损距离要在0.4%~8%之间
+function sigEngine(sym, side, kind, trace) {
   const X = H1[sym]; if (!X) return null;
   const stock = U.groupOfSym(sym) === "stock", R = stock ? X.sess : X.rows, L = stock ? 7 : 24, N = R.length - 1;
   if (N < 90) return null;
   const up = []; let e20 = R[0].c, e50 = R[0].c;
   for (let i = 0; i <= N; i++) { e20 += (R[i].c - e20) * (2 / 21); e50 += (R[i].c - e50) * (2 / 51); up.push(e20 > e50); }
-  const sig = (i) => side === 1 ? (up[i] && R[i].c > maxH(R, i - L, i) && R[i].c > R[i - L].c) : (!up[i] && R[i].c < minL(R, i - L, i) && R[i].c < R[i - L].c);
+  let sig, TS = null;
+  if (kind === "tech") { if (!D1[sym]) return null; TS = techScore(sym, R, L, up); const sc = TS.sc; sig = (i) => i >= 1 && (side === 1 ? sc[i] >= 2 && sc[i - 1] < 2 : sc[i] <= -2 && sc[i - 1] > -2); }
+  else sig = (i) => side === 1 ? (up[i] && R[i].c > maxH(R, i - L, i) && R[i].c > R[i - L].c) : (!up[i] && R[i].c < minL(R, i - L, i) && R[i].c < R[i - L].c);
   const last = X.last, win = stock ? "最近7根交易时段小时线" : "24小时";
   let i = 60, open = null;
   while (i <= N) {
@@ -2431,19 +2476,26 @@ function brk(sym, side, trace) {
     if (end < 0) { open = { i, E, stop0, Rk, st, armed, age: N - i, t: R[i].t }; break; }
     i = end + 1;
   }
+  const baseOut = { kind, side, last, dp: X.dp, win, stock, score: TS ? TS.sc[N] : null, parts: TS ? TS.parts[N] : null };
   if (open && side * (last - open.st) > 0) {
     const fresh = open.age <= 2 && side * (last - open.E) <= 0.5 * open.Rk;
-    return Object.assign({ stage: fresh ? "fresh" : "open", side, last, dp: X.dp, win, stock }, open);
+    return Object.assign(baseOut, { stage: fresh ? "fresh" : "open" }, open);
   }
+  const stopIf = side === 1 ? minL(R, N - L + 2, N + 1) * 0.999 : maxH(R, N - L + 2, N + 1) * 1.001;
+  if (kind === "tech") return Object.assign(baseOut, { stage: "flat", stopIf, near: side === 1 ? TS.sc[N] === 1 : TS.sc[N] === -1 });
   // 还没有信号：下一根小时线收盘要越过的价位
   const level = side === 1 ? maxH(R, N - L + 1, N + 1) : minL(R, N - L + 1, N + 1);
   let atr = 0; for (let j = N - 23; j <= N; j++) atr += Math.max(R[j].h - R[j].l, Math.abs(R[j].h - R[j - 1].c), Math.abs(R[j].l - R[j - 1].c)); atr /= 24;
   const dist = side * (level - last);
-  return { stage: "flat", side, last, dp: X.dp, win, stock, level, dist, near: dist <= atr, trendOK: side === 1 ? up[N] : !up[N], stopIf: side === 1 ? minL(R, N - L + 2, N + 1) * 0.999 : maxH(R, N - L + 2, N + 1) * 1.001 };
+  return Object.assign(baseOut, { stage: "flat", level, dist, near: dist <= atr, trendOK: side === 1 ? up[N] : !up[N], stopIf });
 }
-window.JSQ_BRK = (sym, side) => { const tr = []; brk(sym, side, tr); return tr; };
+const brk = (sym, side, trace) => sigEngine(sym, side, "brk", trace);
+// "技术面翻多"当进场信号：只给回测里前后两段都赚的组合——AMD/美光/戴尔（纳指牛市做多）、7个主流币（比特币在50日线上方做多）
+const techOK = (sym, env, side) => !!env && env.bull && side === 1 && ["stock_main", "crypto"].includes(statKey(sym));
+window.JSQ_BRK = (sym, side, kind) => { const tr = []; sigEngine(sym, side, kind || "brk", tr); return tr; };
+window.JSQ_NEEDD1 = needD1;
 const OKG = (x) => x === "edge" || x === "unstable";
-const SCANERR = {};
+const SCANERR = {}, D1seen = {};
 // 一个品种现在在哪一步：tier 0 可以做 / 1 快到了 / 2 等信号 / 3 已经在走或暂不进 / 4 不做 / 9 载入中
 function symState(sym) {
   const env = envFor(sym), X = H1[sym], name = U.names[sym] || sym.replace(/USDT$/, ""), base = { sym, name };
@@ -2464,9 +2516,12 @@ function symState(sym) {
   const b = brk(sym, side); if (!b) return Object.assign(base, { tier: 9, short: "载入中…" });
   const w = side === 1 ? "做多" : "做空", brkW = side === 1 ? "突破" : "跌破", bar = b.stock ? "交易时段1小时收盘" : "1小时收盘", light = (side === 1 ? gL : gS) === "unstable" ? "（轻仓）" : "";
   if (b.stage === "fresh") return Object.assign(base, { tier: 0, side, b, short: `可以${w}${light}（刚${brkW}）：现 ${f(b.last)}，止损 ${f(b.stop0)}（亏 ${pabs(side * (b.last - b.stop0) / b.last)}）` });
-  if (b.stage === "open") return Object.assign(base, { tier: 3, side, b, short: `${b.age}根小时线前已经${brkW}（${f(b.E)}），在走了，不追` });
+  const tk = techOK(sym, env, side) ? sigEngine(sym, 1, "tech") : null;      // 第二种进场：技术面翻多
+  if (tk && tk.stage === "fresh") return Object.assign(base, { tier: 0, side, b: tk, short: `可以做多（技术面刚翻多）：现 ${f(tk.last)}，止损 ${f(tk.stop0)}（亏 ${pabs((tk.last - tk.stop0) / tk.last)}）` });
+  const alt = tk && tk.stage === "flat" ? `；或等技术面翻多（现在 ${tk.score} 分，到 2 分算翻多）` : "";
+  if (b.stage === "open") return Object.assign(base, { tier: alt ? 2 : 3, side, b, short: `${b.age}根小时线前已经${brkW}（${f(b.E)}），在走了，不追` + alt });
   const more = b.trendOK ? "" : `，还要小时线趋势转${side === 1 ? "多" : "空"}`;
-  return Object.assign(base, { tier: b.near ? 1 : 2, side, b, short: `${b.near ? "快到了" : "等" + brkW}：${bar}${side === 1 ? "站上" : "跌破"} ${f(b.level)} 再${w}${light}（还差 ${pabs(b.dist / b.last)}${more}）` });
+  return Object.assign(base, { tier: b.near || (tk && tk.stage === "flat" && tk.near) ? 1 : 2, side, b, short: `${b.near ? "快到了" : "等" + brkW}：${bar}${side === 1 ? "站上" : "跌破"} ${f(b.level)} 再${w}${light}（还差 ${pabs(b.dist / b.last)}${more}）` + alt });
 }
 const SCAN = { busy: false, at: 0 };
 function scanSyms() {
@@ -2488,6 +2543,7 @@ async function scanAll(force) {
           if (g === "metal" && !["XAUUSDT", "XAGUSDT"].includes(s)) await Promise.resolve(needDMA(s)).catch(() => {});
           await needH1(s); if (!H1[s]) SCANERR[s] = true;
           if (TESTED_MAIN.includes(s)) await needVol(s);
+          if (TESTED_MAIN.includes(s) || TESTED_CRYPTO.includes(s)) await needD1(s);
         } catch (e) { SCANERR[s] = true; }
       }));
       renderScan();
@@ -2657,7 +2713,13 @@ function renderCard(force) {
   if (SS && tf !== "1d") V = Object.assign({}, V, { H: maxH(SS, SS.length - 7, SS.length), L: minL(SS, SS.length - 7, SS.length), sess: true });
   if (g !== "stock") needDMA(g === "crypto" ? "BTCUSDT" : sym).then(() => { if (!env && envFor(sym)) renderCard(true); });
   // 技术面一行一行
-  $("cardTech").innerHTML = T.items.map((x) => `<li><span class="lean ${x.lean === "多" ? "up" : x.lean === "空" ? "down" : "flat"}">${x.lean}</span><b>${x.k}</b>${esc(x.txt)}</li>`).join("");
+  const IND = { "均线": "ma", "MACD": "macd", "RSI": "rsi", "位置": "brk" }, csK = ((window.JSQ_ENV || {}).contract_stats || {})[statKey(sym)] || {};
+  const iL = env ? csK[`ind|${env.bull ? "bull" : "bear"}|long`] : null, iS = env ? csK[`ind|${env.bull ? "bull" : "bear"}|short`] : null;
+  const su = (x) => x ? `${x.u >= 0 ? "+" : "−"}${Math.abs(x.u).toFixed(1)}U` : "—";
+  const indNote = (k) => { const c = IND[k]; if (!c || !iL || !iS || !iL[c] || !iS[c]) return ""; return `<small class="ind-bt">回测：它翻多时做多 ${su(iL[c])}/次，翻空时做空 ${su(iS[c])}/次</small>`; };
+  $("cardTech").innerHTML = T.items.map((x) => `<li><span class="lean ${x.lean === "多" ? "up" : x.lean === "空" ? "down" : "flat"}">${x.lean}</span><b>${x.k}</b>${esc(x.txt)}${indNote(x.k)}</li>`).join("") +
+    (iL && iS ? `<li class="ind-sum">${env.w50 ? (env.bull ? "比特币在50日线上方" : "比特币在50日线下方") : env.bull ? "牛市" : "熊市"}里的回测成绩（100U开5倍、同样的止损和出场）。指标只在顺大方向时有用：` +
+      (Math.max(...Object.values(iL).map((x) => x.u)) < 1 && Math.max(...Object.values(iS).map((x) => x.u)) < 1 ? "现在这个环境两个方向都不赚，指标只当描述。" : `现在这个环境只做${(iL.tech || iL.brk).u >= (iS.tech || iS.brk).u ? "多" : "空"}那一边。`) + `</li>` : "");
   // 结论
   let dir, cls, why, side = 0, noPlan = "", planAt = 0;
   const leanTxt = `技术面${T.lean}（${T.items.filter((x) => x.lean === "多").length}项偏多、${T.items.filter((x) => x.lean === "空").length}项偏空）`;
@@ -2701,7 +2763,12 @@ function renderCard(force) {
     const sd = ok(gL) ? 1 : -1, b = brk(sym, sd), w = sd === 1 ? "做多" : "做空", bw = sd === 1 ? "突破" : "跌破", gg = sd === 1 ? gL : gS, st = sd === 1 ? stL : stS;
     const head = `大方向${envWord}（${env.what}）。`, light = gg === "unstable" ? "（轻仓）" : "", other = `不${sd === 1 ? "做空" : "做多"}（回测这种环境${sd === 1 ? "做空" : "做多"}不赚）`;
     const note = gg === "unstable" ? `回测${w}整体赚钱，但时灵时不灵：${halfTxt(st.s, st.key)}。` : `回测里这种环境${w}前后两段都赚钱。`;
+    const tOK = techOK(sym, env, sd); if (tOK) needD1(sym).then(() => { if (!D1seen[sym] && D1[sym]) { D1seen[sym] = 1; if (window.JSQ.state.sym === sym) renderCard(true); } }).catch(() => {});
+    const tk = tOK ? sigEngine(sym, 1, "tech") : null, tS = tOK ? (csK["ind|bull|long"] || {}).tech : null;
+    const tNote = tS ? `回测：技术面翻多做多平均每次 ${su(tS)}（${tS.n}笔，前后两段 ${su({ u: tS.h1 })}/${su({ u: tS.h2 })}）。` : "";
     if (!b) { dir = "等小时线载入…"; cls = "flat"; side = 0; why = head; noPlan = "正在取小时线。"; }
+    else if (tk && tk.stage === "fresh" && b.stage !== "fresh") { dir = "可以做多（技术面刚翻多）"; cls = "up"; side = 1; planAt = 0; stpOv = tk.stop0;
+      why = head + `${tk.age === 0 ? "刚刚" : tk.age + "根小时线前"}技术面翻成偏多（均线、MACD、RSI、位置、日线 5 项净多 2 项以上），这是第二种进场信号。` + tNote + other + "。"; }
     else if (b.stage === "fresh") { dir = `可以${w}${light}`; cls = sd === 1 ? "up" : "down"; side = sd; planAt = 0; stpOv = b.stop0;
       why = head + `${b.age === 0 ? "刚刚" : b.age + "根小时线前"}1小时收盘${bw}了${b.win}${sd === 1 ? "最高" : "最低"}点，符合回测的进场条件。` + note + other + "。"; }
     else if (b.stage === "open") { dir = `已经${bw}，不追`; cls = "flat"; side = 0;
@@ -2710,6 +2777,8 @@ function renderCard(force) {
     else { dir = `${b.near ? "快到了：" : ""}等${bw}再${w}${light}`; cls = "warn"; side = sd; planAt = b.level; stpOv = b.stopIf;
       why = head + `等${b.stock ? "交易时段" : ""}1小时收盘${sd === 1 ? "站上" : "跌破"}${b.win}${sd === 1 ? "最高" : "最低"}点 <b>${fmt(b.level, V.dp)}</b>（还差 ${pabs(b.dist / b.last)}）再${w}` +
         (b.trendOK ? "" : `，同时要小时线趋势转${sd === 1 ? "多" : "空"}（短均线${sd === 1 ? "上" : "下"}穿长均线）`) + `；${other}。` + note; }
+    if (tk && tk.stage === "flat") why += ` <b>另一种进场</b>：等技术面翻多（现在 ${tk.score} 分，到 2 分算翻多）。` + tNote;
+    else if (tk && tk.stage === "open" && b.stage !== "fresh") why += ` 技术面 ${tk.age} 根小时线前已经翻多，那一单也在走了。`;
   }
   let dipPlan = "";
   if (dipMode) {
