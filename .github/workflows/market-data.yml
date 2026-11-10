@@ -89,8 +89,16 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
           git commit -q -m "data snapshot $(date -u +%Y-%m-%dT%H:%MZ) (${{ steps.mode.outputs.mode }})"
-          git push -q -f origin snapshot:data
+          for i in 1 2 3; do git push -q -f origin snapshot:data && break; echo "push failed ($i), retry"; sleep 20; [ "$i" = 3 ] && exit 1; done
           du -sh --exclude=.git .
+
+      # 机器人自己续跑（workflow_dispatch）的运行结束后，GitHub 不会再触发 env-page 的 workflow_run，
+      # 交易台的 env.json 就会一直停在上一次。这里显式触发一次。
+      - name: Refresh workbench page
+        if: success() && github.event_name == 'workflow_dispatch' && steps.mode.outputs.mode == 'full'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run env-page.yml --repo "$GITHUB_REPOSITORY" --ref main
 
       - name: Continue backfill
         if: always() && hashFiles('continue.flag') != ''

@@ -1,4 +1,5 @@
 """交易台（GitHub Pages）"市场环境"——每日计算（由 .github/workflows/env-page.yml 在数据管线跑完后运行）
+# 触发：market-data 跑完后（定时/推送的由 workflow_run 触发；机器人续跑的由 market-data 最后一步显式触发）。
 
 用法:
   python pages/env_pipeline.py --data <data 分支目录> --jsq <本仓库目录> --static <gh-pages/env_static.json> --out env.json [--prev 旧env.json]
