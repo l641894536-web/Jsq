@@ -60,7 +60,14 @@ const BASE = "https://l641894536-web.github.io/Jsq/";
     await page.screenshot({ path: `/home/claude/shot/${name}.png`, clip: { x: 0, y, width: 390, height: Math.min(h, 3000) }, fullPage: true });
   };
   await page.waitForTimeout(9000);
-  const out = await page.evaluate(() => ({ BTCs: window.JSQ_BRK("BTCUSDT", -1), BTCl: window.JSQ_BRK("BTCUSDT", 1), XAUl: window.JSQ_BRK("XAUUSDT", 1), XAUs: window.JSQ_BRK("XAUUSDT", -1), AMDl: window.JSQ_BRK("AMDUSDT", 1), AMDs: window.JSQ_BRK("AMDUSDT", -1) }));
+  const out = await page.evaluate(async () => {
+    const o = {};
+    for (const s of ["BTCUSDT", "XAUUSDT", "AMDUSDT"]) {
+      await window.JSQ_NEEDD1(s);
+      for (const [sd, k] of [[1, "l"], [-1, "s"]]) { o[s.slice(0, 3) + k] = window.JSQ_BRK(s, sd); o[s.slice(0, 3) + k + "_tech"] = window.JSQ_BRK(s, sd, "tech"); }
+    }
+    return o;
+  });
   require("fs").writeFileSync("/tmp/js_trades.json", JSON.stringify(out));
   console.log("errors:", errs.slice(0, 5));
   await browser.close();
