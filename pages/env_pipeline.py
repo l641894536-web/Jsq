@@ -355,7 +355,7 @@ if args.fund and os.path.exists(f"{args.fund}/a_share/growth.csv.xz"):
         print("stocks_a.json skipped:", repr(e))
 env = dict(asof=max(a_today["date"], us_today["date"]), stocks_a=stocks_note, a=dict(today=a_today, stats=stats, series=a_series),
            us=dict(today=us_today, series=us_series), live=live, findings=findings,
-           contract_stats=static.get("contract_stats"), contract_stats_note=static.get("contract_stats_note"), earnings=earn, ep=ep_events, stock_perps=_perps_all)
+           contract_stats=static.get("contract_stats"), contract_stats_note=static.get("contract_stats_note"), earnings=earn, ep=ep_events, stock_perps=_perps_all, bt_quarters=static.get("bt_quarters"))
 json.dump(env, open(args.out, "w"), ensure_ascii=False, separators=(",", ":"))
 
 # ============================================================ 变化摘要

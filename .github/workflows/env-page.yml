@@ -37,6 +37,7 @@ jobs:
           git clone -q --depth 1 --branch gh-pages "$REPO_URL" site
           git clone -q --depth 1 --filter=blob:none --sparse --branch data "$REPO_URL" data
           pats="/status.json /us/meta /us/daily /a_share/meta"
+          y=$(date -u +%Y); for d in um_1h um_1d; do pats="$pats /binance/$d/$y /binance/$d/$((y-1)) /binance/$d/$((y-2))"; done   # 自动记账用的币安小时线/日线
           for y in $(seq 2014 $(date -u +%Y)); do pats="$pats /a_share/daily/$y"; done
           git -C data sparse-checkout set --no-cone $pats
           du -sh data
@@ -65,6 +66,11 @@ jobs:
           print("check ok", t["date"], u["date"])
           PY
 
+      - name: Ledger (rules frozen 2026-11-10, paper record)
+        continue-on-error: true
+        run: |
+          venv/bin/python -u code/pages/ledger.py --data data --jsq code --out site/ledger.json
+
       - name: Publish to gh-pages
         working-directory: site
         run: |
@@ -72,6 +78,7 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add env.json
           if [ -f stocks_a.json ]; then git add stocks_a.json; fi
+          if [ -f ledger.json ]; then git add ledger.json; fi
           if git diff --cached --quiet; then echo "env.json unchanged"; exit 0; fi
           git commit -q -m "env: $(head -2 ../build.log | tail -1)"
           git push -q origin HEAD:gh-pages

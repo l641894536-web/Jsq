@@ -527,6 +527,28 @@ function renderScan() {
   $("scanNote").innerHTML = `只列有回测依据的品种（黄金、白银、7个主流币、AMD/美光/戴尔）和你收藏的。其余 ${rest} 只合约按规则都<b>不做</b>：回测没有优势、单只样本太少或没回测过。点一行看详细计划。` + (SCAN.at ? `（${new Date(SCAN.at).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" })} 更新，每5分钟刷新）` : "");
   el.querySelectorAll("button").forEach((b) => b.addEventListener("click", () => { const s = b.dataset.sym; if (U.all.includes(s) && window.JSQ) { window.JSQ.select(s); const c = $("card"); if (c) c.scrollIntoView({ behavior: "smooth", block: "start" }); } }));
 }
+// ---------------------------------------------------------------- 规则冻结后的自动记账（pages/ledger.py 每天生成 ledger.json）
+async function renderLedger() {
+  const el = $("ledgerBox"); if (!el) return;
+  let L = null; try { const r = await fetch("ledger.json?t=" + Math.floor(Date.now() / 6e5), { cache: "no-store" }); if (r.ok) L = await r.json(); } catch (e) {}
+  const Q = ((window.JSQ_ENV || {}).bt_quarters || {}).rows || [], sg = (x) => `${x >= 0 ? "+" : "−"}${Math.abs(x).toFixed(Math.abs(x) >= 100 ? 0 : 1)}U`;
+  let h = "";
+  if (!L) h += `<p class="note">账本还没生成，下次数据更新后出现。</p>`;
+  else {
+    h += `<p class="led-sum">规则从 <b>${esc(L.frozen)}</b> 起定下来不再改，之后每出一个信号自动记一笔（不用真钱，每笔按100U开5倍、已扣手续费）。` +
+      (L.n ? `到现在 <b>${L.n}</b> 笔，已平 ${L.closed} 笔（赚 ${L.win} 笔），已平的合计 <b>${sg(L.closed_u)}</b>，连没平的一起算 ${sg(L.total_u)}。` : `到现在还没有信号。`) +
+      ` 数据到 ${esc(String(L.data_to).slice(0, 16))}（UTC，比实时晚一天左右）。</p>`;
+    if (L.by_rule && L.by_rule.length) h += `<p class="note">按做法：` + L.by_rule.map((x) => `${esc(x.rule)} ${x.n}笔 ${sg(x.u)}`).join("；") + `</p>`;
+    if (L.trades && L.trades.length) h += `<div class="tablewrap"><table><thead><tr><th>品种</th><th>做法</th><th>进场（UTC）</th><th>进场价</th><th>止损</th><th>状态</th><th>盈亏</th></tr></thead><tbody>` +
+      L.trades.slice(0, 40).map((t) => `<tr><td>${esc(t.name)}</td><td>${esc(t.rule)}${esc(t.dir)}</td><td>${esc(t.t_in.slice(5, 16).replace("T", " "))}</td><td>${t.px_in}</td><td>${t.stop}</td><td>${esc(t.status)}${t.why ? "·" + esc(t.why) : ""}</td><td>${sg(t.u)}</td></tr>`).join("") + `</tbody></table></div>`;
+  }
+  if (Q.length) {
+    const neg = Q.filter((x) => x.u < 0).length, worst = Math.min(...Q.map((x) => x.u)), last = Q.slice(-8);
+    h += `<p class="led-sum" style="margin-top:10px"><b>心里要有数：亏钱的季度是常有的。</b>回测里同样的规则（12个品种每个信号都做），${Q.length} 个季度里有 ${neg} 个季度是亏的，最差一个季度亏 ${Math.abs(worst)}U。最近8个季度：` +
+      last.map((x) => `${x.q} ${sg(x.u)}`).join("，") + `。</p>`;
+  }
+  el.innerHTML = h;
+}
 // ---------------------------------------------------------------- 持仓总览（所有填过的仓位）
 const PX = { at: 0, m: {} };
 async function needPrices() {
@@ -837,7 +859,7 @@ function init() {
   $("ckLong").addEventListener("click", () => { $("foldCalc").open = true; const b = $("use24L"); if (b) { b.click(); $("foldCalc").scrollIntoView({ behavior: "smooth", block: "start" }); } });
   $("ckShort").addEventListener("click", () => { $("foldCalc").open = true; const b = $("use24S"); if (b) { b.click(); $("foldCalc").scrollIntoView({ behavior: "smooth", block: "start" }); } });
   document.addEventListener("jsq-view", () => renderCard(false));
-  document.addEventListener("jsq-env-ready", () => { mergePerps(); renderBar(); renderCard(true); renderBrief(); renderEP(); scanAll(true); renderPosList(); });
+  document.addEventListener("jsq-env-ready", () => { mergePerps(); renderBar(); renderCard(true); renderBrief(); renderEP(); scanAll(true); renderPosList(); renderLedger(); });
   document.addEventListener("jsq-live", () => { renderBar(); renderCard(false); renderBrief(); renderEP(); });
   const refresh = async () => { await Promise.allSettled(["XAUUSDT", "XAGUSDT", "BTCUSDT"].map(needDMA)); renderBar(); renderCard(true); };
   refresh(); setInterval(refresh, 5 * 60e3);
