@@ -3035,7 +3035,7 @@ function renderCard(force) {
     else if (b.crossed) { const pos = sd === 1 ? "上方" : "下方", closed = b.stock && !inSession();
       dir = `已经${sd === 1 ? "涨过" : "跌破"} ${fmt(b.level, V.dp)}：等${b.when.txt}收盘确认`; cls = "warn"; side = sd; planAt = null; stpOv = b.stopIf;
       why = head + `现价 ${fmt(b.lp, V.dp)} 已经在${b.win}${sd === 1 ? "最高" : "最低"}点 <b>${fmt(b.level, V.dp)}</b> ${pos}。` +
-        (closed ? `现在美股休市，币安合约照样在${sd === 1 ? "涨" : "跌"}，但回测只认美股交易时段的1小时收盘（休市时成交少，开盘常常跳回去）。所以要等 <b>${b.when.txt}</b>（美股开盘后第一根1小时线收盘）还在 ${fmt(b.level, V.dp)} ${pos}，才算${w}信号。`
+        (closed ? `现在是美股盘前/盘后/夜盘${nyInfo(Date.now()).wd === "Sat" || nyInfo(Date.now()).wd === "Sun" ? "（周末）" : ""}，币安合约照样在${sd === 1 ? "涨" : "跌"}，但这时候${sd === 1 ? "涨过" : "跌破"}的不算数：查了今年币安124只美股合约，休市时先${sd === 1 ? "涨过" : "跌破"}的，<b>4成多到美股开盘后站不住</b>，这些单子平均每笔亏0.6倍止损、10笔里只赚1笔；周末${sd === 1 ? "涨过" : "跌破"}的最不靠谱。所以要等 <b>${b.when.txt}</b>（美股开盘后第一根1小时线收盘）还在 ${fmt(b.level, V.dp)} ${pos}，才算${w}信号。等确认的代价是进场价平均差1%左右，换来躲掉一大半假突破。止损不分时段，24小时都有效。`
                 : `要等 <b>${b.when.txt}</b> 这根1小时线收盘还在 ${fmt(b.level, V.dp)} ${pos}，才算${w}信号（盘中冲过去又收回来的不算）。`) +
         (b.trendOK ? "" : `同时短期走势要先转${sd === 1 ? "强" : "弱"}。`) + `${other}。` + note; }
     else { dir = `${b.near ? "快到了：" : ""}等${sd === 1 ? "涨过" : "跌破"} ${fmt(b.level, V.dp)} 再${w}${light}`; cls = "warn"; side = sd; planAt = b.level; stpOv = b.stopIf;
