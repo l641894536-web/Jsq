@@ -170,6 +170,35 @@ def binance_spot(interval: str = "1h", symbols=None, start=None, end=None) -> pd
     return df.sort_values(["symbol", "ts"]).reset_index(drop=True)
 
 
+def binance_funding(symbols=None) -> pd.DataFrame:
+    """Funding-rate settlements (rate per period, e.g. 0.0001 = 0.01%) for the workbench symbols, 2020 on, finished months only."""
+    files = sorted((DATA / "binance" / "funding").glob("*.csv.xz"))
+    want = None if symbols is None else set([symbols] if isinstance(symbols, str) else symbols)
+    out = []
+    for f in files:
+        s = f.name.split(".")[0]
+        if want is not None and s not in want:
+            continue
+        df = pd.read_csv(f, dtype={"ts": str}); df.insert(0, "symbol", s); out.append(df)
+    if not out:
+        return pd.DataFrame(columns=["symbol", "ts", "rate", "interval_h"])
+    df = pd.concat(out, ignore_index=True); df["ts"] = pd.to_datetime(df["ts"], utc=True)
+    return df.sort_values(["symbol", "ts"]).reset_index(drop=True)
+
+
+def binance_metrics(symbols=None, start=None, end=None) -> pd.DataFrame:
+    """Hourly open interest (oi coins, oi_usd), top-trader long/short (accounts, positions), all-account long/short,
+    taker buy/sell volume ratio; 7 main coins from 2021-12. Time = hour start, UTC."""
+    df = _parts("binance/metrics_1h", start, end, dtype={"symbol": str, "ts": str})
+    df = _clip(df, "ts", start, end)
+    if df.empty:
+        return df
+    if symbols is not None:
+        df = df[df["symbol"].isin(set([symbols] if isinstance(symbols, str) else symbols))]
+    df["ts"] = pd.to_datetime(df["ts"], utc=True)
+    return df.sort_values(["symbol", "ts"]).reset_index(drop=True)
+
+
 def dukascopy(symbols=None, start=None, end=None, interval: str = "1h") -> pd.DataFrame:
     """Dukascopy bid candles, 2020 on (complete months). 1h: XAUUSD / XAGUSD; 5m also AMDUSUSD, MUUSUSD,
     DELLUSUSD (US-stock quotes, regular session). 1h also <T>USUSD for config.DK_STOCKS_1H(_OTHER) and the

@@ -21,6 +21,8 @@ load.binance_spot("1h", "PAXGUSDT")            # spot gold token, 1h/15m back to
 load.dukascopy(["XAUUSD", "XAGUSD"])           # interbank spot gold/silver 1h from 2020; cleaner than PAXG before 2025 (thin book, spiky wicks)
 load.dukascopy("XAUUSD", interval="5m")        # 5-minute bars built from Dukascopy 1-minute files (complete months)
 load.dukascopy(["XPTCMDUSD", "COPPERCMDUSD"])  # platinum / palladium / copper / natural gas CFDs 1h (GASCMDUSD, XPDCMDUSD); price checked vs PL=F/HG=F
+load.binance_funding(["BTCUSDT"])                # funding-rate settlements 2020→ (finished months), 7 coins + XAU/XAG + AMD/MU/DELL/NVDA/TSLA/SPCX
+load.binance_metrics("BTCUSDT")                   # hourly open interest, long/short ratios, taker buy/sell ratio, 7 main coins from 2021-12
 ```
 Local pandas has no pyarrow, so storage is CSV + xz, monthly partitions (`<dataset>/YYYY/YYYY-MM.csv.xz`).
 
