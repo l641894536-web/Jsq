@@ -55,4 +55,6 @@ Local pandas has no pyarrow, so storage is CSV + xz, monthly partitions (`<datas
   （`research/parity_check.py`）。只有回测有优势的才会显示"可以做"：黄金/白银（自身200日线上方做多）、7个主流币（比特币50日线上做多/下做空）、
   AMD/美光/戴尔（牛市突破做多、熊市回调企稳）。单只股票自己的成绩（`sym_*`）不当依据。成绩统一写成"100U开5倍每次赚亏多少U"（`contract_stats` 的 `u|环境|方向`）。
 - market-data 续跑（机器人 workflow_dispatch）结束后不会触发 env-page 的 workflow_run，所以 market-data 最后一步显式触发 env-page。
-
+- 界面（2026-11-11 起）是白底"仪器面板"风格，参照用户发的视频。数据图脚本源码 `research/workbench_viz.js`（内联在 index.html 的 `<script id="vizjs">`）：
+  规则小球板读 gh-pages 的 `balls.json`（现行规则近5年每一笔的U，由 research/risk_bt.py 的 risk_trades 导出；规则改了要重新导出），
+  价格山脊图用币安日线最近20天波动 + 卡片的规则止损（`JSQ_PLAN()`）或"我已经有仓位"里填的止损。字体自带在 gh-pages `fonts/`（Doto 点阵、JetBrains Mono），不要再引 Google Fonts（国内打不开）。
