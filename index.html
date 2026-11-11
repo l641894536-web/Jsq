@@ -488,6 +488,7 @@ b.ok { color: var(--good); } b.bad { color: var(--bad); }
 .viz-stats b { font-size: clamp(16px, 5.2vw, 22px); }
 .viz-stats small[data-k="N"] { margin-top: 1px; }
 .seg button:disabled { opacity: .45; }
+.pos-note { display: block; margin-top: 8px; padding: 8px 10px; background: var(--warn-soft); border-radius: 8px; font-size: 14px; line-height: 1.6; }
 </style>
 </head>
 <body>
@@ -2313,7 +2314,7 @@ function envFor(sym) {
       const b = u.spxVs > 0;
       return { bull: b, what: `标普在200日线${b ? "上方" : "下方"}（${pct(u.spxVs)}）`, src: u.live ? "币安SPY合约实时" : "上个美股收盘" };
     }
-    return { bull: u.bull, what: `纳指在200日线${u.bull ? "上方" : "下方"}（${pct(u.vs)}）`, src: u.live ? "币安QQQ合约实时" : "上个美股收盘" };
+    return { bull: u.bull, what: `纳指上个收盘在200日线${u.bull ? "上方" : "下方"}（现在比200日线 ${pct(u.vs)}）`, src: u.live ? "牛熊按上个收盘，现价来自币安QQQ合约" : "上个美股收盘" };
   }
   const ref = g === "crypto" ? "BTCUSDT" : sym, d = DMA[ref];
   if (!d) return null;
@@ -2861,9 +2862,10 @@ function renderPos(sym, V, env, g, dipMode, okDir) {
   const pnow = side * (last - E);
   L.push(`现价 ${f(last)}，${pnow >= 0 ? "浮盈" : "浮亏"} ${pabs(pnow / E, 2)}${money(last)}。${sInfo}`);
   // 回调企稳那一套（熊市 AMD/美光/戴尔 做多）
-  const X = H1[sym], ep = dipMode && up && g === "stock" && X && VOL[sym] ? dipEpisode(X.sess, VOL[sym].sd) : null;
+  // 熊市里"大跌后止跌"买的单，纳指转牛以后照样按那一套管完（开仓价在这一轮止跌点附近才算这一轮的单）
+  const X = H1[sym], ep = (dipMode || statKey(sym) === "stock_main") && up && g === "stock" && X && VOL[sym] ? dipEpisode(X.sess, VOL[sym].sd) : null;
   const epUse = ep && (ep.stage === "open" || ep.stage === "done") ? ep : ep && ep.last ? ep.last : null;
-  if (epUse && epUse.top > E) {
+  if (epUse && epUse.top > E && (dipMode || E < epUse.E0 + 0.5 * (epUse.top - epUse.E0))) {
     const R = E - epUse.stop, one = E + R, half = E + 0.5 * R;
     L.push(`<b>按"回调企稳"这一套管</b>（这一轮 ${nyInfo(epUse.kt).md} 在 ${f(epUse.E0)} 企稳${epUse.stage === "done" ? "，按规则这一轮已经" + epUse.why : ""}）：`);
     if (R > 0) L.push(last >= one ? `① 已经过了1倍止损距离（${f(one)}）：止损至少挪到开仓价 <b>${f(E)}</b>，或开仓价上方半份 <b>${f(half)}</b>${money(half)}——两种回测平均差不多，后一种46次里91%最后是赚的。止损只往上挪，不往下放。`
@@ -3024,6 +3026,10 @@ function renderCard(force) {
     else if (d && d.dir.startsWith("等企稳")) why += `<br>另外：${d.why}`;
   }
   setDir(dir, cls);
+  { // 已经有仓位：老单按开仓时那套规则管，这里的信号是给没仓位时开新单的（用户 2026-11-12 问：AMD 多单说576止盈，卡上又说涨到568做多）
+    const P0 = loadPos(sym), pe = numv(P0.E), ps = +P0.side || 1;
+    if (pe > 0) why += ` <span class="pos-note"><b>你已经有${ps === 1 ? "多" : "空"}单（开仓价 ${fmt(pe, V.dp)}）</b>：老单照下面"我已经有仓位"里的计划管，${side && side !== ps ? "这里的新信号方向和你相反，先守你自己的止损。" : "不因为这里的新信号改止盈、也不加仓；这里说的价位是给没有仓位时开新单用的。"}</span>`;
+  }
   $("cardWhy").innerHTML = why + (env ? `<span class="src">（${esc(env.src)}）</span>` : "");
   // 价位
   $("cardPlan").innerHTML = dipPlan ? dipPlan : side ? plan(V, side, tf, planAt && isFinite(planAt) && side * (planAt - V.last) > 0 ? planAt : 0, sym, env, stpOv) : (noPlan || "现在不做，所以不给进场价。");
