@@ -581,8 +581,18 @@ async function renderPosList() {
   const parts = Object.keys(sum).map((g) => `${GN[g]} ${sum[g] >= 0 ? "+" : "−"}${Math.abs(sum[g]).toFixed(1)}U`);
   let t = `${P.length} 个仓位，现在合计 ${totNow >= 0 ? "+" : "−"}${Math.abs(totNow).toFixed(1)}U。<b>如果全部打到止损：${tot >= 0 ? "还赚" : "一共亏"} ${Math.abs(tot).toFixed(1)}U</b>${tot < 0 ? pc(tot) : ""}` + (parts.length > 1 ? `（${parts.join("，")}）` : "") + "。";
   if (miss.length) t += ` ${miss.join("、")} 没填止损或持仓价值，没算进去。`;
-  const worst = Object.keys(sum).filter((g) => sum[g] < 0 && acct > 0 && -sum[g] / acct > 0.03);
-  if (worst.length) t += ` <b>${worst.map((g) => GN[g]).join("、")}这一类合计超过本金3%</b>：同一类常常一起涨跌，等于一笔大单（这是风控习惯，不是回测结论）。`;
+  // 账户规则（近5年回测 research/risk_bt.py）：每笔止损最多亏本金0.5%；同时最多 币4 / 股票3 / 金银2
+  const CAP = { crypto: 4, stock: 3, metal: 2 }, cnt = {}, big = [];
+  for (const p of P) { const g = U.groupOfSym(p.sym); cnt[g] = (cnt[g] || 0) + 1;
+    const last = PX.m[p.sym], qty = p.N > 0 && last > 0 ? p.N / last : NaN, ps = isFinite(qty) && isFinite(p.S) ? qty * p.side * (p.S - p.E) : NaN;
+    if (acct > 0 && isFinite(ps) && -ps > acct * 0.005 * 1.2) big.push(`${U.names[p.sym] || p.sym.replace(/USDT$/, "")}（打到止损亏 ${(-ps).toFixed(0)}U）`); }
+  const over = Object.keys(cnt).filter((g) => cnt[g] > (CAP[g] || 99));
+  const lim = acct > 0 ? (acct * 0.005).toFixed(0) : "16";
+  t += `<br><b>账户规则</b>：每笔止损打到最多亏 ${lim}U（本金0.5%）；同时最多 币4个、股票3个、金银2个。`;
+  if (!(acct > 0)) t += ` 右上角填上本金，我才能帮你对照。`;
+  if (over.length) t += ` <b class="bad">${over.map((g) => `${GN[g]}现在 ${cnt[g]} 个，超了（上限 ${CAP[g]}）`).join("；")}</b>：同一类一跌一起跌，新的先别开。`;
+  if (big.length) t += ` <b class="bad">这几笔单笔风险偏大：${big.join("、")}</b>，可以减一点仓或把止损挪近。`;
+  if (acct > 0 && !over.length && !big.length && !miss.length) t += ` 现在都在规则内。`;
   $("posSum").innerHTML = t;
   $("posList").querySelectorAll("button").forEach((b) => b.addEventListener("click", () => { const s2 = b.dataset.sym; if (window.JSQ) { window.JSQ.select(s2); const c = $("posBox"); if (c) { c.open = true; c.scrollIntoView({ behavior: "smooth", block: "center" }); } } }));
 }
@@ -659,7 +669,7 @@ function renderEP() {
     let st;
     if (e.last < e.low) st = `已经跌破止损位 ${e.low}，这次作废。`;
     else if (!bull) st = `纳指熊市，不做。`;
-    else if (e.days === 0) st = `<b>下一个美股开盘做多</b>，止损 <b>${e.low}</b>（跳空那天最低价），拿到 <b>${end}</b> 收盘。仓位按止损距离算（每笔亏本金1%）。`;
+    else if (e.days === 0) st = `<b>下一个美股开盘做多</b>，止损 <b>${e.low}</b>（跳空那天最低价），拿到 <b>${end}</b> 收盘。仓位按止损距离算（止损打到最多亏本金0.5%）。`;
     else st = `买点已过（只在第二天开盘买，当时 ${e.open1 ?? "—"}）。已经在里面的：止损 ${e.low}，拿到 ${end} 收盘。`;
     return `<div class="ep-row"><b class="t">${nm}</b> ${md} 跳空 +${(e.gap * 100).toFixed(1)}%，量 ${e.vol} 倍，现 ${e.last}<br><span class="st">${st}</span></div>`;
   }).join("");
@@ -772,6 +782,12 @@ function renderCard(force) {
   $("cardWhy").innerHTML = why + (env ? `<span class="src">（${esc(env.src)}）</span>` : "");
   // 价位
   $("cardPlan").innerHTML = dipPlan ? dipPlan : side ? plan(V, side, tf, planAt && isFinite(planAt) && side * (planAt - V.last) > 0 ? planAt : 0, sym, env, stpOv) : (noPlan || "现在不做，所以不给进场价。");
+  // 这单开多大：止损打到最多亏本金的0.5%（账户回测 research/risk_bt.py）
+  if (PLANNUM && (side || dipPlan)) {
+    const acct = numv(($("posAcct") || {}).value) || numv(localStorage.getItem("jsq.acct")) || 3200, rk = Math.abs(PLANNUM.stop / PLANNUM.E0 - 1), lose = acct * 0.005;
+    if (rk > 0) { const not = Math.min(lose / rk, acct * 0.8);
+      $("cardPlan").innerHTML += `<br><b>这单开多大</b>：止损打到最多亏 <b>${lose.toFixed(0)}U</b>（本金 ${acct.toFixed(0)}U 的0.5%）→ 持仓价值约 <b>${not.toFixed(0)}U</b>（开5倍就是 ${(not / 5).toFixed(0)}U 保证金）。止损离得远就少开，离得近可以多开。`; }
+  }
   // 历史
   const hl = [];
   if (dipMode) {
@@ -796,7 +812,7 @@ function renderCard(force) {
       warns.push(`纳指今天涨了 ${pct(LQ.QQQ / UQ.QQQ.close - 1)}，但还在200日线下方：2000年以来熊市里纳指单日涨2%以上共283次，之后5天平均跌0.75%，20天内站回200日线的只有约六分之一——大涨日别追，等站回200日线再按牛市规则做。`);
   }
   if (["SOXLUSDT", "TQQQUSDT", "SQQQUSDT"].includes(sym)) warns.push("这是三倍杠杆ETF，波动是普通股票的三倍。");
-  warns.push("每笔最多亏本金的1%（仓位用下面计算器算）。");
+  warns.push("每笔止损打到最多亏本金的0.5%；同时最多拿：币4个、股票3个、金银2个。");
   $("cardWarn").textContent = warns.join(" ");
   $("ckLong").hidden = !(side === 1 || (dipPlan && PLANNUM)); $("ckShort").hidden = side !== -1;
   const okL = dipMode || ok(gL) || (bullDip && dipPlan), okS = ok(gS);
