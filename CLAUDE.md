@@ -60,3 +60,6 @@ Local pandas has no pyarrow, so storage is CSV + xz, monthly partitions (`<datas
 - 界面（2026-11-11 起）是白底"仪器面板"风格，参照用户发的视频。数据图脚本源码 `research/workbench_viz.js`（内联在 index.html 的 `<script id="vizjs">`）：
   规则小球板读 gh-pages 的 `balls.json`（现行规则近5年每一笔的U，由 research/risk_bt.py 的 risk_trades 导出；规则改了要重新导出），
   价格山脊图用币安日线最近20天波动 + 卡片的规则止损（`JSQ_PLAN()`）或"我已经有仓位"里填的止损。字体自带在 gh-pages `fonts/`（Doto 点阵、JetBrains Mono），不要再引 Google Fonts（国内打不开）。
+- 首页"我的持仓"可以连币安只读 API（用户自己建 key，只勾"允许读取"）：密钥只存手机 localStorage（`jsq.bnkey`），
+  经币安 WebSocket API `wss://ws-fapi.binance.com/ws-fapi/v1` 的 `v2/account.position` / `v2/account.status` 读（REST 不允许网页跨域带
+  X-MBX-APIKEY）。每分钟同步，覆盖 `jsq.pos.*`（src=bn），止损读不到、沿用手填；本金填合约账户 totalMarginBalance。Claude 不经手密钥。
