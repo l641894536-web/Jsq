@@ -1,3 +1,4 @@
+import os
 """基本面数据（给交易台"正股：发展空间 / 选股"用），写到 fund 分支。
 
 - A股季度成长与盈利（baostock，2020Q1 起）：
@@ -135,7 +136,11 @@ def a_share():
 
 
 # ------------------------------------------------------------------ 美股季度财报（SEC XBRL，带公告日 filed，回测不偷看）
-SEC_UA = {"User-Agent": "Jsq market research (github.com/l641894536-web/Jsq)", "Accept-Encoding": "gzip, deflate"}
+# SEC asks for a contact e-mail in the User-Agent. It comes from the repo secret SEC_CONTACT
+# (never written into this public repo); without it the generic UA is used and SEC may answer 403.
+_SEC_CONTACT = os.environ.get("SEC_CONTACT", "").strip()
+SEC_UA = {"User-Agent": ("Jsq market research " + _SEC_CONTACT) if _SEC_CONTACT
+          else "Jsq market research (github.com/l641894536-web/Jsq)", "Accept-Encoding": "gzip, deflate"}
 REV = ["Revenues", "RevenueFromContractWithCustomerExcludingAssessedTax", "SalesRevenueNet", "RevenueFromContractWithCustomerIncludingAssessedTax"]
 CONCEPTS = REV + ["NetIncomeLoss", "EarningsPerShareDiluted", "GrossProfit", "OperatingIncomeLoss"]
 RESEARCH = ["AMD", "MU", "DELL", "AAPL", "ADBE", "ADI", "AMAT", "AMZN", "AVGO", "CRM", "CSCO", "GOOGL", "IBM", "INTC", "INTU", "LRCX",

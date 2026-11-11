@@ -48,6 +48,8 @@ jobs:
 
       - name: Fetch
         timeout-minutes: 310
+        env:
+          SEC_CONTACT: ${{ secrets.SEC_CONTACT }}
         run: venv/bin/python -u code/pages/fundamentals.py --out fund --status data/status.json --minutes 290 --flag continue.flag
 
       - name: Save to fund branch

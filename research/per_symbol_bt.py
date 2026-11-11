@@ -91,7 +91,7 @@ def main(apply):
         json.dump(clean(st), open("/home/claude/site/env_static.json", "w"), ensure_ascii=False, indent=1, allow_nan=False)
         e = json.load(open("/home/claude/site/env.json")); e["contract_stats"] = st["contract_stats"]; e["contract_stats_note"] = st["contract_stats_note"]
         json.dump(clean(e), open("/home/claude/site/env.json", "w"), ensure_ascii=False, separators=(",", ":"), allow_nan=False)
-        msg = f"单只股票合约回测：{', '.join(k[4:] for k in out)}\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\nClaude-Session: https://claude.ai/code/session_01FxLYU45ba7o97xL9CtxbkE"
+        msg = f"单只股票合约回测：{len(out)}只\n\nCo-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>\nClaude-Session: https://claude.ai/code/session_01FxLYU45ba7o97xL9CtxbkE"
         subprocess.run(["git", "-C", "/home/claude/site", "add", "env_static.json", "env.json"])
         subprocess.run(["git", "-C", "/home/claude/site", "commit", "-q", "-m", msg])
         subprocess.run("git -C /home/claude/site push -q origin gh-pages", shell=True)
