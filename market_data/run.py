@@ -64,7 +64,7 @@ def main() -> None:
                                         universe, stock_perps)
         write_json(status, status_path)
 
-    complete = True
+    complete = True if (not only or "a_share" in only) else bool(prev.get("backfill_complete", True))
     if not only or "a_share" in only:
         status["stages"]["a_share"], complete = a_share.run(root, args.mode, deadline - 15 * 60)
 

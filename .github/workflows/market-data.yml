@@ -10,6 +10,10 @@ on:
         default: "full"
         type: choice
         options: [full, smoke]
+      only:
+        description: "only these stages (comma list, e.g. binance_extra); empty = all"
+        default: ""
+        type: string
   push:
     branches: [main]
     paths:
@@ -73,7 +77,7 @@ jobs:
           mkdir -p ../data/logs
           set -o pipefail
           ../venv/bin/python -u -m market_data.run --mode "${{ steps.mode.outputs.mode }}" \
-            --data-dir ../data --continue-flag ../continue.flag 2>&1 | tee ../data/logs/last_run.log
+            --data-dir ../data --continue-flag ../continue.flag --only "${{ inputs.only }}" 2>&1 | tee ../data/logs/last_run.log
 
       - name: Save data (single-commit snapshot on branch "data")
         if: always()
