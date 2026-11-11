@@ -256,7 +256,9 @@ function init() {
   ["cardName", "cardPlan", "posOut"].forEach((id) => { const e = $(id); if (e) obs.observe(e, { childList: true, characterData: true, subtree: true }); });
   setTimeout(() => updRidge(true), 2500); setInterval(() => updRidge(false), 60e3);
   if ("ResizeObserver" in window && $("ridgeCv")) { let w0 = 0; new ResizeObserver(() => { const w = $("ridgeCv").clientWidth; if (w && Math.abs(w - w0) > 2) { w0 = w; updRidge(true); } }).observe($("ridgeCv")); }
-  foot(); setInterval(foot, 30e3);
+  foot(); setInterval(foot, 120e3);
+  setInterval(() => { const sp = document.querySelector("#sfoot span"); if (!sp) return; const live = (($("status") || {}).className || "").includes("live");
+    sp.className = live ? "on" : ""; sp.textContent = "行情 " + ((($("statusText") || {}).textContent) || "—"); }, 3000);
 }
 if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init); else init();
 })();
