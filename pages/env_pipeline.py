@@ -311,6 +311,54 @@ except Exception as e:
 # ============================================================ A股个股：成长和强弱（页面"查个股"用，写 stocks_a.json）
 # 回测见 research/ashare_pick_bt.py：只用已公告的财报；可选范围 = 正常交易、非ST、上市满约一年、近20日日均成交额 ≥ 3000万
 stocks_note = None
+# 深跌之后是反弹还是反转：每只股票今天在哪一步（回测见 research/bounce_bt.py）
+def bounce_stages(adj):
+    """adj: T×N 复权价（停牌为 NaN）。返回每只股票今天所处阶段（口径同 research/bounce_bt.py）：
+    0 没有深跌；1 深跌中还没反弹；2 第一波反弹（从低点涨回15%）；3 已二次确认（回踩不破前低、再过反弹高点）；4 反弹后又破前低。
+    另返回 L（这轮低点）相对现价的位置 c/L-1、是否站上200日线。"""
+    T, N = adj.shape
+    W = min(T, 520)
+    A = pd.DataFrame(adj[T - W:])
+    mx250 = A.rolling(250, min_periods=200).max().to_numpy()
+    mn120 = A.rolling(120, min_periods=100).min().to_numpy()
+    am = A.rolling(120, min_periods=100).apply(np.nanargmin, raw=True).to_numpy()
+    ma200 = A.rolling(200).mean().to_numpy()
+    c = A.to_numpy(); n = W
+    stage = np.zeros(N, np.int8); up = np.full(N, np.nan); a200 = np.zeros(N, bool)
+    for s in range(N):
+        cs = c[:, s]
+        if not np.isfinite(cs[-1]) or not np.isfinite(mx250[-1, s]):
+            continue
+        a200[s] = bool(cs[-1] > ma200[-1, s]) if np.isfinite(ma200[-1, s]) else False
+        ev = None; lastL = None
+        for i in range(max(1, n - 121), n):
+            L = mn120[i, s]
+            if not (np.isfinite(cs[i]) and np.isfinite(L) and np.isfinite(mx250[i, s])):
+                continue
+            since = 119 - int(am[i, s]) if np.isfinite(am[i, s]) else 999
+            if cs[i] >= L * 1.15 and since <= 40 and L <= 0.7 * mx250[i, s] and L != lastL and not (cs[i - 1] >= L * 1.15):
+                lastL = L; ev = (i, L)
+        if ev is None:
+            L = mn120[-1, s]
+            if np.isfinite(L) and L <= 0.7 * mx250[-1, s] and cs[-1] < L * 1.15:
+                stage[s] = 1; up[s] = cs[-1] / L - 1
+            continue
+        i, L = ev; P = cs[i]; pulled = False; st = 2
+        for t in range(i + 1, n):
+            if not np.isfinite(cs[t]):
+                continue
+            if cs[t] < L:
+                st = 4; break
+            if st == 2:
+                if not pulled:
+                    if cs[t] > P: P = cs[t]
+                    elif cs[t] <= P * 0.92: pulled = True
+                elif cs[t] > P:
+                    st = 3
+        stage[s] = st; up[s] = cs[-1] / L - 1
+    return stage, up, a200
+
+
 def _stocks():
     _g = pd.read_csv(f"{args.fund}/a_share/growth.csv.xz", dtype={"code": str}, parse_dates=["pubDate", "statDate"])
     _p = pd.read_csv(f"{args.fund}/a_share/profit.csv.xz", dtype={"code": str}, parse_dates=["pubDate", "statDate"])
@@ -333,17 +381,22 @@ def _stocks():
     _g_r, _a_r, _m_r = _rank(_gr), _rank(_ac), _rank(_mom120)
     _sb = pd.read_csv(f"{args.data}/a_share/meta/stock_basic.csv", dtype=str).set_index("code").code_name
     _pool = _uni & (_g_r >= 0.7) & (_a_r >= 0.7)
+    _bs, _bup, _a200 = bounce_stages(adj)
+    _ix = s["等权指数"].to_numpy(float)[-60:]
+    _mb = bool(_ix[-1] / np.nanmin(_ix) - 1 >= 0.05 and int(np.nanargmin(_ix)) >= 20)     # 大盘自己也在反弹
     rows = []
     for i, c in enumerate(codes):
         if not (np.isfinite(_gr[i]) or elig[i]):
             continue
         rows.append([c[3:], _sb.get(c, ""), ind_of[i] if isinstance(ind_of[i], str) else "", r(_gr[i], 3), r(_ac[i], 3), r(_g_r[i], 3), r(_a_r[i], 3),
                      r(_mom120[i], 3), r(_m_r[i], 3), r(_mom20[i], 3), r(_last.roeAvg.iloc[i], 3),
-                     str(_last.statDate.iloc[i].date()) if pd.notna(_last.statDate.iloc[i]) else "", int(_uni[i]), int(_pool[i])])
+                     str(_last.statDate.iloc[i].date()) if pd.notna(_last.statDate.iloc[i]) else "", int(_uni[i]), int(_pool[i]),
+                     int(_bs[i]), r(_bup[i], 3), int(_a200[i])])
     _pi = pd.Series([x for x, p in zip(ind_of, _pool) if p and isinstance(x, str) and x]).value_counts().head(8)
     stocks = dict(date=str(dates[-1].date()), regime=a_today["regime"], n_uni=int(_uni.sum()), n_pool=int(_pool.sum()),
                   pool_ind=[[k, int(v)] for k, v in _pi.items()],
-                  fields=["code", "name", "ind", "growth", "accel", "g_r", "a_r", "mom120", "m_r", "mom20", "roe", "stat", "uni", "pool"], rows=rows)
+                  fields=["code", "name", "ind", "growth", "accel", "g_r", "a_r", "mom120", "m_r", "mom20", "roe", "stat", "uni", "pool", "bs", "bup", "a200"], rows=rows, mbounce=_mb,
+                  bs_n=[int(x) for x in np.bincount(_bs[elig], minlength=5)])
     json.dump(stocks, open(os.path.join(os.path.dirname(os.path.abspath(args.out)), "stocks_a.json"), "w"), ensure_ascii=False, separators=(",", ":"), allow_nan=False)
     stocks_note = dict(date=stocks["date"], n_uni=stocks["n_uni"], n_pool=stocks["n_pool"], pool_ind=stocks["pool_ind"])
     print(f"stocks_a.json: {len(rows)} rows, universe {stocks['n_uni']}, pool {stocks['n_pool']}")
