@@ -232,7 +232,7 @@ function plan(V, side, tf, at, sym, env, stp) {
   if (!(R > 0) || !isFinite(R)) return `现价已经越过${day}${side === 1 ? "最低" : "最高"}点，按你的规则没法放止损。`;
   const be = E0 + side * R, half = E0 + side * 2 * R;
   PLANNUM = { E0, stop, target: half, side };
-  const head = at ? `${side === 1 ? "站上" : "跌破"} ${fmt(at, dp)} 之后${side === 1 ? "做多" : "做空"}参考` : `${side === 1 ? "做多" : "做空"}参考`;
+  const head = at ? `${side === 1 ? "站上" : "跌破"} ${fmt(at, dp)} 之后${side === 1 ? "做多" : "做空"}参考` : `确认以后按现价（约 ${fmt(E0, dp)}）${side === 1 ? "做多" : "做空"}参考`;
   const sk = statKey(sym), pyr = sk === "crypto" || (sk === "stock_main" && env && env.bull && side === 1);
   const ex = pyr ? "" : exitLine(sym, env, side);
   return `${head}：止损 <b>${fmt(stop, dp)}</b>（${day}${side === 1 ? "最低" : "最高"}点外，亏 ${pabs(R / E0, 2)}）。` +
@@ -415,6 +415,22 @@ function techScore(sym, R, L, up) {
 // kind="brk"：1小时收盘突破前L根最高（做空=跌破最低）、EMA20在EMA50上方（做空=下方）、收盘高于L根前的收盘
 // kind="tech"：技术面综合分从<2变成≥2（做空：从>−2变成≤−2）
 // L=24（美股合约=7根交易时段线）。止损：L根最低×0.999；浮盈1倍后止损=max(开仓价, 3L根最低)；小时线EMA反穿或满10天离场；止损距离要在0.4%~8%之间
+const BJF = new Intl.DateTimeFormat("zh-CN", { timeZone: "Asia/Shanghai", hour: "2-digit", minute: "2-digit", hour12: false, weekday: "short" });
+function inSession() { const n = nyInfo(Date.now()); return n.wd !== "Sat" && n.wd !== "Sun" && n.hr >= 9 && n.hr <= 15; }
+function confirmAt(stock) {
+  // 币：这根1小时线收盘；股票：美股交易时段（纽约 9:00~15:59 开始的小时线）里的下一根收盘
+  let t = Math.floor(Date.now() / 3600e3) * 3600e3;
+  for (let k = 0; k < 24 * 8; k++, t += 3600e3) {
+    const n = nyInfo(t);
+    if (!stock || (n.wd !== "Sat" && n.wd !== "Sun" && n.hr >= 9 && n.hr <= 15)) {
+      const c = t + 3600e3, p = BJF.formatToParts(new Date(c)), g = (x) => (p.find((y) => y.type === x) || {}).value;
+      const dd = Math.round((new Date(new Date(c).toLocaleDateString("en-CA", { timeZone: "Asia/Shanghai" })) - new Date(new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Shanghai" }))) / 864e5);
+      const day = dd <= 0 ? (+g("hour") >= 18 ? "今晚" : "今天") : dd === 1 ? (+g("hour") >= 18 ? "明晚" : "明天") : g("weekday");
+      return { txt: `${day}${g("hour")}:${g("minute")}`, open: stock && k === 0 };
+    }
+  }
+  return { txt: "下一根", open: false };
+}
 function sigEngine(sym, side, kind, trace) {
   const X = H1[sym]; if (!X) return null;
   const stock = U.groupOfSym(sym) === "stock", R = stock ? X.sess : X.rows, L = stock ? 7 : 24, N = R.length - 1;
@@ -452,8 +468,9 @@ function sigEngine(sym, side, kind, trace) {
   // 还没有信号：下一根小时线收盘要越过的价位
   const level = side === 1 ? maxH(R, N - L + 1, N + 1) : minL(R, N - L + 1, N + 1);
   let atr = 0; for (let j = N - 23; j <= N; j++) atr += Math.max(R[j].h - R[j].l, Math.abs(R[j].h - R[j - 1].c), Math.abs(R[j].l - R[j - 1].c)); atr /= 24;
-  const dist = side * (level - last);
-  return Object.assign(baseOut, { stage: "flat", level, dist, near: dist <= atr, trendOK: side === 1 ? up[N] : !up[N], stopIf });
+  const lp = PX.m[sym] && Date.now() - PX.at < 180e3 ? PX.m[sym] : last;
+  const dist = side * (level - lp), crossed = dist < 0;
+  return Object.assign(baseOut, { stage: "flat", level, dist, lp, crossed, when: crossed ? confirmAt(stock) : null, near: dist <= atr, trendOK: side === 1 ? up[N] : !up[N], stopIf });
 }
 const brk = (sym, side, trace) => sigEngine(sym, side, "brk", trace);
 // "技术面翻多"当进场信号：只给回测里前后两段都赚的组合——AMD/美光/戴尔（纳指牛市做多）、7个主流币（比特币在50日线上方做多）
@@ -489,7 +506,11 @@ function symState(sym) {
   const alt = tk && tk.stage === "flat" ? `；或者等几个指标一起转多` : "";
   if (b.stage === "open") return Object.assign(base, { tier: alt ? 2 : 3, side, b, short: `${agoTxt(b)}出过${w}信号（${brkW} ${f(b.E)}），现在不追；${side === 1 ? "跌回" : "涨回"} ${f(b.st)} ${side === 1 ? "以下" : "以上"}这一波才算结束，之后等下一次${brkW}` + alt });
   const more = b.trendOK ? "" : `，并且短期走势要先转${side === 1 ? "强" : "弱"}`;
-  return Object.assign(base, { tier: b.near || (tk && tk.stage === "flat" && tk.near) ? 1 : 2, side, b, short: `${side === 1 ? "涨过" : "跌破"} ${f(b.level)} 再${w}${light}，还差 ${pabs(b.dist / b.last)}${more}` + alt });
+  if (b.crossed) {
+    const pos = side === 1 ? "上方" : "下方", closed = b.stock && !b.when.open && !inSession();
+    return Object.assign(base, { tier: 1, side, b, short: `现价 ${f(b.lp)} 已经在 ${f(b.level)} ${pos}，${closed ? "但美股休市中；" : ""}${b.when.txt}那根1小时线收盘还在 ${f(b.level)} ${pos}，就是${w}信号${more}` + alt });
+  }
+  return Object.assign(base, { tier: b.near || (tk && tk.stage === "flat" && tk.near) ? 1 : 2, side, b, short: `${side === 1 ? "涨过" : "跌破"} ${f(b.level)} 再${w}${light}，还差 ${pabs(b.dist / b.lp)}${more}` + alt });
 }
 const SCAN = { busy: false, at: 0 };
 function scanSyms() {
@@ -636,6 +657,7 @@ function renderPos(sym, V, env, g, dipMode, okDir) {
     L.push(`<b>按"回调企稳"这一套管</b>（这一轮 ${nyInfo(epUse.kt).md} 在 ${f(epUse.E0)} 企稳${epUse.stage === "done" ? "，按规则这一轮已经" + epUse.why : ""}）：`);
     if (R > 0) L.push(last >= one ? `① 已经过了1倍止损距离（${f(one)}）：止损至少挪到开仓价 <b>${f(E)}</b>，或开仓价上方半份 <b>${f(half)}</b>${money(half)}——两种回测平均差不多，后一种46次里91%最后是赚的。止损只往上挪，不往下放。`
       : `① 规则止损 <b>${f(epUse.stop)}</b>${money(epUse.stop)}；涨到 <b>${f(one)}</b> 再把止损挪到开仓价（或开仓价上方半份 ${f(half)}）。`);
+    if (last >= epUse.top) L.unshift(`<b class="ok">现价 ${f(last)} 已经过了这笔单的止盈价 ${f(epUse.top)}：按计划现在全部平掉${money(last)}。</b>`);
     L.push(`② 止盈：<b>${f(epUse.top)}</b>（跌够那一刻的5天高点）一次全平${money(epUse.top)}。这一套回测里先平一半、剩下不封顶并没有更好。`);
     L.push(`③ 时间：最晚 <b>${epUse.deadline}</b> 美股收盘，没到目标也没碰止损就手动平。`);
     L.push(`④ 不加仓；平掉以后等下一轮"跌够+企稳"再进。`);
@@ -776,8 +798,14 @@ function renderCard(force) {
     else if (b.stage === "open") { dir = `信号已经出过，现在不追`; cls = "flat"; side = 0;
       why = head + `${agoTxt(b)}出过${w}信号（${bw} ${fmt(b.E, V.dp)}）。回测只算了在信号那一小时进场，晚进没验证过，所以现在不追。<b>下一次机会</b>：价格${sd === 1 ? "跌回" : "涨回"} <b>${fmt(b.st, V.dp)}</b> ${sd === 1 ? "以下" : "以上"}（或小时趋势掉头）这一波就算结束，之后再${bw}那时的${b.win}${sd === 1 ? "最高" : "最低"}点才是下一次信号。`;
       noPlan = `现在不新开仓。已经在里面的：止损放 <b>${fmt(b.st, V.dp)}</b>` + (b.armed ? `（已经赚够一倍止损的钱，止损跟着最近3天${sd === 1 ? "最低" : "最高"}点往${sd === 1 ? "上" : "下"}挪）。` : `，${sd === 1 ? "涨" : "跌"}到 ${fmt(b.E + sd * b.Rk, V.dp)} 再挪到开仓价。`); }
+    else if (b.crossed) { const pos = sd === 1 ? "上方" : "下方", closed = b.stock && !inSession();
+      dir = `已经${sd === 1 ? "涨过" : "跌破"} ${fmt(b.level, V.dp)}：等${b.when.txt}收盘确认`; cls = "warn"; side = sd; planAt = null; stpOv = b.stopIf;
+      why = head + `现价 ${fmt(b.lp, V.dp)} 已经在${b.win}${sd === 1 ? "最高" : "最低"}点 <b>${fmt(b.level, V.dp)}</b> ${pos}。` +
+        (closed ? `现在美股休市，币安合约照样在${sd === 1 ? "涨" : "跌"}，但回测只认美股交易时段的1小时收盘（休市时成交少，开盘常常跳回去）。所以要等 <b>${b.when.txt}</b>（美股开盘后第一根1小时线收盘）还在 ${fmt(b.level, V.dp)} ${pos}，才算${w}信号。`
+                : `要等 <b>${b.when.txt}</b> 这根1小时线收盘还在 ${fmt(b.level, V.dp)} ${pos}，才算${w}信号（盘中冲过去又收回来的不算）。`) +
+        (b.trendOK ? "" : `同时短期走势要先转${sd === 1 ? "强" : "弱"}。`) + `${other}。` + note; }
     else { dir = `${b.near ? "快到了：" : ""}等${sd === 1 ? "涨过" : "跌破"} ${fmt(b.level, V.dp)} 再${w}${light}`; cls = "warn"; side = sd; planAt = b.level; stpOv = b.stopIf;
-      why = head + `等价格${sd === 1 ? "涨过" : "跌破"}${b.win}${sd === 1 ? "最高" : "最低"}点 <b>${fmt(b.level, V.dp)}</b>（还差 ${pabs(b.dist / b.last)}，按1小时K线收盘算）再${w}` +
+      why = head + `等价格${sd === 1 ? "涨过" : "跌破"}${b.win}${sd === 1 ? "最高" : "最低"}点 <b>${fmt(b.level, V.dp)}</b>（还差 ${pabs(b.dist / b.lp)}，按1小时K线收盘算）再${w}` +
         (b.trendOK ? "" : `，同时短期走势要先转${sd === 1 ? "强" : "弱"}`) + `；${other}。` + note; }
     if (tk && tk.stage === "flat") why += ` <b>另一种进场</b>：等几个指标一起转多。`;
     else if (tk && tk.stage === "open" && b.stage !== "fresh") why += ` 指标${agoTxt(tk)}也出过转多信号，同样不追。`;
