@@ -137,8 +137,9 @@ def a_share():
 
 # ------------------------------------------------------------------ 美股季度财报（SEC XBRL，带公告日 filed，回测不偷看）
 # SEC asks for a contact e-mail in the User-Agent. It comes from the repo secret SEC_CONTACT
-# (never written into this public repo); without it the generic UA is used and SEC may answer 403.
-_SEC_CONTACT = os.environ.get("SEC_CONTACT", "").strip()
+# when set; otherwise the owner's contact below is used (owner approved 2026-11-11).
+OWNER_CONTACT = "l641894536@gmail.com"
+_SEC_CONTACT = os.environ.get("SEC_CONTACT", "").strip() or OWNER_CONTACT
 SEC_UA = {"User-Agent": ("Jsq market research " + _SEC_CONTACT) if _SEC_CONTACT
           else "Jsq market research (github.com/l641894536-web/Jsq)", "Accept-Encoding": "gzip, deflate"}
 REV = ["Revenues", "RevenueFromContractWithCustomerExcludingAssessedTax", "SalesRevenueNet", "RevenueFromContractWithCustomerIncludingAssessedTax"]
