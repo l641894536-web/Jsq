@@ -4,7 +4,7 @@
   回调企稳：research/dip_clean_bt.py（跌够=收盘≤前35根最高×e^(−2σ)；企稳=收盘站上前4根最高且在高点下方；止损=最低×e^(−0.3σ)；1倍保本；回到高点全平；最多70根）
   放量跳空：research/ep_bt.py（开盘比前收高≥8%、量≥50日均量3倍，第二天开盘进，止损=跳空日最低，拿20个交易日）
 规则（哪个品种、什么环境、哪个方向才算数）：
-  黄金、白银：自身200日线上方，突破做多
+  黄金、白银：自身50日线上方，突破做多（2026-11-11 起由200日线改为50日线，用户同意；回测见 research/metals50_stats.py）
   7个主流币：比特币50日线上方 → 突破做多、技术面翻多做多；下方 → 跌破做空
   AMD、美光、戴尔：纳指200日线上方 → 突破做多、技术面翻多做多；下方 → 回调企稳做多（且纳指前一天在跌）
   币安有合约的美股：纳指200日线上方，放量跳空做多
@@ -160,7 +160,7 @@ def main():
         zero = pd.Series(False, index=R.index)
         bl, bs = brk_signals(R, L); tl, _ = tech_signals(R, L, day_trend(D[D.symbol == sym], R.ts, stock))
         if sym in METALS:
-            if dclose[sym].count() >= 201: add(sym, "突破", simulate(R, L, bl, zero, L), above_ma(dclose[sym], 200), True, "America/New_York")
+            if dclose[sym].count() >= 51: add(sym, "突破", simulate(R, L, bl, zero, L), above_ma(dclose[sym], 50), True, "America/New_York")
         elif sym in CRYPTO:
             add(sym, "突破", simulate(R, L, bl, zero, L), btc_bull, True); add(sym, "技术面翻多", simulate(R, L, tl, zero, L), btc_bull, True)
             add(sym, "跌破", simulate(R, L, zero, bs, L), btc_bull, False)
