@@ -2289,7 +2289,8 @@ async function fetchDMA(sym) {
   const done = k.slice(0, -1).filter((x) => { if (crypto) return true; const d = new Date(+x[0]).getUTCDay(); return d !== 0 && d !== 6; }).map((x) => +x[4]).slice(-199);
   if (done.length < 199) throw new Error("short");
   const ma = (done.reduce((s, x) => s + x, 0) + price) / 200, ma50 = (done.slice(-49).reduce((s, x) => s + x, 0) + price) / 50;
-  DMA[sym] = { price, ma200: ma, vs: price / ma - 1, bull: price > ma, ma50, vs50: price / ma50 - 1, bull50: price > ma50, at: Date.now() };
+  const ma50c = done.slice(-50).reduce((s, x) => s + x, 0) / 50, prevC = done[done.length - 1];
+  DMA[sym] = { price, ma200: ma, vs: price / ma - 1, bull: price > ma, ma50, vs50: price / ma50 - 1, bull50: price > ma50, ma50c, bull50c: prevC > ma50c, at: Date.now() };
 }
 async function needDMA(sym) {
   if (DMA[sym] && Date.now() - DMA[sym].at < 5 * 60e3) return;
@@ -2318,6 +2319,8 @@ function envFor(sym) {
   if (!d) return null;
   const nm = U.names[ref] || ref;
   // 币：方向看比特币50日线（比200日线好：线上突破做多 +0.21、线下跌破做空 +0.18 份/笔，7个币都成立）
+  // 黄金白银：2026-11-11 起看自身50日线（上个收盘），回测 research/metals50_stats.py：50日线上方突破做多 黄金+0.38R、白银+0.20R/笔，和200日线差不多，但能早得多回到可做状态
+  if ((ref === "XAUUSDT" || ref === "XAGUSDT") && isFinite(d.ma50c)) return { bull: d.bull50c, what: `${nm}收盘在50日线${d.bull50c ? "上方" : "下方"}（现价比50日线${pct(d.vs50)}）`, src: d.src || "币安日线", m50: true, lbl: `${nm}在50日线${d.bull50c ? "上方" : "下方"}` };
   if (g === "crypto" && isFinite(d.vs50)) return { bull: d.bull50, what: `${nm}在50日线${d.bull50 ? "上方" : "下方"}（${pct(d.vs50)}）`, src: d.src || "币安日线实时", w50: true };
   return { bull: d.bull, what: `${nm}在200日线${d.bull ? "上方" : "下方"}（${pct(d.vs)}）`, src: d.src || "币安日线实时" };
 }
@@ -2337,6 +2340,7 @@ function renderBar() {
   for (const [sym, id] of [["XAUUSDT", "sbAU"], ["XAGUSDT", "sbAG"], ["BTCUSDT", "sbBTC"]]) {
     const m = DMA[sym];
     if (m && sym === "BTCUSDT" && isFinite(m.vs50)) sChip(id, `${m.bull50 ? "偏多" : "偏空"} · 50日线${pct(m.vs50)}`, m.bull50 ? "good" : "warn");
+    else if (m && isFinite(m.ma50c)) sChip(id, `${m.bull50c ? "可做多" : "不做"} · 50日线${pct(m.vs50)}`, m.bull50c ? "good" : "warn");
     else if (m) sChip(id, `${m.bull ? "牛市" : "熊市"} · ${pct(m.vs)}`, m.bull ? "good" : "warn");
   }
 }
@@ -2462,11 +2466,12 @@ function plan(V, side, tf, at, sym, env, stp) {
   const be = E0 + side * R, half = E0 + side * 2 * R;
   PLANNUM = { E0, stop, target: half, side };
   const head = at ? `${side === 1 ? "站上" : "跌破"} ${fmt(at, dp)} 之后${side === 1 ? "做多" : "做空"}参考` : `${side === 1 ? "做多" : "做空"}参考`;
-  const ex = exitLine(sym, env, side);
+  const sk = statKey(sym), pyr = sk === "crypto" || (sk === "stock_main" && env && env.bull && side === 1);
+  const ex = pyr ? "" : exitLine(sym, env, side);
   return `${head}：止损 <b>${fmt(stop, dp)}</b>（${day}${side === 1 ? "最低" : "最高"}点外，亏 ${pabs(R / E0, 2)}）。` +
     `<br>① 浮盈到 <b>${fmt(be, dp)}</b>（1倍止损距离）把止损挪到开仓价；` +
     `<br>② 之后止损跟着"${trail}${side === 1 ? "最低" : "最高"}点"${side === 1 ? "往上" : "往下"}挪，只挪不退，碰到就走——<b>不设固定止盈</b>，让大行情自己跑；` +
-    `<br>③ 想分批：到 <b>${fmt(half, dp)}</b>（2倍止损距离，赚 ${pabs((half - E0) / E0, 2)}）先平一半，剩下照样跟踪。` +
+    (pyr ? `<br>③ 不中途止盈：这类单子用下面的"赚了再加"，所有仓位一起出场。` : `<br>③ 想分批：到 <b>${fmt(half, dp)}</b>（2倍止损距离，赚 ${pabs((half - E0) / E0, 2)}）先平一半，剩下照样跟踪。`) +
     (ex ? `<br><span class="plan-bt">${ex}</span>` : "");
 }
 // 波动参考：最近20天日波动 σ；80%区间倍数和"碰到概率"表按近5年历史校准（research/vol_range_bt.py，后半段实际罩住76%~82%）
@@ -2696,7 +2701,7 @@ function symState(sym) {
   const env = envFor(sym), X = H1[sym], name = U.names[sym] || sym.replace(/USDT$/, ""), base = { sym, name };
   if (SCANERR[sym] && !X) return Object.assign(base, { tier: 9, short: "行情没取到，稍后再试" });
   if (!env || !X) return Object.assign(base, { tier: 9, short: "载入中…" });
-  const key = statKey(sym), f = (x) => fmt(x, X.dp), envW = env.w50 ? (env.bull ? "比特币在50日线上方" : "比特币在50日线下方") : env.bull ? "牛市" : "熊市";
+  const key = statKey(sym), f = (x) => fmt(x, X.dp), envW = env.lbl || (env.w50 ? (env.bull ? "比特币在50日线上方" : "比特币在50日线下方") : env.bull ? "牛市" : "熊市");
   if (key === "stock_main" && (!env.bull || ndxDipped())) {
     const d = VOL[sym] ? dipState(sym, { dp: X.dp, last: X.last }, env.bull ? "bull" : "bear") : null;
     if (!env.bull) return d ? Object.assign(base, { tier: d.tier, short: d.short, kind: "dip" }) : Object.assign(base, { tier: 9, short: "载入中…" });
@@ -2706,7 +2711,7 @@ function symState(sym) {
   const side = OKG(gL) ? 1 : OKG(gS) ? -1 : 0;
   if (!side) {
     const why = gL === "none" && gS === "none" ? "还没验证过，不做" : (gL === "few" || gS === "few") && !["lose", "flat"].includes(gL) ? `现在是${envW}，历史上这种情况太少，算不准` : `现在是${envW}，历史上这时候做多做空都不赚`;
-    const dm = DMA[sym], w200 = dm && U.groupOfSym(sym) === "metal" && !env.bull && isFinite(dm.ma200) ? `；要等收盘站回200日线 ${f(dm.ma200)}（还差 ${pabs(dm.ma200 / X.last - 1)}）才开始找做多` : "";
+    const dm = DMA[sym], lv = dm && (env.m50 ? dm.ma50 : dm.ma200), ln = env.m50 ? "50日线" : "200日线", w200 = dm && U.groupOfSym(sym) === "metal" && !env.bull && isFinite(lv) ? `；要等收盘站上${ln} ${f(lv)}（还差 ${pabs(lv / X.last - 1)}）才开始找做多` : "";
     return Object.assign(base, { tier: 4, short: why + w200 });
   }
   const b = brk(sym, side); if (!b) return Object.assign(base, { tier: 9, short: "载入中…" });
@@ -2984,7 +2989,7 @@ function renderCard(force) {
     else if (ok(gL)) { dir = "等突破再做多"; cls = "warn"; side = 1; planAt = V.H; why = head + `等价格站上${dayW}最高点 ${H} 再做多${gS === "lose" || gS === "flat" ? "，不做空（回测这种环境做空不赚）" : ""}。`; }
     else if (ok(gS)) { dir = "等跌破再做空"; cls = "warn"; side = -1; planAt = V.L; why = head + `等价格跌破${dayW}最低点 ${Lw} 再做空${gL === "lose" || gL === "flat" ? "，不做多（回测这种环境做多不赚）" : ""}。`; }
     else { dir = "先不做"; cls = "flat"; side = 0; why = head + (gL === "few" || gS === "few" ? "历史上这种情况出现得太少，做多做空都算不出优势，先不做。" + symNote(stL || stS) : "历史上这种时候做多做空都不赚，先不做。");
-      { const dm = DMA[sym]; if (dm && U.groupOfSym(sym) === "metal" && !env.bull && isFinite(dm.ma200)) why += ` <b>等什么</b>：收盘站回200日线 <b>${fmt(dm.ma200, V.dp)}</b>（比现在高 ${pabs(dm.ma200 / V.last - 1)}）以后，才按"突破就做多"找机会。`; } }
+      { const dm = DMA[sym], lv = dm && (env.m50 ? dm.ma50 : dm.ma200), ln = env.m50 ? "50日线" : "200日线"; if (dm && U.groupOfSym(sym) === "metal" && !env.bull && isFinite(lv)) why += ` <b>等什么</b>：收盘站上${ln} <b>${fmt(lv, V.dp)}</b>（比现在高 ${pabs(lv / V.last - 1)}）以后，才按"突破就做多"找机会。`; } }
   }
   // 有回测依据的方向：结论只看回测用的那个突破信号，不看技术指标偏多偏空（和"今天能做什么"清单同一套算法）
   let stpOv = 0;
@@ -3026,7 +3031,18 @@ function renderCard(force) {
   if (PLANNUM && (side || dipPlan)) {
     const acct = numv(($("posAcct") || {}).value) || numv(localStorage.getItem("jsq.acct")) || 3200, rk = Math.abs(PLANNUM.stop / PLANNUM.E0 - 1), lose = acct * 0.005;
     if (rk > 0) { const not = Math.min(lose / rk, acct * 0.8);
-      $("cardPlan").innerHTML += `<br><b>这单开多大</b>：止损打到最多亏 <b>${lose.toFixed(0)}U</b>（本金 ${acct.toFixed(0)}U 的0.5%）→ 持仓价值约 <b>${not.toFixed(0)}U</b>（开5倍就是 ${(not / 5).toFixed(0)}U 保证金）。止损离得远就少开，离得近可以多开。`; }
+      $("cardPlan").innerHTML += `<br><b>这单开多大</b>：止损打到最多亏 <b>${lose.toFixed(0)}U</b>（本金 ${acct.toFixed(0)}U 的0.5%）→ 满仓持仓价值约 <b>${not.toFixed(0)}U</b>（开5倍就是 ${(not / 5).toFixed(0)}U 保证金）。止损离得远就少开，离得近可以多开。`;
+      // 赚了再加（research/pyramid_bt.py）：币牛熊都更好、AMD/美光/戴尔牛市突破更好；金银和"大跌后止跌"一次性开
+      const sk = statKey(sym), sd2 = PLANNUM.side || side || 1, E0 = PLANNUM.E0, Rr = Math.abs(E0 - PLANNUM.stop), F = (x) => fmt(x, V.dp);
+      if (!dipPlan && (sk === "crypto" || (sk === "stock_main" && env && env.bull && sd2 === 1))) {
+        const a1 = E0 + sd2 * Rr, a2 = E0 + sd2 * 2 * Rr, mv = sd2 === 1 ? "涨" : "跌";
+        const PB = sk === "crypto" ? (env && env.bull ? ["+2.2", "+2.2", "−31", "−57"] : ["+0.8", "+0.3", "−40", "−64"]) : ["+3.0", "+4.2", "−40", "−95"];
+        $("cardPlan").innerHTML += `<br><b>赚了再加</b>：① 先开3成（约 ${(0.3 * not).toFixed(0)}U），止损 ${F(PLANNUM.stop)}；` +
+          `② ${mv}到 <b>${F(a1)}</b> 再加3成（约 ${(0.3 * not).toFixed(0)}U），所有仓位的止损挪到 <b>${F(E0)}</b>；③ ${mv}到 <b>${F(a2)}</b> 再加4成（约 ${(0.4 * not).toFixed(0)}U），之后止损跟着最近3天${sd2 === 1 ? "最低" : "最高"}点挪；` +
+          `④ 一起出场：止损打到、小时趋势掉头或满10天。没到 ${F(a1)} 就不加，亏着的仓位永远不加。` +
+          `<br><span class="plan-bt">回测（${SAMPLE[sk] || sk}，按100U开5倍满仓算）：赚了再加每次 ${PB[0]}U，一上来满仓 ${PB[1]}U；最差的一次 ${PB[2]}U 对 ${PB[3]}U。只有约五分之一的单子能加满，赚的差不多，最坏的亏损少一半。</span>`;
+      } else if (sk === "XAUUSD" || sk === "XAGUSD" || dipPlan) $("cardPlan").innerHTML += `<br>这类单子一次性开，不加仓（回测里加仓不如一次性）。`;
+    }
   }
   // 历史
   const hl = [];
