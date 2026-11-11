@@ -286,6 +286,12 @@ td.n { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
 .pos-in { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; margin-top: 8px; }
 .pos-in label { display: flex; flex-direction: column; font-size: 12px; color: var(--muted); gap: 3px; min-width: 0; }
 .pos-in input, .pos-in select { font: inherit; font-size: 15px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg, #fff); color: var(--ink); min-width: 0; width: 100%; box-sizing: border-box; }
+.bnbox { margin: 8px 14px 12px; border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; }
+.bnbox summary { cursor: pointer; font-weight: 600; font-size: 13.5px; color: var(--ink); }
+.bnbox label { display: flex; flex-direction: column; font-size: 12px; color: var(--muted); gap: 3px; margin-top: 8px; }
+.bnbox input { font: inherit; font-size: 15px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg, #fff); color: var(--ink); min-width: 0; width: 100%; box-sizing: border-box; }
+.bnbox .row-btns { margin-top: 8px; }
+.bnbox .note { margin: 8px 0 0; }
 .pos-out { font-size: 13.5px; line-height: 1.7; margin: 8px 0 0; color: var(--ink); }
 .pos-out .plan-bt { color: var(--muted); font-size: 12.5px; }
 .card-vol { margin: 0; font-size: 12.5px; color: var(--muted); line-height: 1.6; }
@@ -528,6 +534,19 @@ b.ok { color: var(--good); } b.bad { color: var(--bad); }
     <div class="panel-h"><h2 id="posTitle">我的持仓</h2><label class="sub">本金 U（选填）<input id="posAcct" inputmode="decimal" autocomplete="off" style="width:5.5em"></label></div>
     <div class="scan" id="posList"></div>
     <p class="note scan-note" id="posSum"></p>
+    <details class="bnbox" id="bnBox">
+      <summary id="bnSum">从币安自动读取持仓（只读）</summary>
+      <div id="bnForm">
+        <p class="note">在币安 App：个人中心 → API 管理 → 创建 API（选"系统生成"）。权限<b>只留"允许读取"</b>，交易、提现都不要勾；IP 选"不限制"。把 API Key 和 Secret Key 粘贴到下面。<br>密钥只存在这台手机，只发给币安。就算泄露，别人也只能看到持仓，不能下单、不能提币。</p>
+        <label>API Key<input id="bnK" autocomplete="off" autocapitalize="off" spellcheck="false"></label>
+        <label>Secret Key<input id="bnS" type="password" autocomplete="off" autocapitalize="off" spellcheck="false"></label>
+        <div class="row-btns"><button type="button" class="btn" id="bnSave">保存并读取</button></div>
+      </div>
+      <div id="bnOn" hidden>
+        <div class="row-btns"><button type="button" class="btn" id="bnRef">现在刷新</button><button type="button" class="btn" id="bnDel">删除密钥</button></div>
+      </div>
+      <p class="note" id="bnStat"></p>
+    </details>
   </section>
   <div class="controls">
     <div class="syms" id="syms" role="group" aria-label="品种"></div>
@@ -2825,12 +2844,13 @@ async function needPrices() {
 }
 function allPos() {
   const out = [];
-  try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && k.startsWith("jsq.pos.")) { const o = JSON.parse(localStorage.getItem(k) || "{}"); if (o && numv(o.E) > 0) out.push({ sym: k.slice(8), side: +o.side || 1, E: numv(o.E), S: numv(o.S), N: numv(o.N) }); } } } catch (e) {}
+  try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && k.startsWith("jsq.pos.")) { const o = JSON.parse(localStorage.getItem(k) || "{}"); if (o && numv(o.E) > 0) out.push({ sym: k.slice(8), side: +o.side || 1, E: numv(o.E), S: numv(o.S), N: numv(o.N), liq: numv(o.liq), bn: o.src === "bn" }); } } } catch (e) {}
   return out;
 }
 async function renderPosList() {
   const box = $("posPanel"); if (!box) return;
-  const P = allPos(); box.hidden = !P.length; if (!P.length) return;
+  const P = allPos(); box.hidden = false; renderBN();
+  if (!P.length) { $("posList").innerHTML = ""; $("posSum").innerHTML = bnKeys() ? "币安合约账户现在没有仓位。" : "还没有仓位。连上币安（下面），开了仓会自动出现在这里；也可以在每个品种卡片的\"我已经有仓位\"里手填。"; return; }
   try { await needPrices(); } catch (e) {}
   const GN = { metal: "金银等商品", crypto: "币", stock: "股票" }, sum = {}, miss = [];
   let tot = 0, totNow = 0, known = true;
@@ -2840,7 +2860,7 @@ async function renderPosList() {
     if (!isFinite(ps)) { miss.push(nm); known = false; } else { const g = U.groupOfSym(p.sym); sum[g] = (sum[g] || 0) + ps; tot += ps; }
     if (isFinite(pn)) totNow += pn;
     const u1 = (x) => isFinite(x) ? `${x >= 0 ? "+" : "−"}${Math.abs(x).toFixed(1)}U` : "—";
-    return `<button type="button" class="scan-row" data-sym="${esc(p.sym)}"><b>${esc(nm)} ${p.side === 1 ? "多" : "空"}</b><span>开 ${f(p.E)} → 现 ${last ? f(last) : "—"}｜现在 ${u1(pn)}｜${isFinite(p.S) ? `止损 ${f(p.S)}：打到是 ${u1(ps)}` : "没填止损"}</span></button>`;
+    return `<button type="button" class="scan-row" data-sym="${esc(p.sym)}"><b>${esc(nm)} ${p.side === 1 ? "多" : "空"}</b><span>开 ${f(p.E)} → 现 ${last ? f(last) : "—"}｜现在 ${u1(pn)}｜${isFinite(p.S) ? `止损 ${f(p.S)}：打到是 ${u1(ps)}` : "没填止损（点开填）"}${p.liq > 0 ? `｜强平 ${f(p.liq)}` : ""}</span></button>`;
   });
   $("posList").innerHTML = rows.join("");
   const acct = numv(($("posAcct") || {}).value), pc = (x) => acct > 0 ? `，本金的 ${(Math.abs(x) / acct * 100).toFixed(1)}%` : "";
@@ -2874,7 +2894,7 @@ function renderPos(sym, V, env, g, dipMode, okDir) {
     if (o.E) box.open = true;
   }
   const side = +$("posSide").value, E = numv($("posE").value), S = numv($("posS").value), NV = numv($("posN").value), out = $("posOut");
-  savePos(sym, { side, E: $("posE").value.trim(), S: $("posS").value.trim(), N: $("posN").value.trim() });
+  savePos(sym, Object.assign(loadPos(sym), { side, E: $("posE").value.trim(), S: $("posS").value.trim(), N: $("posN").value.trim() }));
   if (!(E > 0)) { out.innerHTML = "填开仓价就能算（持仓价值填币安上的\"持仓数量(USDT)\"）。"; return; }
   if (!H1[sym]) { needH1(sym).then((ch) => { if (ch && window.JSQ.state.sym === sym) renderCard(true); }).catch(() => {}); out.innerHTML = "正在取小时线…"; return; }
   const dp = V.dp, f = (x) => fmt(x, dp), last = V.last, up = side === 1, L = [];
@@ -2942,11 +2962,108 @@ function renderEP() {
     return `<div class="ep-row"><b class="t">${nm}</b> ${md} 跳空 +${(e.gap * 100).toFixed(1)}%，量 ${e.vol} 倍，现 ${e.last}<br><span class="st">${st}</span></div>`;
   }).join("");
 }
+// ---------------------------------------------------------------- 币安只读API：自动读合约持仓
+// 密钥只存在这台手机（localStorage），只发给币安。用币安 WebSocket API（wss://ws-fapi.binance.com）读，
+// 因为币安的 REST 接口不让网页直接带密钥访问（浏览器跨域限制），WebSocket 没这个限制。
+// 签名：参数按名字排序拼成 a=1&b=2，HMAC-SHA256（Secret Key），十六进制。
+const BN = { key: "jsq.bnkey", busy: false, at: 0, err: "", n: 0, off: NaN, acct: NaN, note: "" };
+function bnKeys() { try { const o = JSON.parse(localStorage.getItem(BN.key) || "null"); return o && o.k && o.s ? o : null; } catch (e) { return null; } }
+async function bnSign(secret, params) {
+  const q = Object.keys(params).sort().map((k) => `${k}=${params[k]}`).join("&"), te = new TextEncoder();
+  const ck = await crypto.subtle.importKey("raw", te.encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  return Array.from(new Uint8Array(await crypto.subtle.sign("HMAC", ck, te.encode(q)))).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+async function bnTime() {
+  try { const t0 = Date.now(), r = await fetch(`${REST}/fapi/v1/time`, { cache: "no-store" }), j = await r.json(); if (j && j.serverTime) BN.off = j.serverTime - (t0 + Date.now()) / 2; } catch (e) {}
+  if (!isFinite(BN.off)) BN.off = 0;
+}
+function bnWS(calls) {
+  return new Promise((resolve, reject) => {
+    let ws; try { ws = new WebSocket("wss://ws-fapi.binance.com/ws-fapi/v1"); } catch (e) { reject(new Error("net")); return; }
+    const out = calls.map(() => undefined); let done = 0;
+    const fin = (f) => { clearTimeout(tm); try { ws.close(); } catch (e) {} f(); };
+    const tm = setTimeout(() => fin(() => reject(new Error("net"))), 15000);
+    ws.onopen = () => calls.forEach((c, i) => ws.send(JSON.stringify({ id: "jsq" + i, method: c.method, params: c.params })));
+    ws.onmessage = (ev) => {
+      let m; try { m = JSON.parse(ev.data); } catch (e) { return; }
+      const i = +String(m.id || "").slice(3); if (!(i >= 0 && i < calls.length) || out[i] !== undefined) return;
+      out[i] = m.status === 200 ? { ok: true, r: m.result } : { ok: false, e: m.error || { code: m.status } };
+      if (++done === calls.length) fin(() => resolve(out));
+    };
+    ws.onerror = () => fin(() => reject(new Error("net")));
+  });
+}
+function bnErr(e) {
+  const c = e && e.code, msg = String((e && e.msg) || "");
+  if (c === -2014 || c === -2008) return "API Key 填得不对（检查有没有多复制空格）。";
+  if (c === -1022) return "Secret Key 填得不对。";
+  if (c === -2015) return "币安拒绝了这个密钥：可能 Key 不对、没勾\"允许读取\"，或者设了IP白名单（这里要选\"不限制IP\"）。";
+  if (c === -1021) return "手机时间和币安差太多，打开手机设置里的\"自动设置时间\"再试。";
+  return `币安返回错误${c ? `（${c}）` : ""}${msg ? "：" + esc(msg.slice(0, 80)) : ""}。`;
+}
+async function bnSync(manual) {
+  const K = bnKeys(); if (!K || BN.busy) return; BN.busy = true; BN.err = ""; if (manual) { BN.note = "正在读取…"; renderBN(); }
+  try {
+    if (manual || !isFinite(BN.off)) await bnTime();
+    const mk = async (method) => { const p = { apiKey: K.k, recvWindow: 10000, timestamp: Math.round(Date.now() + BN.off) }; p.signature = await bnSign(K.s, p); return { method, params: p }; };
+    const res = await bnWS([await mk("v2/account.position"), await mk("v2/account.status")]);
+    if (!res[0] || !res[0].ok) throw Object.assign(new Error("api"), { bn: res[0] && res[0].e });
+    // 同一个品种如果双向持仓，只取持仓价值大的那一边
+    const got = {};
+    for (const x of res[0].r || []) {
+      const amt = +x.positionAmt; if (!amt || !x.symbol) continue;
+      const side = x.positionSide === "SHORT" ? -1 : x.positionSide === "LONG" ? 1 : amt > 0 ? 1 : -1, nv = Math.abs(+x.notional) || Math.abs(amt * +x.markPrice);
+      if (got[x.symbol] && got[x.symbol].nv >= nv) continue;
+      got[x.symbol] = { side, E: +x.entryPrice, nv, liq: +x.liquidationPrice, up: +x.unRealizedProfit };
+    }
+    const keys = []; for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && k.startsWith("jsq.pos.")) keys.push(k); }
+    for (const k of keys) if (!got[k.slice(8)]) localStorage.removeItem(k);            // 币安上已经平掉的
+    for (const sym of Object.keys(got)) {
+      const g = got[sym], old = loadPos(sym), same = +old.side === g.side && numv(old.E) > 0 && Math.abs(g.E / numv(old.E) - 1) < 0.05;
+      const S = same && isFinite(numv(old.S)) ? old.S : "";                              // 止损：币安读不到条件单，同一笔单（方向一样、开仓价差不到5%）沿用你填过的
+      const dp = g.E >= 100 ? 2 : g.E >= 1 ? 4 : 6;
+      savePos(sym, { side: g.side, E: String(+g.E.toFixed(dp)), S, N: String(+g.nv.toFixed(2)), liq: g.liq > 0 ? String(+g.liq.toFixed(dp)) : "", src: "bn" });
+    }
+    BN.n = Object.keys(got).length;
+    const a = res[1] && res[1].ok ? res[1].r : null, bal = a ? +(a.totalMarginBalance || a.totalWalletBalance) : NaN;
+    if (bal > 0) { BN.acct = bal; try { localStorage.setItem("jsq.acct", String(Math.round(bal))); } catch (e) {} const ai = $("posAcct"); if (ai && document.activeElement !== ai) ai.value = String(Math.round(bal)); }
+    BN.at = Date.now(); BN.note = "";
+    const pb = $("posBox"); if (pb) pb.dataset.sym = "";                                 // 让卡片里"我已经有仓位"重新读
+  } catch (e) {
+    BN.err = e && e.bn ? bnErr(e.bn) : "连不上币安（检查网络或梯子；能看行情说明网络是通的，过一会儿再点刷新）。"; BN.note = "";
+    if (e && e.bn && [-2014, -2008, -1022, -2015].includes(e.bn.code) && !BN.at) { try { localStorage.removeItem(BN.key); } catch (x) {} BN.err += "改好以后重新粘贴。"; }
+  }
+  BN.busy = false; renderBN(); renderPosList(); renderCard(true);
+}
+function renderBN() {
+  const K = bnKeys(), form = $("bnForm"), on = $("bnOn"), st = $("bnStat"), sm = $("bnSum"); if (!form || !on || !st) return;
+  form.hidden = !!K; on.hidden = !K;
+  if (sm) sm.textContent = K ? "币安持仓：已连接（只读）" : "从币安自动读取持仓（只读）";
+  const tm = BN.at ? new Date(BN.at).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", hour12: false }) : "";
+  st.innerHTML = BN.err ? `<b class="bad">${BN.err}</b>` : BN.note ? BN.note : K ? (BN.at ? `${tm} 读到 ${BN.n} 个仓位${BN.acct > 0 ? `，合约账户 ${BN.acct.toFixed(0)}U（已填进本金）` : ""}；页面开着每分钟自动更新。开仓价、方向、持仓价值、强平价从币安来；止损币安这边读不到，在品种卡片"我已经有仓位"里填一次就记住。` : "还没读取。") : "";
+}
+function initBN() {
+  const sv = $("bnSave"), dl = $("bnDel"), rf = $("bnRef"); if (!sv) return;
+  sv.addEventListener("click", () => {
+    const k = $("bnK").value.trim(), s2 = $("bnS").value.trim();
+    if (!/^[A-Za-z0-9]{20,100}$/.test(k) || !/^[A-Za-z0-9]{20,100}$/.test(s2)) { BN.err = "两个密钥都要填（一串字母数字，复制时别带空格）。"; renderBN(); return; }
+    try { localStorage.setItem(BN.key, JSON.stringify({ k, s: s2 })); } catch (e) {}
+    $("bnK").value = ""; $("bnS").value = ""; BN.err = ""; bnSync(true);
+  });
+  dl.addEventListener("click", () => {
+    try { localStorage.removeItem(BN.key); const ks = []; for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && k.startsWith("jsq.pos.") && (JSON.parse(localStorage.getItem(k) || "{}") || {}).src === "bn") ks.push(k); } ks.forEach((k) => localStorage.removeItem(k)); } catch (e) {}
+    BN.at = 0; BN.err = ""; BN.note = "密钥已从这台手机删掉。记得也去币安 API 管理里把这个 API 删除。"; renderBN(); renderPosList(); renderCard(true);
+  });
+  if (rf) rf.addEventListener("click", () => bnSync(true));
+  document.addEventListener("visibilitychange", () => { if (!document.hidden && Date.now() - BN.at > 30e3) bnSync(false); });
+  renderBN(); if (bnKeys()) bnSync(false);
+}
 function initPos() {
+  initBN();
   let tm = 0;
   ["posSide", "posE", "posS", "posN"].forEach((id) => { const e = $(id); if (e) e.addEventListener("input", () => { renderCard(true); clearTimeout(tm); tm = setTimeout(renderPosList, 800); }); });
   const a = $("posAcct"); if (a) { try { a.value = localStorage.getItem("jsq.acct") || ""; } catch (e) {} a.addEventListener("input", () => { try { localStorage.setItem("jsq.acct", a.value.trim()); } catch (e) {} renderPosList(); }); }
-  setInterval(() => { if (!document.hidden) { scanAll(false); renderPosList(); } }, 60e3);
+  setInterval(() => { if (!document.hidden) { scanAll(false); if (bnKeys()) bnSync(false); else renderPosList(); } }, 60e3);
 }
 function setDir(text, cls) { const d = $("cardDir"); d.textContent = text; d.className = "card-dir " + cls; }
 function renderCard(force) {
