@@ -1,1 +1,1 @@
-{"frozen":"2026-11-10","data_to":"2026-11-09 23:00:00+00:00","n":0,"closed":0,"open":0,"total_u":0.0,"closed_u":0.0,"win":0,"by_rule":[],"trades":[]}
+{"frozen":"2026-11-10","data_to":"2026-11-10 23:00:00+00:00","n":1,"closed":0,"open":1,"total_u":5.7,"closed_u":0.0,"win":0,"by_rule":[{"rule":"跌破","n":1,"closed":0,"u":5.7,"win":1}],"trades":[{"sym":"ADAUSDT","name":"ADA","rule":"跌破","dir":"空","t_in":"2026-11-10T13:00:00+00:00","px_in":0.1761,"stop":0.183483,"t_out":null,"px_out":0.1739,"status":"持仓中","why":"","u":5.7}]}
