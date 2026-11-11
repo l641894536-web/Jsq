@@ -2957,6 +2957,17 @@ function show(code) {
   const acc = Number.isFinite(o.accel) ? `比上一期${o.accel >= 0 ? "加快" : "放慢"} ${Math.abs(o.accel * 100).toFixed(0)} 个百分点（${rk(o.a_r)}）` : "";
   L.push(`<p><b>成长</b>：最新已公告（${o.stat || "—"}）归母净利润同比 ${gtxt}${acc ? "，" + acc : ""}。${Number.isFinite(o.roe) ? `ROE ${(o.roe * 100).toFixed(1)}%。` : ""}</p>`);
   L.push(`<p><b>强弱</b>：近120天（不含最近一周）${Number.isFinite(o.mom120) ? `${pc(o.mom120)}（${rk(o.m_r)}）` : "—"}；近20天 ${Number.isFinite(o.mom20) ? pc(o.mom20) : "—"}。</p>`);
+  if (o.bs != null) {
+    const up = Number.isFinite(o.bup) ? pc(o.bup) : "—", mb = DATA.mbounce;
+    const T = {
+      0: `没有深跌（离一年高点不到 30%，或这轮低点已经过去很久），不用纠结反弹还是反转。`,
+      1: `<b class="bad">深跌中，还没有像样的反弹</b>（比这轮低点高 ${up}）。等它从低点涨回 15% 再看下一步。`,
+      2: `<b>第一波反弹</b>（现在比这轮低点高 ${up}）。历史上这种情况之后半年有 <b>45%</b> 会再跌破前低——一半一半，<b>不能当反转</b>。套着的可以先减一部分。${mb ? "" : `现在大盘自己没在反弹、是它单独在弹：这种再破低的有 54%，之后60天平均跑输大盘 2.3%，更该减。`}`,
+      3: `<b class="ok">已二次确认</b>（回踩没破前低，又涨过了反弹高点；现在比低点高 ${up}）。之后半年再破前低的只有 <b>${o.a200 ? "23%" : "28%"}</b>${o.a200 ? "（它还站上了200日线）" : ""}。之前减掉的可以考虑接回。`,
+      4: `<b class="bad">反弹后又跌破了前低</b>：这一轮只是反弹。卖掉的不用接回，等它重新走出"反弹 → 回踩不破 → 过前高"。`,
+    }[o.bs];
+    if (T) L.push(`<p><b>反弹还是反转</b>：${T}</p>`);
+  }
   const tips = [];
   if (!o.uni) tips.push("成交太小、上市不满一年、ST 或财报太旧，不在回测统计范围里，下面的倾向只作参考。");
   if (bull) {
@@ -2971,7 +2982,7 @@ function show(code) {
     if (o.pool) tips.push(`它在"高成长+增速加快"池子里：等大盘重新站上200日线（转牛）再看，牛市里这个池子60天平均跑赢约 0.9%；熊市里它不跑赢（−0.1%）。`);
   }
   $("stkOut").innerHTML = `<div class="stk-h"><b>${esc(o.name || o.code)}</b><span>${o.code} · ${esc(o.ind || "")}</span></div>${L.join("")}<div class="stk-tip">${tips.map((t) => `<p>${t}</p>`).join("")}</div>
-    <p class="note">统计倾向：平均每只差 1~2%，不是买卖信号。成长数据目前从 2024 年开始，2021–2023 年补齐后会复核。</p>`;
+    <p class="note">统计倾向，不是买卖信号。"反弹还是反转"按 2020–2026 年 A 股 3 万次深跌反弹统计（跌 30% 以上、从低点涨回 15%），前后两段一致。</p>`;
 }
 function init() {
   const q = $("stkQ"); if (!q) return;
