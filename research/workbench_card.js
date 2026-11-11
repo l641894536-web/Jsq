@@ -41,7 +41,7 @@ function usNow() {
   const L = window.JSQ_LIVE_US, UL = E.live && E.live.us;
   if (L && UL && L.QQQ && UL.QQQ) {
     const ma = (UL.QQQ.sum199 + L.QQQ) / 200, sma = (UL.SPY.sum199 + L.SPY) / 200;
-    return { bull: L.QQQ > ma, vs: L.QQQ / ma - 1, spxVs: L.SPY / sma - 1, live: true, stopDist: L.QQQ / UL.QQQ.stop_line - 1, stop: E.us.today.stop_line };
+    return { bull: E.us.today.ndx_vs > 0, vs: L.QQQ / ma - 1, spxVs: L.SPY / sma - 1, live: true, stopDist: L.QQQ / UL.QQQ.stop_line - 1, stop: E.us.today.stop_line };
   }
   const u = E.us.today;
   return { bull: u.ndx_vs > 0, vs: u.ndx_vs, spxVs: u.spx_vs, live: false, stopDist: u.ndx / u.stop_line - 1, stop: u.stop_line };
@@ -341,27 +341,26 @@ function dipState(sym, V, mode) {
   if (!X || !v || X.sess.length < 60) return null;
   const R = X.sess, sd = v.sd, dp = V.dp, ep = dipEpisode(R, sd), last = V.last;
   const pc = (x) => (x * 100).toFixed(1) + "%";
-  const head = (bear ? `熊市里 AMD/美光/戴尔 只做"回调企稳"` : `纳指100整体回调中（5天内跌够2倍日波动），科技股"回调企稳"做多更好`) +
-    `（按美股交易时段小时线算，和回测一样）：收盘跌到5个交易日最高价下方2倍日波动=跌够，再等1小时收盘站上前4根（约半个交易日）最高价=企稳。`;
-  const mgmt = (e) => `止损 <b>${fmt(e.stop, dp)}</b>（这波最低点 ${fmt(e.low, dp)} 下方）；涨到 <b>${fmt(e.E0 + e.Rk, dp)}</b>（1倍止损距离）把止损挪到开仓价${e.E0 ? "，或开仓价上方半份" : ""}；目标 <b>${fmt(e.top, dp)}</b>（跌够那一刻的5天高点）到了全平；最晚 <b>${e.deadline}</b> 美股收盘还没到就平。`;
+  const head = (bear ? `纳指在熊市，这3只股票只在"大跌之后止跌"时买` : `纳指这几天跌得多，这3只股票等"大跌之后止跌"再买更好`) +
+    `。做法：先等它从5天高点跌够一大段（约两天的正常波动），再等它涨回最近半天的最高价上方（说明止跌了）才进。`;
+  const mgmt = (e) => `① 止损放 <b>${fmt(e.stop, dp)}</b>（这波最低点 ${fmt(e.low, dp)} 下面一点）；② 涨到 <b>${fmt(e.E0 + e.Rk, dp)}</b> 就把止损挪到开仓价，保证不亏；③ 涨到 <b>${fmt(e.top, dp)}</b>（下跌前的高点）全部平掉；④ 到 <b>${e.deadline}</b> 美股收盘还没到目标，也平掉。`;
   if (ep.stage === "none") {
-    const need = ep.top * Math.exp(-2 * sd), lastTxt = ep.last ? `上一轮（${nyInfo(ep.last.kt).md}在 ${fmt(ep.last.E0, dp)} 企稳）已经结束：${ep.last.why}。` : "";
-    return { tier: 2, short: `等回调：跌到 ${fmt(need, dp)} 以下才算跌够（现 ${fmt(last, dp)}）`, dir: "观望（跌得还不够）", cls: "flat", why: head + lastTxt + `现在5个交易日最高 ${fmt(ep.top, dp)}，要跌到 <b>${fmt(need, dp)}</b> 以下才算跌够（现 ${fmt(last, dp)}）。` };
+    const need = ep.top * Math.exp(-2 * sd), lastTxt = ep.last ? `上一波（${nyInfo(ep.last.kt).md}在 ${fmt(ep.last.E0, dp)} 止跌）已经结束：${ep.last.why}。` : "";
+    return { tier: 2, short: `等它大跌：跌到 ${fmt(need, dp)} 以下再找买点（现 ${fmt(last, dp)}）`, dir: "先不做（跌得还不够）", cls: "flat", why: head + lastTxt + `最近5天最高 ${fmt(ep.top, dp)}，要跌到 <b>${fmt(need, dp)}</b> 以下才算跌够（现价 ${fmt(last, dp)}）。` };
   }
-  if (ep.stage === "wait") return { tier: 1, short: `已跌够，等企稳：交易时段1小时收盘站上 ${fmt(ep.trig, dp)} 做多`, dir: "等企稳再做多", cls: "warn", why: head + `已经跌够（5天高点 ${fmt(ep.top, dp)}，最低 ${fmt(ep.low, dp)}），还没企稳：等美股交易时段1小时收盘站上 <b>${fmt(ep.trig, dp)}</b> 再做多。` };
+  if (ep.stage === "wait") return { tier: 1, short: `跌够了，等止跌：涨回 ${fmt(ep.trig, dp)} 上方就做多`, dir: "等止跌再做多", cls: "warn", why: head + `已经跌够了（从 ${fmt(ep.top, dp)} 跌到最低 ${fmt(ep.low, dp)}），但还没止跌：等美股开盘时段价格涨回 <b>${fmt(ep.trig, dp)}</b> 上方再做多（按1小时K线收盘算）。` };
   const age = R.length - 1 - ep.k, upB = ndxUpBefore(ep.kt), kd = nyInfo(ep.kt).md;
-  const holder = `<br><span class="plan-bt">这一轮${kd}在 ${fmt(ep.E0, dp)} 企稳，已经在里面的照这个管：${mgmt(ep)}</span>`;
-  if (age > 3) return { tier: 3, short: `这轮${kd}已在 ${fmt(ep.E0, dp)} 企稳，不追；等下一次回调`, dir: "这轮已经企稳过了，不追", cls: "flat", why: head + `${kd} ${fmt(ep.E0, dp)} 那根已经企稳反弹，现在追进去止损太远；等下一次回调。`, plan: `现在不给新开仓价位。${holder}` };
-  if (bear && upB === true) return { tier: 3, short: "已企稳，但纳指前一天在涨，先不进", dir: "先不进（纳指前一天在涨）", cls: "warn", why: head + `已经企稳，但纳指100上一个交易日是涨的：历史上这种时候进场19次平均每次亏14.7U；纳指前一天在跌的90次平均赚6.2U。`, plan: `先不进。${holder}` };
+  const holder = `<br><span class="plan-bt">如果你在这一波（${kd}，${fmt(ep.E0, dp)} 附近）已经买了，这样管：${mgmt(ep)}</span>`;
+  if (age > 3) return { tier: 3, short: `这一波的买点（${kd}，${fmt(ep.E0, dp)}）已过，别追；等下次大跌止跌再买`, dir: "这一波买点已过，别追", cls: "flat", why: head + `这一波在${kd}（${fmt(ep.E0, dp)}）已经止跌反弹，买点过了；现在追进去离止损太远、不划算，等下一次大跌。`, plan: `现在不新开仓。${holder}` };
+  if (bear && upB === true) return { tier: 3, short: "止跌了，但纳指昨天在涨，历史上这种情况是亏的，先不进", dir: "先不进（纳指昨天在涨）", cls: "warn", why: head + `已经止跌，但纳指昨天是涨的：历史上这种时候买，19次平均每次亏14.7U；纳指昨天在跌时买，90次平均每次赚6.2U。所以这次不进。`, plan: `先不进。${holder}` };
   const E0 = last, Rk = E0 - ep.stop;
-  if (!(Rk > 0) || !(ep.top > E0)) return { tier: 3, short: "观望", dir: "观望", cls: "flat", why: head + "现价已经离开这一轮的范围。" };
+  if (!(Rk > 0) || !(ep.top > E0)) return { tier: 3, short: "先不做", dir: "先不做", cls: "flat", why: head + "现价已经离开这一轮的范围。" };
   PLANNUM = { E0, stop: ep.stop, target: ep.top, side: 1 };
   const e2 = Object.assign({}, ep, { E0, Rk });
-  const plan = `回调企稳做多参考（现价 ${fmt(E0, dp)} 进，亏 ${pc(Rk / E0)}，到目标赚 ${pc((ep.top - E0) / E0)}）：${mgmt(e2)}` +
-    `到1倍以后止损挪到开仓价或开仓价上方半份（${fmt(E0 + 0.5 * Rk, dp)}）都行：回测平均差不多，提到半份的那种46次里91%最后是赚的。` +
-    (bear ? `<br><span class="plan-bt">回测（AMD/美光/戴尔，熊市，纳指前一天在跌，每次100U×5倍）：90次，平均每次 +6.2U，10次赚4次；2021-11~2024-04 +3.6U/次（77次），2024-05以后 +22.0U/次（13次，大头是2025年4月急跌后的反弹）。样本不大，轻仓。</span>`
-      : `<br><span class="plan-bt">回测（牛市、纳指整体回调时，每次100U×5倍）：AMD/美光/戴尔 130次，平均每次 +4.7U（前后两段 +2.3/+6.0）；个股自己跌、大盘没跌时做只有 +1.8U；其他22只科技股同样条件只有 +1.4U，所以只给这3只用。</span>`);
-  return { tier: 0, short: `回调企稳做多（轻仓）：现 ${fmt(E0, dp)}，止损 ${fmt(ep.stop, dp)}（亏 ${pc(Rk / E0)}），目标 ${fmt(ep.top, dp)}`, dir: bear ? "可以做多（回调企稳，轻仓）" : "可以做多（大盘回调后企稳，轻仓）", cls: "up", why: head + `已经跌够、${age === 0 ? "刚刚" : age + "根交易时段小时线前"}企稳。`, plan };
+  const plan = `现在买的做法（现价 ${fmt(E0, dp)}，错了亏 ${pc(Rk / E0)}，到目标赚 ${pc((ep.top - E0) / E0)}）：${mgmt(e2)}` +
+    (bear ? `<br><span class="plan-bt">历史成绩（熊市里这样买，按100U开5倍）：90次，平均每次赚 6.2U，10次里赚4次。次数不多，所以轻仓。</span>`
+      : `<br><span class="plan-bt">历史成绩（牛市里大盘一起跌的时候这样买，按100U开5倍）：130次，平均每次赚 4.7U。只对 AMD/美光/戴尔 这3只有效。</span>`);
+  return { tier: 0, short: `止跌了，可以轻仓做多：现价 ${fmt(E0, dp)}，止损放 ${fmt(ep.stop, dp)}（错了亏 ${pc(Rk / E0)}），目标 ${fmt(ep.top, dp)}`, dir: "可以轻仓做多（大跌后止跌了）", cls: "up", why: head + `已经跌够，并且${age === 0 ? "刚刚" : "不久前"}止跌了，买点到了。`, plan };
 }
 // ---------------------------------------------------------------- 突破信号：和回测 research/contract_bt.py 的 breakout 同一套
 // 进场：1小时收盘 突破前L根最高（做空=跌破最低）、EMA20在EMA50上方（做空=下方）、收盘高于L根前的收盘；L=24（美股合约=7根交易时段线）
@@ -454,6 +453,7 @@ window.JSQ_NEEDD1 = needD1;
 const OKG = (x) => x === "edge" || x === "unstable";
 const SCANERR = {}, D1seen = {};
 // 一个品种现在在哪一步：tier 0 可以做 / 1 快到了 / 2 等信号 / 3 已经在走或暂不进 / 4 不做 / 9 载入中
+const agoTxt = (b) => { const a = b.age || 0; if (b.stock) return a < 7 ? "今天" : Math.round(a / 7) + "个交易日前"; return a < 1 ? "刚刚" : a < 24 ? a + "小时前" : Math.round(a / 24) + "天前"; };
 function symState(sym) {
   const env = envFor(sym), X = H1[sym], name = U.names[sym] || sym.replace(/USDT$/, ""), base = { sym, name };
   if (SCANERR[sym] && !X) return Object.assign(base, { tier: 9, short: "行情没取到，稍后再试" });
@@ -461,24 +461,24 @@ function symState(sym) {
   const key = statKey(sym), f = (x) => fmt(x, X.dp), envW = env.w50 ? (env.bull ? "比特币在50日线上方" : "比特币在50日线下方") : env.bull ? "牛市" : "熊市";
   if (key === "stock_main" && (!env.bull || ndxDipped())) {
     const d = VOL[sym] ? dipState(sym, { dp: X.dp, last: X.last }, env.bull ? "bull" : "bear") : null;
-    if (!env.bull) return d ? Object.assign(base, { tier: d.tier, short: `熊市只做回调企稳｜${d.short}`, kind: "dip" }) : Object.assign(base, { tier: 9, short: "载入中…" });
-    if (d && d.tier <= 1) return Object.assign(base, { tier: d.tier, short: `大盘回调｜${d.short}`, kind: "dip" });
+    if (!env.bull) return d ? Object.assign(base, { tier: d.tier, short: d.short, kind: "dip" }) : Object.assign(base, { tier: 9, short: "载入中…" });
+    if (d && d.tier <= 1) return Object.assign(base, { tier: d.tier, short: d.short, kind: "dip" });
   }
   const stL = statFor(sym, env.bull, "long"), stS = statFor(sym, env.bull, "short"), gL = grade(stL), gS = grade(stS);
   const side = OKG(gL) ? 1 : OKG(gS) ? -1 : 0;
   if (!side) {
-    const why = gL === "none" && gS === "none" ? "没回测过" : (gL === "few" || gS === "few") && !["lose", "flat"].includes(gL) ? `${envW}，回测样本太少` : `${envW}，回测里做多做空都不赚`;
+    const why = gL === "none" && gS === "none" ? "还没验证过，不做" : (gL === "few" || gS === "few") && !["lose", "flat"].includes(gL) ? `现在是${envW}，历史上这种情况太少，算不准` : `现在是${envW}，历史上这时候做多做空都不赚`;
     return Object.assign(base, { tier: 4, short: why });
   }
   const b = brk(sym, side); if (!b) return Object.assign(base, { tier: 9, short: "载入中…" });
   const w = side === 1 ? "做多" : "做空", brkW = side === 1 ? "突破" : "跌破", bar = b.stock ? "交易时段1小时收盘" : "1小时收盘", light = (side === 1 ? gL : gS) === "unstable" ? "（轻仓）" : "";
-  if (b.stage === "fresh") return Object.assign(base, { tier: 0, side, b, short: `可以${w}${light}（刚${brkW}）：现 ${f(b.last)}，止损 ${f(b.stop0)}（亏 ${pabs(side * (b.last - b.stop0) / b.last)}）` });
+  if (b.stage === "fresh") return Object.assign(base, { tier: 0, side, b, short: `现在可以${w}${light}：现价 ${f(b.last)}，止损放 ${f(b.stop0)}（错了亏 ${pabs(side * (b.last - b.stop0) / b.last)}）` });
   const tk = techOK(sym, env, side) ? sigEngine(sym, 1, "tech") : null;      // 第二种进场：技术面翻多
-  if (tk && tk.stage === "fresh") return Object.assign(base, { tier: 0, side, b: tk, short: `可以做多（技术面刚翻多）：现 ${f(tk.last)}，止损 ${f(tk.stop0)}（亏 ${pabs((tk.last - tk.stop0) / tk.last)}）` });
-  const alt = tk && tk.stage === "flat" ? `；或等技术面翻多（现在 ${tk.score} 分，到 2 分算翻多）` : "";
-  if (b.stage === "open") return Object.assign(base, { tier: alt ? 2 : 3, side, b, short: `${b.age}根小时线前已经${brkW}（${f(b.E)}），在走了，不追` + alt });
-  const more = b.trendOK ? "" : `，还要小时线趋势转${side === 1 ? "多" : "空"}`;
-  return Object.assign(base, { tier: b.near || (tk && tk.stage === "flat" && tk.near) ? 1 : 2, side, b, short: `${b.near ? "快到了" : "等" + brkW}：${bar}${side === 1 ? "站上" : "跌破"} ${f(b.level)} 再${w}${light}（还差 ${pabs(b.dist / b.last)}${more}）` + alt });
+  if (tk && tk.stage === "fresh") return Object.assign(base, { tier: 0, side, b: tk, short: `现在可以做多（几个指标刚一起转多）：现价 ${f(tk.last)}，止损放 ${f(tk.stop0)}（错了亏 ${pabs((tk.last - tk.stop0) / tk.last)}）` });
+  const alt = tk && tk.stage === "flat" ? `；或者等几个指标一起转多` : "";
+  if (b.stage === "open") return Object.assign(base, { tier: alt ? 2 : 3, side, b, short: `${agoTxt(b)}已经${brkW} ${f(b.E)}，这一波错过了，别追` + alt });
+  const more = b.trendOK ? "" : `，并且短期走势要先转${side === 1 ? "强" : "弱"}`;
+  return Object.assign(base, { tier: b.near || (tk && tk.stage === "flat" && tk.near) ? 1 : 2, side, b, short: `${side === 1 ? "涨过" : "跌破"} ${f(b.level)} 再${w}${light}，还差 ${pabs(b.dist / b.last)}${more}` + alt });
 }
 const SCAN = { busy: false, at: 0 };
 function scanSyms() {
@@ -513,7 +513,7 @@ function renderScan() {
   const rows = scanSyms().map(symState), E = window.JSQ_ENV || {}, u = usNow();
   // 美股放量跳空：只有纳指牛市、今天是"第二天开盘前"才算能做
   if (u && u.bull && Array.isArray(E.ep)) for (const e of E.ep) if (e.days === 0 && e.last >= e.low) rows.push({ sym: e.t + "USDT", name: U.names[e.t + "USDT"] || e.t, tier: 0, short: `放量跳空：下一个美股开盘做多，止损 ${e.low}，拿20个交易日`, kind: "ep" });
-  const G = [["可以做", 0], ["快到了", 1], ["等信号", 2], ["已经在走 / 暂时不进", 3], ["不做", 4], ["载入中", 9]];
+  const G = [["现在可以做", 0], ["快到了，盯着", 1], ["还在等", 2], ["这一波已错过，别追", 3], ["不做", 4], ["载入中", 9]];
   let html = "";
   for (const [title, t] of G) {
     const xs = rows.filter((r) => r.tier === t); if (!xs.length) continue;
@@ -524,7 +524,7 @@ function renderScan() {
   $("scanHead").textContent = loading ? "正在扫描…" : n0 ? `现在有 ${n0} 个可以做` : n1 ? `现在没有可以做的，${n1} 个快到了` : "现在没有可以做的";
   el.innerHTML = html;
   const rest = U.all.length - new Set(rows.map((r) => r.sym)).size;
-  $("scanNote").innerHTML = `只列有回测依据的品种（黄金、白银、7个主流币、AMD/美光/戴尔）和你收藏的。其余 ${rest} 只合约按规则都<b>不做</b>：回测没有优势、单只样本太少或没回测过。点一行看详细计划。` + (SCAN.at ? `（${new Date(SCAN.at).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" })} 更新，每5分钟刷新）` : "");
+  $("scanNote").innerHTML = `这里只列验证过能赚钱的品种（黄金、白银、7个主流币、AMD/美光/戴尔）和你收藏的，其余 ${rest} 只都<b>不做</b>。价位按1小时K线收盘算。点一行看具体怎么做。` + (SCAN.at ? `（${new Date(SCAN.at).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" })} 更新，每5分钟刷新）` : "");
   el.querySelectorAll("button").forEach((b) => b.addEventListener("click", () => { const s = b.dataset.sym; if (U.all.includes(s) && window.JSQ) { window.JSQ.select(s); const c = $("card"); if (c) c.scrollIntoView({ behavior: "smooth", block: "start" }); } }));
 }
 // ---------------------------------------------------------------- 规则冻结后的自动记账（pages/ledger.py 每天生成 ledger.json）
@@ -649,9 +649,9 @@ function renderEP() {
   if (!el || !note) return;
   if (!Array.isArray(L)) { note.textContent = "数据下次更新后出现。"; el.innerHTML = ""; return; }
   const u = usNow(), bull = !!(u && u.bull);
-  note.innerHTML = `规则：币安有合约的美股，开盘比前一天收盘高8%以上、成交量是50天平均的3倍以上（多半是财报或大消息）→ <b>第二天开盘做多</b>，止损放在跳空那天最低价，拿满20个交易日。` +
-    `回测（2021-11~2026-10，纳指牛市）：243笔，每笔平均 +3.3%（前后两段 +5.1%/+2.2%），同一批股票随便哪天进只有 +0.4%；10笔里赚3~4笔，赚的是少数大涨。<b>纳指熊市里这招是亏的</b>。` +
-    `<br>现在：${bull ? "纳指在200日线上方，可以做。" : "<b>纳指在200日线下方，不做</b>，下面只是记录。"}`;
+  note.innerHTML = (bull ? `<b>现在纳指是牛市，这招可以做。</b>` : `<b>现在纳指是熊市，这招不做</b>（熊市里它是亏的），下面只是记录。`) +
+    `<br>做法：股票因为财报或大消息，开盘直接跳高8%以上、成交量是平时3倍以上 → <b>第二天开盘做多</b>，止损放跳空那天的最低价，拿20个交易日。` +
+    `<br><span class="src">历史成绩（纳指牛市，近5年243次）：平均每次 +3.3%，10次里赚3~4次，靠少数大涨赚钱。</span>`;
   if (!L.length) { el.innerHTML = `<p class="note">最近15个交易日没有符合条件的跳空。</p>`; return; }
   const addTD = (d, n) => { let x = new Date(d + "T12:00:00Z"), k = 0; while (k < n) { x = new Date(x.getTime() + 864e5); const w = x.getUTCDay(); if (w !== 0 && w !== 6) k++; } return `${x.getUTCMonth() + 1}月${x.getUTCDate()}日`; };
   el.innerHTML = L.map((e) => {
@@ -660,7 +660,7 @@ function renderEP() {
     if (e.last < e.low) st = `已经跌破止损位 ${e.low}，这次作废。`;
     else if (!bull) st = `纳指熊市，不做。`;
     else if (e.days === 0) st = `<b>下一个美股开盘做多</b>，止损 <b>${e.low}</b>（跳空那天最低价），拿到 <b>${end}</b> 收盘。仓位按止损距离算（每笔亏本金1%）。`;
-    else st = `进场时机已过（只在第二天开盘进，当时 ${e.open1 ?? "—"}）。已经在里面的：止损 ${e.low}，拿到 ${end} 收盘。`;
+    else st = `买点已过（只在第二天开盘买，当时 ${e.open1 ?? "—"}）。已经在里面的：止损 ${e.low}，拿到 ${end} 收盘。`;
     return `<div class="ep-row"><b class="t">${nm}</b> ${md} 跳空 +${(e.gap * 100).toFixed(1)}%，量 ${e.vol} 倍，现 ${e.last}<br><span class="st">${st}</span></div>`;
   }).join("");
 }
@@ -695,10 +695,10 @@ function renderCard(force) {
   const IND = { "均线": "ma", "MACD": "macd", "RSI": "rsi", "位置": "brk" }, csK = ((window.JSQ_ENV || {}).contract_stats || {})[statKey(sym)] || {};
   const iL = env ? csK[`ind|${env.bull ? "bull" : "bear"}|long`] : null, iS = env ? csK[`ind|${env.bull ? "bull" : "bear"}|short`] : null;
   const su = (x) => x ? `${x.u >= 0 ? "+" : "−"}${Math.abs(x.u).toFixed(1)}U` : "—";
-  const indNote = (k) => { const c = IND[k]; if (!c || !iL || !iS || !iL[c] || !iS[c]) return ""; return `<small class="ind-bt">回测：它翻多时做多 ${su(iL[c])}/次，翻空时做空 ${su(iS[c])}/次</small>`; };
+  const indNote = (k) => { const c = IND[k]; if (!c || !iL || !iS || !iL[c] || !iS[c]) return ""; return `<small class="ind-bt">历史上：它转多时做多每次 ${su(iL[c])}，转空时做空每次 ${su(iS[c])}</small>`; };
   $("cardTech").innerHTML = T.items.map((x) => `<li><span class="lean ${x.lean === "多" ? "up" : x.lean === "空" ? "down" : "flat"}">${x.lean}</span><b>${x.k}</b>${esc(x.txt)}${indNote(x.k)}</li>`).join("") +
-    (iL && iS ? `<li class="ind-sum">${env.w50 ? (env.bull ? "比特币在50日线上方" : "比特币在50日线下方") : env.bull ? "牛市" : "熊市"}里的回测成绩（100U开5倍、同样的止损和出场）。指标只在顺大方向时有用：` +
-      (Math.max(...Object.values(iL).map((x) => x.u)) < 1 && Math.max(...Object.values(iS).map((x) => x.u)) < 1 ? "现在这个环境两个方向都不赚，指标只当描述。" : `现在这个环境只做${(iL.tech || iL.brk).u >= (iS.tech || iS.brk).u ? "多" : "空"}那一边。`) + `</li>` : "");
+    (iL && iS ? `<li class="ind-sum">${env.w50 ? (env.bull ? "比特币在50日线上方" : "比特币在50日线下方") : env.bull ? "牛市" : "熊市"}里的历史成绩（按100U开5倍算）。` +
+      (Math.max(...Object.values(iL).map((x) => x.u)) < 1 && Math.max(...Object.values(iS).map((x) => x.u)) < 1 ? "现在这种行情，照这些指标做多做空都不赚，只当参考。" : `现在这种行情只有做${(iL.tech || iL.brk).u >= (iS.tech || iS.brk).u ? "多" : "空"}那一边赚钱。`) + `</li>` : "");
   // 结论
   let dir, cls, why, side = 0, noPlan = "", planAt = 0;
   const leanTxt = `技术面${T.lean}（${T.items.filter((x) => x.lean === "多").length}项偏多、${T.items.filter((x) => x.lean === "空").length}项偏空）`;
@@ -708,21 +708,21 @@ function renderCard(force) {
   const H = fmt(V.H, V.dp), Lw = fmt(V.L, V.dp), dayW = tf === "1d" ? "20日" : V.sess ? "最近一个交易日（7根交易时段小时线）" : "24小时";
   if (!env) { dir = T.lean === "多空分歧" ? "看不清" : `技术面${T.lean}`; cls = "flat"; why = `大方向还没算出来。${leanTxt}。`; side = T.lean === "偏多" ? 1 : T.lean === "偏空" ? -1 : 0; }
   else if (gL === "none" && gS === "none") {
-    dir = "没回测过"; cls = "flat"; side = 0; noPlan = "没回测过，不给价位。";
-    why = `大方向：${env.what}。${leanTxt}。<b>这个品种还没回测过</b>，技术面只是描述现在的样子，不当开单依据。`;
+    dir = "还没验证过，不做"; cls = "flat"; side = 0; noPlan = "还没验证过，所以不给进场价。";
+    why = `大方向：${env.what}。${leanTxt}。<b>这个品种还没用历史数据验证过</b>，下面的指标只是描述现在的样子，不能当开单依据。`;
   } else if (["flat", "lose"].includes(gL) && ["flat", "lose"].includes(gS)) {
-    dir = "不适合做短线"; cls = "flat"; side = 0; noPlan = "回测不支持，不给参考价位。";
-    why = `大方向${envWord}（${env.what}），${leanTxt}。但这类品种在这种环境里，突破做多平均每笔${stL.s.avg > 0 ? "只" : ""}${rTxt(stL.s.avg)}、跌破做空${stS.s.avg > 0 ? "只" : ""}${rTxt(stS.s.avg)}，用这套短线规则做不出优势。`;
+    dir = "不做"; cls = "flat"; side = 0; noPlan = "历史上不赚，所以不给进场价。";
+    why = `${env.what}，按${envWord}对待。但这类品种在这种环境里，突破做多平均每笔${stL.s.avg > 0 ? "只" : ""}${rTxt(stL.s.avg)}、跌破做空${stS.s.avg > 0 ? "只" : ""}${rTxt(stS.s.avg)}，用这套短线规则做不出优势。`;
   } else if (T.lean !== "多空分歧") {
     const up = T.lean === "偏多", g1 = up ? gL : gS, st = up ? stL : stS, w = up ? "做多" : "做空";
     side = up ? 1 : -1;
-    const head = `大方向${envWord}（${env.what}），${leanTxt}。`;
+    const head = `${env.what}，按${envWord}对待。`;
     if (g1 === "edge") { dir = `可以${w}`; cls = up ? "up" : "down"; why = head + `回测里这种环境${w}前后两段都赚钱。`; }
     else if (g1 === "unstable") { dir = `可以${w}（轻仓）`; cls = up ? "up" : "down"; why = head + `回测${w}整体赚钱，但时灵时不灵：${halfTxt(st.s, st.key)}。`; }
     else if (g1 === "few" && !up && env.bull && st.key.startsWith("sym_")) { dir = "别做空"; cls = "warn"; side = 0; noPlan = "牛市不做空，不给参考价位。"; why = head + `这只自己的样本太少（${st.s.n}笔）；但牛市里做空突破，所有回测过的分组都是亏的，这只也别做空。` + symNote(st); }
     else if (g1 === "few") { side = 0; noPlan = "回测样本太少，不给价位。";
       if (st.s.avg < 0) { dir = "不做"; cls = "flat"; why = head + `这种环境${w}回测样本不多（${st.s.n}笔），而且是亏的（平均每笔${rTxt(st.s.avg)}）。` + symNote(st); }
-      else { dir = "观望（样本太少）"; cls = "flat"; why = head + `这种环境${w}回测只有${st.s.n}笔，太少，算不出可靠优势，不给价位。` + symNote(st); } }
+      else { dir = "先不做（历史数据太少）"; cls = "flat"; why = head + `历史上这种情况${w}只出现过${st.s.n}次，太少，算不准，先不做。` + symNote(st); } }
     else {
       const avoid = g1 === "lose" ? `回测里这种环境${w}是亏的（平均每笔${rTxt(st.s.avg)}）` : `回测里这种环境${w}基本不赚（平均每笔${rTxt(st.s.avg)}，扣完手续费白忙）`;
       side = 0; noPlan = "回测不支持这个方向，不给参考价位。";
@@ -730,39 +730,39 @@ function renderCard(force) {
       else { dir = up ? "不追多" : "不追空"; cls = "warn"; why = head + avoid + "。"; }
     }
   } else {
-    const head = `大方向${envWord}（${env.what}），短线方向不明（${leanTxt}）。`;
+    const head = `${env.what}，按${envWord}对待。`;
     if (ok(gL) && ok(gS)) { dir = "等方向出来"; cls = "flat"; side = 0; why = head + `站上${dayW}最高点 ${H} 做多、跌破最低点 ${Lw} 做空，回测这种环境两边都赚。`; }
     else if (ok(gL)) { dir = "等突破再做多"; cls = "warn"; side = 1; planAt = V.H; why = head + `等价格站上${dayW}最高点 ${H} 再做多${gS === "lose" || gS === "flat" ? "，不做空（回测这种环境做空不赚）" : ""}。`; }
     else if (ok(gS)) { dir = "等跌破再做空"; cls = "warn"; side = -1; planAt = V.L; why = head + `等价格跌破${dayW}最低点 ${Lw} 再做空${gL === "lose" || gL === "flat" ? "，不做多（回测这种环境做多不赚）" : ""}。`; }
-    else { dir = "观望"; cls = "flat"; side = 0; why = head + (gL === "few" || gS === "few" ? "这种环境回测样本太少，多空都没有可靠优势。" + symNote(stL || stS) : "回测里这种环境多空都不赚钱。"); }
+    else { dir = "先不做"; cls = "flat"; side = 0; why = head + (gL === "few" || gS === "few" ? "历史上这种情况出现得太少，做多做空都算不出优势，先不做。" + symNote(stL || stS) : "历史上这种时候做多做空都不赚，先不做。"); }
   }
   // 有回测依据的方向：结论只看回测用的那个突破信号，不看技术指标偏多偏空（和"今天能做什么"清单同一套算法）
   let stpOv = 0;
   if (env && !dipMode && (ok(gL) || ok(gS))) {
     const sd = ok(gL) ? 1 : -1, b = brk(sym, sd), w = sd === 1 ? "做多" : "做空", bw = sd === 1 ? "突破" : "跌破", gg = sd === 1 ? gL : gS, st = sd === 1 ? stL : stS;
-    const head = `大方向${envWord}（${env.what}）。`, light = gg === "unstable" ? "（轻仓）" : "", other = `不${sd === 1 ? "做空" : "做多"}（回测这种环境${sd === 1 ? "做空" : "做多"}不赚）`;
-    const note = gg === "unstable" ? `回测${w}整体赚钱，但时灵时不灵：${halfTxt(st.s, st.key)}。` : `回测里这种环境${w}前后两段都赚钱。`;
+    const head = `${env.what}，按${envWord}对待。`, light = gg === "unstable" ? "（轻仓）" : "", other = `这时候不${sd === 1 ? "做空" : "做多"}（历史上不赚）`;
+    const note = gg === "unstable" ? `历史上这样${w}整体赚钱，但时灵时不灵，所以轻仓：${halfTxt(st.s, st.key)}。` : `历史上这样${w}一直是赚钱的。`;
     const tOK = techOK(sym, env, sd); if (tOK) needD1(sym).then(() => { if (!D1seen[sym] && D1[sym]) { D1seen[sym] = 1; if (window.JSQ.state.sym === sym) renderCard(true); } }).catch(() => {});
     const tk = tOK ? sigEngine(sym, 1, "tech") : null, tS = tOK ? (csK["ind|bull|long"] || {}).tech : null;
     const tNote = tS ? `回测：技术面翻多做多平均每次 ${su(tS)}（${tS.n}笔，前后两段 ${su({ u: tS.h1 })}/${su({ u: tS.h2 })}）。` : "";
     if (!b) { dir = "等小时线载入…"; cls = "flat"; side = 0; why = head; noPlan = "正在取小时线。"; }
     else if (tk && tk.stage === "fresh" && b.stage !== "fresh") { dir = "可以做多（技术面刚翻多）"; cls = "up"; side = 1; planAt = 0; stpOv = tk.stop0;
-      why = head + `${tk.age === 0 ? "刚刚" : tk.age + "根小时线前"}技术面翻成偏多（均线、MACD、RSI、位置、日线 5 项净多 2 项以上），这是第二种进场信号。` + tNote + other + "。"; }
+      why = head + `${agoTxt(tk)}几个指标一起转多了（均线、MACD、RSI、位置、日线里偏多的比偏空的多2项以上），这也是验证过的进场信号。` + tNote + other + "。"; }
     else if (b.stage === "fresh") { dir = `可以${w}${light}`; cls = sd === 1 ? "up" : "down"; side = sd; planAt = 0; stpOv = b.stop0;
-      why = head + `${b.age === 0 ? "刚刚" : b.age + "根小时线前"}1小时收盘${bw}了${b.win}${sd === 1 ? "最高" : "最低"}点，符合回测的进场条件。` + note + other + "。"; }
-    else if (b.stage === "open") { dir = `已经${bw}，不追`; cls = "flat"; side = 0;
-      why = head + `${b.age}根小时线前已经${bw}（当时 ${fmt(b.E, V.dp)}），现在追进去止损太远，等下一次。`;
-      noPlan = `不给新开仓价位。已经在里面的：止损放 <b>${fmt(b.st, V.dp)}</b>` + (b.armed ? `（已过1倍止损距离，跟着3天${sd === 1 ? "最低" : "最高"}点挪）。` : `，${sd === 1 ? "涨" : "跌"}到 ${fmt(b.E + sd * b.Rk, V.dp)} 再挪到开仓价。`); }
-    else { dir = `${b.near ? "快到了：" : ""}等${bw}再${w}${light}`; cls = "warn"; side = sd; planAt = b.level; stpOv = b.stopIf;
-      why = head + `等${b.stock ? "交易时段" : ""}1小时收盘${sd === 1 ? "站上" : "跌破"}${b.win}${sd === 1 ? "最高" : "最低"}点 <b>${fmt(b.level, V.dp)}</b>（还差 ${pabs(b.dist / b.last)}）再${w}` +
-        (b.trendOK ? "" : `，同时要小时线趋势转${sd === 1 ? "多" : "空"}（短均线${sd === 1 ? "上" : "下"}穿长均线）`) + `；${other}。` + note; }
-    if (tk && tk.stage === "flat") why += ` <b>另一种进场</b>：等技术面翻多（现在 ${tk.score} 分，到 2 分算翻多）。` + tNote;
-    else if (tk && tk.stage === "open" && b.stage !== "fresh") why += ` 技术面 ${tk.age} 根小时线前已经翻多，那一单也在走了。`;
+      why = head + `${agoTxt(b)}${bw}了${b.win}${sd === 1 ? "最高" : "最低"}点，进场条件到了。` + note + other + "。"; }
+    else if (b.stage === "open") { dir = `这一波已错过，别追`; cls = "flat"; side = 0;
+      why = head + `${agoTxt(b)}已经${bw}了（当时 ${fmt(b.E, V.dp)}），现在追进去离止损太远、不划算，等下一次机会。`;
+      noPlan = `现在不新开仓。已经在里面的：止损放 <b>${fmt(b.st, V.dp)}</b>` + (b.armed ? `（已经赚够一倍止损的钱，止损跟着最近3天${sd === 1 ? "最低" : "最高"}点往${sd === 1 ? "上" : "下"}挪）。` : `，${sd === 1 ? "涨" : "跌"}到 ${fmt(b.E + sd * b.Rk, V.dp)} 再挪到开仓价。`); }
+    else { dir = `${b.near ? "快到了：" : ""}等${sd === 1 ? "涨过" : "跌破"} ${fmt(b.level, V.dp)} 再${w}${light}`; cls = "warn"; side = sd; planAt = b.level; stpOv = b.stopIf;
+      why = head + `等价格${sd === 1 ? "涨过" : "跌破"}${b.win}${sd === 1 ? "最高" : "最低"}点 <b>${fmt(b.level, V.dp)}</b>（还差 ${pabs(b.dist / b.last)}，按1小时K线收盘算）再${w}` +
+        (b.trendOK ? "" : `，同时短期走势要先转${sd === 1 ? "强" : "弱"}`) + `；${other}。` + note; }
+    if (tk && tk.stage === "flat") why += ` <b>另一种进场</b>：等几个指标一起转多。`;
+    else if (tk && tk.stage === "open" && b.stage !== "fresh") why += ` 指标${agoTxt(tk)}也已经转多，那一波同样错过了。`;
   }
   let dipPlan = "";
   if (dipMode) {
     const d = dipState(sym, V, "bear");
-    if (d) { dir = d.dir; cls = d.cls; why = d.why; side = 0; dipPlan = d.plan || ""; noPlan = d.plan ? "" : "熊市里这3只只做回调企稳，现在不给价位。"; }
+    if (d) { dir = d.dir; cls = d.cls; why = d.why; side = 0; dipPlan = d.plan || ""; noPlan = d.plan ? "" : "现在不是买点，所以不给进场价。"; }
   } else if (bullDip) {
     const d = dipState(sym, V, "bull");
     if (d && d.cls === "up") { dir = d.dir; cls = d.cls; why = d.why; side = 0; dipPlan = d.plan; }
@@ -771,7 +771,7 @@ function renderCard(force) {
   setDir(dir, cls);
   $("cardWhy").innerHTML = why + (env ? `<span class="src">（${esc(env.src)}）</span>` : "");
   // 价位
-  $("cardPlan").innerHTML = dipPlan ? dipPlan : side ? plan(V, side, tf, planAt && isFinite(planAt) && side * (planAt - V.last) > 0 ? planAt : 0, sym, env, stpOv) : (noPlan || "方向不明，不给参考价位。");
+  $("cardPlan").innerHTML = dipPlan ? dipPlan : side ? plan(V, side, tf, planAt && isFinite(planAt) && side * (planAt - V.last) > 0 ? planAt : 0, sym, env, stpOv) : (noPlan || "现在不做，所以不给进场价。");
   // 历史
   const hl = [];
   if (dipMode) {
