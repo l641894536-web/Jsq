@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import time
+from zoneinfo import ZoneInfo
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from io import StringIO
@@ -171,6 +172,11 @@ def run(root: Path, mode: str, deadline: float, universe: pd.DataFrame,
                 if h is None or h.empty:
                     return job, None, None, ("no data" if full else None)
                 bars, ev = _daily_frames(t, h)
+                # drop the bar of a session that is still trading (a run during US hours would store an intraday
+                # price as that day's close; the workbench then reads it as a finished day)
+                ny = datetime.now(ZoneInfo("America/New_York"))
+                if ny.weekday() < 5 and (ny.hour, ny.minute) < (17, 15):
+                    bars = bars[bars["date"] != ny.strftime("%Y-%m-%d")]
                 if not full and (ev["split"].fillna(0) != 0).any():   # split: refetch whole history
                     h = _history(t, start=start_of(t), interval="1d", actions=True)
                     bars, ev = _daily_frames(t, h)
