@@ -140,16 +140,23 @@ def main():
     qqq_bull = above_ma(px["QQQ"], 200); ndx = px["^NDX"].dropna(); ndx_up = (ndx > ndx.shift(1)).astype(float).shift(1)
     dclose = {s: g.set_index(g.ts.dt.tz_localize(None).dt.normalize()).close for s, g in D.groupby("symbol")}
     btc_bull = above_ma(dclose["BTCUSDT"], 50)
-    trades = []
+    trades, shadow = [], {}
+    SHADOW = {  # 没采用/换下来的做法，同样从冻结日起记账，用来检验当初的取舍（进化日志里看）
+        "m200": ("金银：200日线上方才做突破多", "11-11 换下来的旧规则（现在用50日线）"),
+        "mshort": ("金银：50日线下方跌破做空", "回测不赚，没采用"),
+        "s24": ("AMD/美光/戴尔：24小时K线突破", "11-12 测过不稳定，没采用（现在只认美股时段收盘）"),
+        "c200": ("7个币：按比特币200日线分多空", "换下来的旧规则（现在用50日线）"),
+    }
 
-    def add(sym, rule, t, bull_flag, want_bull, tz="UTC"):
+    def add(sym, rule, t, bull_flag, want_bull, tz="UTC", dest=None):
         if t.empty: return
+        dest = trades if dest is None else shadow.setdefault(dest, [])
         for _, x in t.iterrows():
             ts = pd.Timestamp(x.ts).tz_localize("UTC") if pd.Timestamp(x.ts).tzinfo is None else pd.Timestamp(x.ts)
             if ts < FREEZE: continue
             d = ts.tz_convert(tz).tz_localize(None).normalize(); b = bull_flag.reindex([d], method="ffill").iloc[0]
             if pd.isna(b) or bool(b) != want_bull: continue
-            trades.append(dict(sym=sym, name=NAME[sym], rule=rule, dir="多" if x.side == 1 else "空", t_in=ts.isoformat(), px_in=round(float(x.entry), 6), stop=round(float(x.stop0), 6),
+            dest.append(dict(sym=sym, name=NAME[sym], rule=rule, dir="多" if x.side == 1 else "空", t_in=ts.isoformat(), px_in=round(float(x.entry), 6), stop=round(float(x.stop0), 6),
                                t_out=None if x.why == "open" else pd.Timestamp(x.exit_ts).isoformat(), px_out=round(float(x.px), 6), status="持仓中" if x.why == "open" else "已平",
                                why={"stop": "止损", "flip": "小时线趋势反转", "time": "满10天", "open": ""}[x.why], u=round(float(x.r * x.R_pct * NOTIONAL), 1)))
 
@@ -160,12 +167,19 @@ def main():
         zero = pd.Series(False, index=R.index)
         bl, bs = brk_signals(R, L); tl, _ = tech_signals(R, L, day_trend(D[D.symbol == sym], R.ts, stock))
         if sym in METALS:
-            if dclose[sym].count() >= 51: add(sym, "突破", simulate(R, L, bl, zero, L), above_ma(dclose[sym], 50), True, "America/New_York")
+            if dclose[sym].count() >= 51:
+                add(sym, "突破", simulate(R, L, bl, zero, L), above_ma(dclose[sym], 50), True, "America/New_York")
+                add(sym, "跌破", simulate(R, L, zero, bs, L), above_ma(dclose[sym], 50), False, "America/New_York", dest="mshort")
+            if dclose[sym].count() >= 201: add(sym, "突破", simulate(R, L, bl, zero, L), above_ma(dclose[sym], 200), True, "America/New_York", dest="m200")
         elif sym in CRYPTO:
             add(sym, "突破", simulate(R, L, bl, zero, L), btc_bull, True); add(sym, "技术面翻多", simulate(R, L, tl, zero, L), btc_bull, True)
             add(sym, "跌破", simulate(R, L, zero, bs, L), btc_bull, False)
+            b200 = above_ma(dclose["BTCUSDT"], 200)
+            add(sym, "突破", simulate(R, L, bl, zero, L), b200, True, dest="c200"); add(sym, "跌破", simulate(R, L, zero, bs, L), b200, False, dest="c200")
         else:
             add(sym, "突破", simulate(R, L, bl, zero, L), qqq_bull, True, "America/New_York"); add(sym, "技术面翻多", simulate(R, L, tl, zero, L), qqq_bull, True, "America/New_York")
+            if len(g) >= 200:
+                bl24, _ = brk_signals(g, 24); add(sym, "突破(24h)", simulate(g, 24, bl24, pd.Series(False, index=g.index), 24), qqq_bull, True, "America/New_York", dest="s24")
             for e in dip_episodes(R, ndx_up, (qqq_bull == 0).astype(float).where(qqq_bull.notna())):
                 if e["ts"] < FREEZE or not e["ok"]: continue
                 trades.append(dict(sym=sym, name=NAME[sym], rule="回调企稳", dir="多", t_in=e["ts"].isoformat(), px_in=round(e["entry"], 4), stop=round(e["stop"], 4),
@@ -202,6 +216,12 @@ def main():
     out = dict(frozen=args.freeze, data_to=str(H.ts.max()), n=int(len(T)), closed=int(len(closed)), open=int(len(T) - len(closed)),
                total_u=round(float(T.u.sum()), 1) if len(T) else 0.0, closed_u=round(float(closed.u.sum()), 1) if len(closed) else 0.0,
                win=int((closed.u > 0).sum()) if len(closed) else 0, by_rule=by, trades=trades[:300])
+    sh = []
+    for k, (nm, why) in SHADOW.items():
+        x = sorted(shadow.get(k, []), key=lambda t: t["t_in"], reverse=True); cl = [t for t in x if t["status"] == "已平"]
+        sh.append(dict(key=k, name=nm, why=why, n=len(x), closed=len(cl), u=round(sum(t["u"] for t in x), 1), closed_u=round(sum(t["u"] for t in cl), 1),
+                       win=sum(1 for t in cl if t["u"] > 0), trades=x[:60]))
+    out["shadow"] = sh
     json.dump(out, open(args.out, "w"), ensure_ascii=False, separators=(",", ":"), allow_nan=False)
     print(f"ledger: {out['n']} trades since {args.freeze} ({out['closed']} closed, {out['closed_u']:+.1f}U), data to {out['data_to']}")
     return out, T

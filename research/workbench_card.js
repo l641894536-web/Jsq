@@ -12,27 +12,27 @@ const DMA = {};            // sym -> { price, ma200, vs, bull, at }  日线200�
 let lastRender = 0, timer = null, lastKey = "";
 
 // ================================================================ 页面切换
+const TABS = ["today", "contract", "stock", "research"];
 function setTab(t, push) {
-  if (!["stock", "research"].includes(t)) t = "contract";
-  $("tab-contract").hidden = t !== "contract";
-  $("tab-stock").hidden = t !== "stock";
-  if ($("tab-research")) $("tab-research").hidden = t !== "research";
+  if (!TABS.includes(t)) t = "today";
+  for (const k of TABS) { const el = $("tab-" + k); if (el) el.hidden = k !== t; }
   $("tabs").querySelectorAll("button").forEach((b) => { const on = b.dataset.tab === t; b.setAttribute("aria-selected", String(on)); b.setAttribute("aria-pressed", String(on)); });
   if (push) { try { history.replaceState(null, "", "#" + t); } catch (e) {} }
   try { localStorage.setItem("tab", t); } catch (e) {}
   document.dispatchEvent(new CustomEvent("jsq-tab", { detail: t }));
 }
+// 从今天页跳到某个品种：切到"品种"页、选中、滚到卡片（或卡片里的"我已经有仓位"）
+function goSym(sym, where) {
+  if (!window.JSQ || !U.all.includes(sym)) return;
+  setTab("contract", true); window.JSQ.select(sym);
+  requestAnimationFrame(() => { const c = $(where || "card"); if (where === "posBox" && c) c.open = true; if (c) c.scrollIntoView({ behavior: "smooth", block: "start" }); });
+}
 function initTabs() {
-  $("tabs").querySelectorAll("button").forEach((b) => b.addEventListener("click", () => setTab(b.dataset.tab, true)));
-  $("sbarChips").querySelectorAll("button").forEach((b) => b.addEventListener("click", () => {
-    setTab(b.dataset.go, true);
-    if (b.dataset.sym && window.JSQ && window.JSQ.state.sym !== b.dataset.sym) window.JSQ.select(b.dataset.sym);
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }));
+  $("tabs").querySelectorAll("button").forEach((b) => b.addEventListener("click", () => { setTab(b.dataset.tab, true); window.scrollTo({ top: 0 }); }));
   let t = (location.hash || "").replace("#", "");
-  if (!["stock", "contract", "research"].includes(t)) { try { t = localStorage.getItem("tab") || "contract"; } catch (e) { t = "contract"; } }
+  if (!TABS.includes(t)) t = "today";
   setTab(t, false);
-  window.addEventListener("hashchange", () => { const h = location.hash.replace("#", ""); if (["stock", "contract", "research"].includes(h)) setTab(h, false); });
+  window.addEventListener("hashchange", () => { const h = location.hash.replace("#", ""); if (TABS.includes(h)) setTab(h, false); });
 }
 
 // ================================================================ 环境
@@ -95,7 +95,53 @@ function envFor(sym) {
 // ================================================================ 状态栏
 function sChip(id, text, cls) { const b = $(id); if (!b) return; b.querySelector("b").textContent = text; b.className = "schip " + (cls || ""); }
 const band = (t) => t < 20 ? "冰点" : t < 40 ? "偏冷" : t <= 60 ? "中性" : t <= 80 ? "偏热" : "过热";
+// ================================================================ 跑道图（今天页）：一条横道、一根基准线、一个点
+// x 用 0..1。第一次画时点从左边滑进来，之后从上次的位置挪到新位置（只有这一个动效）
+const LANEX = {};
+const pc100 = (x) => (Math.max(0, Math.min(1, x)) * 100).toFixed(2) + "%";
+function trackHTML(o) {
+  const z = (o.zones || []).map(([a, b, c]) => `<i class="ln-z ${c}" style="left:${pc100(a)};width:${pc100(b - a)}"></i>`).join("");
+  const t = (o.ticks || []).map(([x, lb, c]) => `<i class="ln-l ${c || ""}" style="left:${pc100(x)}">${lb ? `<em>${lb}</em>` : ""}</i>`).join("");
+  const prev = LANEX[o.key] != null ? LANEX[o.key] : 0.02; LANEX[o.key] = o.x;
+  return `<span class="ln-t${o.tcls ? " " + o.tcls : ""}">${z}${t}<i class="ln-dot ${o.dot || ""}" style="left:${pc100(prev)}" data-x="${pc100(o.x)}"></i></span>`;
+}
+function laneHTML(o) {
+  return `<button type="button" class="lane ${o.cls || ""}" ${o.sym ? `data-sym="${esc(o.sym)}"` : ""} ${o.go ? `data-go="${o.go}"` : ""}>` +
+    `<span class="ln-n"><b>${esc(o.name)}</b>${o.small ? `<small>${o.small}</small>` : ""}</span>${trackHTML(o)}` +
+    `<span class="ln-v"><b>${o.v || ""}</b>${o.vs ? `<small>${o.vs}</small>` : ""}</span>${o.note ? `<span class="ln-note">${o.note}</span>` : ""}</button>`;
+}
+function slideLanes(box) {
+  requestAnimationFrame(() => requestAnimationFrame(() => box.querySelectorAll(".ln-dot[data-x]").forEach((d) => { d.style.left = d.dataset.x; })));
+  box.querySelectorAll(".lane").forEach((b) => b.addEventListener("click", () => {
+    if (b.dataset.sym) goSym(b.dataset.sym); else if (b.dataset.go) { setTab(b.dataset.go, true); window.scrollTo({ top: 0 }); }
+  }));
+}
+function renderEnvLanes() {
+  const box = $("envLanes"); if (!box) return;
+  const E = window.JSQ_ENV, L = [], sc = (v, R) => 0.5 + Math.max(-1, Math.min(1, v / R)) * 0.46;
+  const half = [[0, 0.5, "dn"], [0.5, 1, "up"]];
+  const u = usNow();
+  const usNote = u && (u.vs >= 0) !== u.bull ? `按上个收盘还是${u.bull ? "牛市" : "熊市"}；现在已经${u.vs >= 0 ? "回到线上" : "跌到线下"}，美股收盘还这样就转${u.bull ? "熊" : "牛"}` : "";
+  if (u) L.push({ key: "e-us", go: "stock", name: "美股", small: "纳指", x: sc(u.vs, 0.12), zones: half, ticks: [[0.5, "200日线"]], dot: u.vs >= 0 ? "up" : "dn",
+    v: `${u.bull ? "牛市" : "熊市"} <span class="num">${pct(u.vs)}</span>`, note: (u.bull ? "AMD/美光/戴尔：突破做多" : "AMD/美光/戴尔：只做大跌后止跌") + (usNote ? `<br><span class="warnc">${usNote}</span>` : "") });
+  const b = DMA.BTCUSDT;
+  if (b && isFinite(b.vs50)) L.push({ key: "e-btc", sym: "BTCUSDT", name: "比特币", small: "日线", x: sc(b.vs50, 0.15), zones: half, ticks: [[0.5, "50日线"]], dot: b.bull50 ? "up" : "dn",
+    v: `${b.bull50 ? "线上" : "线下"} <span class="num">${pct(b.vs50)}</span>`, note: b.bull50 ? "7个币：突破做多" : "7个币：跌破做空" });
+  for (const [sym, nm] of [["XAUUSDT", "黄金"], ["XAGUSDT", "白银"]]) {
+    const m = DMA[sym]; if (!m || !isFinite(m.ma50c)) continue;
+    L.push({ key: "e-" + sym, sym, name: nm, small: "日线", x: sc(m.vs50, 0.12), zones: half, ticks: [[0.5, "50日线"]], dot: m.vs50 >= 0 ? "up" : "dn",
+      v: `${m.bull50c ? "线上" : "线下"} <span class="num">${pct(m.vs50)}</span>`, note: m.bull50c ? `${nm}：突破做多` : `${nm}：不做，等收盘站上 ${fmt(m.ma50, m.price >= 100 ? 0 : 2)}` });
+  }
+  if (E && E.a && E.a.today) {
+    const a = E.a.today, AL = window.JSQ_LIVE_A, t = AL ? AL.temp : a.temp, reg = AL ? AL.regime : a.regime;
+    L.push({ key: "e-a", go: "stock", name: "A股", small: "情绪温度", x: 0.02 + Math.max(0, Math.min(100, t)) / 100 * 0.96, tcls: "temp",
+      ticks: [[0.212, ""], [0.404, ""], [0.596, ""], [0.788, ""]], dot: "ink", v: `${reg} · ${band(t)} <span class="num">${Math.round(t)}</span>`, note: "只作正股参考，不给合约信号" });
+  }
+  if (!L.length) { box.innerHTML = `<p class="note">正在载入…</p>`; return; }
+  box.innerHTML = L.map(laneHTML).join(""); slideLanes(box);
+}
 function renderBar() {
+  renderEnvLanes();
   const E = window.JSQ_ENV;
   if (E) {
     const a = E.a.today, AL = window.JSQ_LIVE_A;
@@ -351,9 +397,9 @@ function dipState(sym, V, mode) {
   const mgmt = (e) => `① 止损放 <b>${fmt(e.stop, dp)}</b>（这波最低点 ${fmt(e.low, dp)} 下面一点）；② 涨到 <b>${fmt(e.E0 + e.Rk, dp)}</b> 就把止损挪到开仓价，保证不亏；③ 涨到 <b>${fmt(e.top, dp)}</b>（下跌前的高点）全部平掉；④ 到 <b>${e.deadline}</b> 美股收盘还没到目标，也平掉。`;
   if (ep.stage === "none") {
     const need = ep.top * Math.exp(-2 * sd), lastTxt = ep.last ? `上一波（${nyInfo(ep.last.kt).md}在 ${fmt(ep.last.E0, dp)} 止跌）已经结束：${ep.last.why}。` : "";
-    return { tier: 2, short: `等它大跌：跌到 ${fmt(need, dp)} 以下再找买点（现 ${fmt(last, dp)}）`, dir: "先不做（跌得还不够）", cls: "flat", why: head + lastTxt + `最近5天最高 ${fmt(ep.top, dp)}，要跌到 <b>${fmt(need, dp)}</b> 以下才算跌够（现价 ${fmt(last, dp)}）。` };
+    return { lv: need, ldir: -1, tier: 2, short: `等它大跌：跌到 ${fmt(need, dp)} 以下再找买点（现 ${fmt(last, dp)}）`, dir: "先不做（跌得还不够）", cls: "flat", why: head + lastTxt + `最近5天最高 ${fmt(ep.top, dp)}，要跌到 <b>${fmt(need, dp)}</b> 以下才算跌够（现价 ${fmt(last, dp)}）。` };
   }
-  if (ep.stage === "wait") return { tier: 1, short: `跌够了，等止跌：涨回 ${fmt(ep.trig, dp)} 上方就做多`, dir: "等止跌再做多", cls: "warn", why: head + `已经跌够了（从 ${fmt(ep.top, dp)} 跌到最低 ${fmt(ep.low, dp)}），但还没止跌：等美股开盘时段价格涨回 <b>${fmt(ep.trig, dp)}</b> 上方再做多（按1小时K线收盘算）。` };
+  if (ep.stage === "wait") return { lv: ep.trig, ldir: 1, tier: 1, short: `跌够了，等止跌：涨回 ${fmt(ep.trig, dp)} 上方就做多`, dir: "等止跌再做多", cls: "warn", why: head + `已经跌够了（从 ${fmt(ep.top, dp)} 跌到最低 ${fmt(ep.low, dp)}），但还没止跌：等美股开盘时段价格涨回 <b>${fmt(ep.trig, dp)}</b> 上方再做多（按1小时K线收盘算）。` };
   const age = R.length - 1 - ep.k, upB = ndxUpBefore(ep.kt), kd = nyInfo(ep.kt).md;
   const holder = `<br><span class="plan-bt">如果你在这一波（${kd}，${fmt(ep.E0, dp)} 附近）已经买了，这样管：${mgmt(ep)}</span>`;
   if (age > 3) {
@@ -470,7 +516,7 @@ function sigEngine(sym, side, kind, trace) {
   let atr = 0; for (let j = N - 23; j <= N; j++) atr += Math.max(R[j].h - R[j].l, Math.abs(R[j].h - R[j - 1].c), Math.abs(R[j].l - R[j - 1].c)); atr /= 24;
   const lp = PX.m[sym] && Date.now() - PX.at < 180e3 ? PX.m[sym] : last;
   const dist = side * (level - lp), crossed = dist < 0;
-  return Object.assign(baseOut, { stage: "flat", level, dist, lp, crossed, when: crossed ? confirmAt(stock) : null, near: dist <= atr, trendOK: side === 1 ? up[N] : !up[N], stopIf });
+  return Object.assign(baseOut, { stage: "flat", level, dist, lp, atr, crossed, when: crossed ? confirmAt(stock) : null, near: dist <= atr, trendOK: side === 1 ? up[N] : !up[N], stopIf });
 }
 const brk = (sym, side, trace) => sigEngine(sym, side, "brk", trace);
 // "技术面翻多"当进场信号：只给回测里前后两段都赚的组合——AMD/美光/戴尔（纳指牛市做多）、7个主流币（比特币在50日线上方做多）
@@ -488,8 +534,8 @@ function symState(sym) {
   const key = statKey(sym), f = (x) => fmt(x, X.dp), envW = env.lbl || (env.w50 ? (env.bull ? "比特币在50日线上方" : "比特币在50日线下方") : env.bull ? "牛市" : "熊市");
   if (key === "stock_main" && (!env.bull || ndxDipped())) {
     const d = VOL[sym] ? dipState(sym, { dp: X.dp, last: X.last }, env.bull ? "bull" : "bear") : null;
-    if (!env.bull) return d ? Object.assign(base, { tier: d.tier, short: d.short, kind: "dip" }) : Object.assign(base, { tier: 9, short: "载入中…" });
-    if (d && d.tier <= 1) return Object.assign(base, { tier: d.tier, short: d.short, kind: "dip" });
+    if (!env.bull) return d ? Object.assign(base, { tier: d.tier, short: d.short, kind: "dip", lv: d.lv, ldir: d.ldir }) : Object.assign(base, { tier: 9, short: "载入中…" });
+    if (d && d.tier <= 1) return Object.assign(base, { tier: d.tier, short: d.short, kind: "dip", lv: d.lv, ldir: d.ldir });
   }
   const stL = statFor(sym, env.bull, "long"), stS = statFor(sym, env.bull, "short"), gL = grade(stL), gS = grade(stS);
   const side = OKG(gL) ? 1 : OKG(gS) ? -1 : 0;
@@ -540,6 +586,67 @@ async function scanAll(force) {
     SCAN.at = Date.now();
   } finally { SCAN.busy = false; renderScan(); }
 }
+function laneATR(sym) {
+  const X = H1[sym]; if (!X) return NaN;
+  const R = U.groupOfSym(sym) === "stock" && X.sess.length > 30 ? X.sess : X.rows, N = R.length - 1; if (N < 25) return NaN;
+  let a = 0; for (let j = N - 23; j <= N; j++) a += Math.max(R[j].h - R[j].l, Math.abs(R[j].h - R[j - 1].c), Math.abs(R[j].l - R[j - 1].c));
+  return a / 24;
+}
+// 一行信号跑道：右边那根线是信号线，点越靠右越近；左端 = 离信号还有8倍"1小时平均波动"以上
+function sigLane(r) {
+  const X = H1[r.sym], LINE = 0.84, held = numv(loadPos(r.sym).E) > 0, hp = loadPos(r.sym);
+  const note = held ? `已有${+hp.side === -1 ? "空" : "多"}单` : "";
+  if (r.tier === 9 || !X) return { key: "s-" + r.sym, sym: r.sym, name: r.name, small: "载入中", x: 0.02, dot: "off", v: "—", tier: 9 };
+  const f = (x) => fmt(x, X.dp), side = r.side || (r.kind === "dip" ? 1 : 0);
+  const ticks = [[LINE * 0.25, "", "f"], [LINE * 0.5, "", "f"], [LINE * 0.75, "", "f"], [LINE, "", "sig"]];
+  const zones = [[LINE * 7 / 8, LINE, "near"], [LINE, 1, side === -1 ? "dn" : "up"]];
+  const pos = (n) => LINE - Math.min(1, Math.max(0, n) / 8) * LINE;
+  const o = { key: "s-" + r.sym, sym: r.sym, name: r.name, ticks, zones, note, tier: r.tier, small: side === -1 ? "↓ 做空" : "↑ 做多" };
+  if (r.tier === 0) return Object.assign(o, { x: LINE + 0.05, dot: "go " + (side === -1 ? "dn" : "up"), v: "现在可以做", vs: side === -1 ? "做空" : "做多", cls: "go" });
+  if (r.kind === "dip" && isFinite(r.lv)) {
+    const d = r.ldir * (r.lv - X.last), n = d / laneATR(r.sym);
+    return Object.assign(o, { small: r.ldir === 1 ? "↑ 止跌做多" : "等大跌", x: pos(n), dot: n <= 1 ? "near" : "", v: `${r.ldir === 1 ? "涨回" : "跌到"} ${f(r.lv)}`, vs: `差 ${pabs(d / X.last)}` });
+  }
+  const b = r.b;
+  if (r.kind === "dip" || !b) return Object.assign(o, { x: 0.95, dot: "past", v: "出过信号", vs: "现在不追", cls: "past" });
+  if (b.stage === "open") return Object.assign(o, { x: 0.95, dot: "past", v: "信号进行中", vs: "现在不追", cls: "past" });
+  if (b.crossed) return Object.assign(o, { x: LINE + 0.07, dot: "cross " + (side === -1 ? "dn" : "up"), v: `已${side === -1 ? "跌破" : "涨过"} ${f(b.level)}`, vs: `等${b.when.txt}收盘`, cls: "cross" });
+  const n = b.dist / (b.atr || laneATR(r.sym));
+  return Object.assign(o, { x: pos(n), dot: n <= 1 ? "near" : "", v: `${side === -1 ? "跌破" : "涨过"} ${f(b.level)}`, vs: `差 ${pabs(b.dist / b.lp)}`, note: note || (b.trendOK ? "" : `还要短期走势先转${side === -1 ? "弱" : "强"}`) });
+}
+let SCANROWS = [], SIGL = [];
+function renderSigLanes(rows) {
+  const box = $("sigLanes"); if (!box) return;
+  SIGL = rows.filter((r) => r.tier !== 4 && r.kind !== "ep").map(sigLane).filter(Boolean);
+  SIGL.sort((a, b) => (a.tier === 9) - (b.tier === 9) || b.x - a.x);
+  const no = rows.filter((r) => r.tier === 4).map((r) => r.name);
+  box.innerHTML = SIGL.map(laneHTML).join("") + (no.length ? `<p class="ln-no">不做：${esc(no.join("、"))}</p>` : "");
+  slideLanes(box);
+}
+function renderTodo() {
+  const el = $("todoList"); if (!el) return;
+  const it = [], HELD = {}; for (const p of allPos()) { const g = U.groupOfSym(p.sym); HELD[g] = (HELD[g] || 0) + 1; }
+  const CAPS = { crypto: 4, stock: 3, metal: 2 }, GNM = { crypto: "币", stock: "股票", metal: "金银" };
+  for (const [sym, p] of Object.entries(POSPLAN)) if (p.act && (p.cls !== "flat" || /平掉/.test(p.act)) && !/不动/.test(p.act))
+    it.push({ k: p.cls === "bad" ? 0 : /平掉/.test(p.act) ? 1 : 2, sym, c: p.cls === "bad" ? "bad" : p.cls === "ok" ? "ok" : "warn", h: `持仓 · ${p.name} ${p.side === 1 ? "多单" : "空单"}`, b: p.act, pos: true });
+  for (const r of SCANROWS) {
+    if (r.tier === 0) {
+      const held = numv(loadPos(r.sym).E) > 0, g = U.groupOfSym(r.sym), full = !held && (HELD[g] || 0) >= (CAPS[g] || 99);
+      it.push({ k: held || full ? 4 : 3, sym: r.sym, c: held || full ? "wait" : "go", h: `${held ? "已有仓位" : full ? "到上限了" : "可以做"} · ${r.name}`, b: r.short + (held ? "（已经有仓位，不重复开）" : full ? `（${GNM[g]}已经拿了 ${HELD[g]} 个，先不开）` : "") });
+    } else if (r.tier === 1 && r.b && r.b.crossed) it.push({ k: 5, sym: r.sym, c: "wait", h: `等收盘确认 · ${r.name}`, b: r.short });
+  }
+  it.sort((a, b) => a.k - b.k);
+  const head = $("scanHead");
+  if (!it.length) {
+    const nx = SIGL.filter((l) => l.tier && l.tier <= 2 && l.cls !== "past" && l.x > 0.02).sort((a, b) => b.x - a.x)[0];
+    el.innerHTML = `<div class="todo-none"><b>现在没有要做的</b>${nx ? `<span>离得最近的：<b>${esc(nx.name)}</b> ${nx.v}（${nx.vs}）。不到就不动，手上的单按"我的持仓"里的计划管。</span>` : "<span>等扫描完…</span>"}</div>`;
+    if (head) head.textContent = SCANROWS.length ? "现在没有" : "正在扫描…";
+    return;
+  }
+  if (head) head.textContent = `${it.length} 件`;
+  el.innerHTML = it.map((x) => `<button type="button" class="todo-i ${x.c}" data-sym="${esc(x.sym)}"${x.pos ? ' data-pos="1"' : ""}><span class="ti-h">${esc(x.h)}</span><b>${x.b}</b></button>`).join("");
+  el.querySelectorAll("button").forEach((b) => b.addEventListener("click", () => goSym(b.dataset.sym, b.dataset.pos ? "posBox" : "card")));
+}
 function renderScan() {
   const el = $("scanList"); if (!el) return;
   const rows = scanSyms().map(symState), E = window.JSQ_ENV || {}, u = usNow();
@@ -560,11 +667,12 @@ function renderScan() {
     html += t === 4 ? `<details class="scan-more"><summary class="scan-g">${title}（${xs.length}）：${esc(xs.map((r) => r.name).join("、"))}</summary>${body}</details>` : `<div class="scan-g t${t}">${title}（${xs.length}）</div>` + body;
   }
   const n0 = rows.filter((r) => r.tier === 0).length, n1 = rows.filter((r) => r.tier === 1).length, loading = rows.some((r) => r.tier === 9 && !SCANERR[r.sym]);
-  $("scanHead").textContent = loading ? "正在扫描…" : n0 ? `现在有 ${n0} 个可以做` : n1 ? `现在没有可以做的，${n1} 个快到了` : "现在没有可以做的";
+  void n0; void n1; void loading;
   el.innerHTML = html;
+  SCANROWS = rows; renderSigLanes(rows); renderTodo();
   const rest = U.all.length - new Set(rows.map((r) => r.sym)).size;
   $("scanNote").innerHTML = `这里只列验证过能赚钱的品种（黄金、白银、7个主流币、AMD/美光/戴尔）和你收藏的，其余 ${rest} 只都<b>不做</b>。价位按1小时K线收盘算。点一行看具体怎么做。` + (SCAN.at ? `（${new Date(SCAN.at).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" })} 更新，每5分钟刷新）` : "");
-  el.querySelectorAll("button").forEach((b) => b.addEventListener("click", () => { const s = b.dataset.sym; if (U.all.includes(s) && window.JSQ) { window.JSQ.select(s); const c = $("card"); if (c) c.scrollIntoView({ behavior: "smooth", block: "start" }); } }));
+  el.querySelectorAll("button").forEach((b) => b.addEventListener("click", () => goSym(b.dataset.sym)));
 }
 // ---------------------------------------------------------------- 规则冻结后的自动记账（pages/ledger.py 每天生成 ledger.json）
 async function renderLedger() {
@@ -601,9 +709,42 @@ function allPos() {
   try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && k.startsWith("jsq.pos.")) { const o = JSON.parse(localStorage.getItem(k) || "{}"); if (o && numv(o.E) > 0) out.push({ sym: k.slice(8), side: +o.side || 1, E: numv(o.E), S: numv(o.S), N: numv(o.N), Q: numv(o.Q), liq: numv(o.liq), bn: o.src === "bn" }); } } } catch (e) {}
   return out;
 }
+// 持仓尺：左边止损（没填就用建议止损，虚线），右边止盈/2倍止损距离；开仓价一根线，现价一个点
+function railHTML(key, q, f) {
+  if (!q || !(q.E > 0) || !(q.last > 0)) return "";
+  const up = q.side === 1, pts = [q.E, q.last].concat([q.stop, q.target, q.one].filter((x) => isFinite(x) && x > 0));
+  const liqOn = q.liq > 0 && Math.abs(q.liq / q.last - 1) < 0.12; if (liqOn) pts.push(q.liq);
+  let lo = Math.min(...pts), hi = Math.max(...pts); const pad = (hi - lo) * 0.06 || q.last * 0.01; lo -= pad; hi += pad;
+  const X = (v) => (up ? (v - lo) / (hi - lo) : (hi - v) / (hi - lo));          // 空单反过来画：右边永远是赚钱的方向
+  const zones = [], ticks = [];
+  const locked = isFinite(q.stop) && q.side * (q.stop - q.E) >= 0, side = (x) => (x > 0.62 ? " r" : x < 0.38 ? " l" : "");
+  if (isFinite(q.stop) && !locked) zones.push([Math.min(X(q.stop), X(q.E)), Math.max(X(q.stop), X(q.E)), "dn"]);
+  const from = locked ? q.stop : q.E;
+  if (isFinite(q.target)) zones.push([Math.min(X(from), X(q.target)), Math.max(X(from), X(q.target)), "up"]);
+  else if (locked) zones.push([X(q.stop), 1, "up"]);
+  if (liqOn) ticks.push([X(q.liq), "强平", "liq"]);
+  if (isFinite(q.stop)) ticks.push([X(q.stop), `${q.sug ? "建议止损" : "止损"} ${f(q.stop)}`, "st" + (q.sug ? " sug" : "") + side(X(q.stop))]);
+  ticks.push([X(q.E), `开 ${f(q.E)}`, "en" + side(X(q.E))]);
+  if (isFinite(q.one) && !locked) ticks.push([X(q.one), "", "one"]);
+  if (isFinite(q.target)) ticks.push([X(q.target), `${q.tgtLb} ${f(q.target)}`, "tg" + side(X(q.target))]);
+  const pnl = q.side * (q.last - q.E);
+  return `<span class="rail">${trackHTML({ key, x: X(q.last), zones, ticks, dot: pnl >= 0 ? "up" : "dn" })}</span>`;
+}
+const POSPLAN = {};
+function renderSlots(P) {
+  const el = $("posSlots"); if (!el) return;
+  const n = {}; for (const p of P) { const g = U.groupOfSym(p.sym); n[g] = (n[g] || 0) + 1; }
+  const acct = numv(($("posAcct") || {}).value), per = acct > 0 ? acct * 0.005 : NaN;
+  const G = [["crypto", "币", 4], ["stock", "股票", 3], ["metal", "金银", 2]];
+  el.innerHTML = G.map(([g, nm, cap]) => { const k = n[g] || 0, over = k > cap;
+    return `<span class="slot${over ? " over" : ""}"><small>${nm}</small>${Array.from({ length: Math.max(cap, k) }, (_, i) => `<i class="${i < k ? (i >= cap ? "x" : "on") : ""}"></i>`).join("")}</span>`; }).join("") +
+    (isFinite(per) ? `<span class="slot per"><small>每笔最多亏</small><b class="num">${per.toFixed(0)}U</b></span>` : "");
+}
 async function renderPosList() {
   const box = $("posPanel"); if (!box) return;
-  const P = allPos(); box.hidden = false; renderBN();
+  const P = allPos(); box.hidden = false; renderBN(); renderSlots(P);
+  for (const k of Object.keys(POSPLAN)) if (!P.some((p) => p.sym === k)) delete POSPLAN[k];
+  if (!P.length) renderTodo();
   if (!P.length) { $("posList").innerHTML = ""; $("posSum").innerHTML = bnKeys() ? "币安合约账户现在没有仓位。" : "还没有仓位。连上币安（下面），开了仓会自动出现在这里；也可以在每个品种卡片的\"我已经有仓位\"里手填。"; return; }
   try { await needPrices(); } catch (e) {}
   await Promise.allSettled(P.map((p) => needH1(p.sym).then(() => statKey(p.sym) === "stock_main" ? needVol(p.sym) : 0)));
@@ -617,7 +758,8 @@ async function renderPosList() {
     if (isFinite(pn)) totNow += pn;
     const u1 = (x) => isFinite(x) ? `${x >= 0 ? "+" : "−"}${Math.abs(x).toFixed(1)}U` : "—";
     let pl = null; try { pl = posPlan(p.sym, p, last, dp, posCtx(p.sym, p.side)); } catch (e) {}
-    const act = pl && pl.act ? `<em class="pa ${pl.cls}">${pl.act}</em>` : "";
+    if (pl) POSPLAN[p.sym] = { act: pl.act, cls: pl.cls, name: nm, side: p.side };
+    const act = (pl && pl.act ? `<em class="pa ${pl.cls}">${pl.act}</em>` : "") + (pl ? railHTML("r-" + p.sym, pl.nums, f) : "");
     return { k: pl ? RK[pl.cls] ?? 3 : 4, h: `<button type="button" class="scan-row" data-sym="${esc(p.sym)}"><b>${esc(nm)} ${p.side === 1 ? "多" : "空"}</b><span>开 ${f(p.E)} → 现 ${last ? f(last) : "—"}｜${isFinite(pn) ? (pn >= 0 ? "浮盈 " : "浮亏 ") + u1(pn).replace(/^[+−]/, "") : ""}｜${isFinite(p.S) ? `止损 ${f(p.S)}（打到 ${u1(ps)}）` : "没填止损"}${p.liq > 0 ? `｜强平 ${f(p.liq)}` : ""}${act}</span></button>` };
   }).sort((x, y) => x.k - y.k).map((x) => x.h);
   $("posList").innerHTML = rows.join("");
@@ -638,7 +780,8 @@ async function renderPosList() {
   if (big.length) t += ` <b class="bad">这几笔单笔风险偏大：${big.join("、")}</b>，可以减一点仓或把止损挪近。`;
   if (acct > 0 && !over.length && !big.length && !miss.length) t += ` 现在都在规则内。`;
   $("posSum").innerHTML = t;
-  $("posList").querySelectorAll("button").forEach((b) => b.addEventListener("click", () => { const s2 = b.dataset.sym; if (window.JSQ) { window.JSQ.select(s2); const c = $("posBox"); if (c) { c.open = true; c.scrollIntoView({ behavior: "smooth", block: "center" }); } } }));
+  $("posList").querySelectorAll("button").forEach((b) => b.addEventListener("click", () => goSym(b.dataset.sym, "posBox")));
+  slideLanes($("posList")); renderTodo();
 }
 // ---------------------------------------------------------------- 我的持仓：按规则算止损、止盈和后续（只存在这台手机）
 const numv = (x) => { const v = parseFloat(String(x || "").replace(/[,，\s]/g, "")); return isFinite(v) ? v : NaN; };
@@ -658,7 +801,7 @@ function posPlan(sym, p, last, dp, ctx) {
   const pnow = side * (last - E);
   const sInfo = isFinite(S) ? (side * (S - E) >= 0 ? `你现在的止损 ${f(S)} 已经在开仓价${up ? "上方" : "下方"}，锁住了一部分利润${money(S)}。` : `你现在的止损 ${f(S)}${money(S)}。`) : "";
   L.push(`现价 ${f(last)}，${pnow >= 0 ? "浮盈" : "浮亏"} ${pabs(pnow / E, 2)}${money(last)}。${sInfo}`);
-  let act = "", cls = "flat";
+  let act = "", cls = "flat", nums = {};
   const warn = [];
   // 风险检查：止损已经被穿过 / 止损在强平价外面 / 没止损但离强平近
   if (isFinite(S) && side * (last - S) <= 0) warn.push([`已经${up ? "跌破" : "涨过"}你的止损 ${f(S)}：现在平掉`, `现价已经${up ? "跌破" : "涨过"}你的止损 ${f(S)}：按计划这单应该已经出场了，币安上要是没设止损单，现在就平。`]);
@@ -669,6 +812,7 @@ function posPlan(sym, p, last, dp, ctx) {
   const epUse = ep && (ep.stage === "open" || ep.stage === "done") ? ep : ep && ep.last ? ep.last : null;
   if (epUse && epUse.top > E && (dipMode || E < epUse.E0 + 0.5 * (epUse.top - epUse.E0))) {
     const R = E - epUse.stop, one = E + R, half = E + 0.5 * R;
+    nums = { stop: isFinite(S) ? S : epUse.stop, target: epUse.top, one: R > 0 ? one : NaN, tgtLb: "止盈" };
     L.push(`<b>按"回调企稳"这一套管</b>（这一轮 ${nyInfo(epUse.kt).md} 在 ${f(epUse.E0)} 企稳${epUse.stage === "done" ? "，按规则这一轮已经" + epUse.why : ""}）：`);
     const locked = isFinite(S) && S >= E;
     if (locked) L.push(`① 你的止损 ${f(S)} 已经在开仓价上方，利润锁住了，不用再挪；止损只往上挪，不往下放。`);
@@ -687,6 +831,7 @@ function posPlan(sym, p, last, dp, ctx) {
     const rows = g === "stock" && X.sess.length >= 21 ? X.sess : X.rows, n = rows.length, k3 = g === "stock" ? 21 : 72, kL = g === "stock" ? 7 : 24;
     const ext = up ? minL(rows, n - k3, n) : maxH(rows, n - k3, n), trail = up ? Math.max(E, ext) : Math.min(E, ext);
     const R = isFinite(S) && side * (E - S) > 0 ? side * (E - S) : NaN, locked = isFinite(S) && side * (S - E) >= 0;
+    nums = { stop: isFinite(S) ? S : NaN, target: isFinite(R) ? E + side * 2 * R : NaN, one: isFinite(R) ? E + side * R : NaN, tgtLb: "2倍" };
     L.push(`<b>按"突破"这一套管</b>（不设固定止盈）：`);
     if (locked) {
       const nst = up ? Math.max(S, trail) : Math.min(S, trail);
@@ -704,17 +849,17 @@ function posPlan(sym, p, last, dp, ctx) {
     } else if (pnow > 0) {
       L.push(`① 止损跟着"过去3天${up ? "最低" : "最高"}点"挪：现在是 ${f(ext)}，止损放 <b>${f(trail)}</b>${money(trail)}（${up ? "不低于" : "不高于"}开仓价），只往有利方向挪。`);
       L.push(`② 不设固定止盈，让行情自己跑；想分批就在浮盈到开仓时止损距离的2倍时先平一半。`);
-      act = `没设止损：放 ${f(trail)}${money(trail)}，之后跟着3天${up ? "最低" : "最高"}点挪`; cls = "warn";
+      act = `没设止损：放 ${f(trail)}${money(trail)}，之后跟着3天${up ? "最低" : "最高"}点挪`; cls = "warn"; nums.stop = trail; nums.sug = true;
     } else {
       const rs = up ? minL(rows, n - kL, n) * 0.999 : maxH(rows, n - kL, n) * 1.001, w = g === "stock" ? "最近7根交易时段小时线" : "最近24小时";
       L.push(`① 现在还没盈利、也没填止损：按规则止损放${w}${up ? "最低" : "最高"}点外 <b>${f(rs)}</b>${money(rs)}（开仓时的止损你要是记得，填在"现在的止损"里更准）。`);
       L.push(`② ${up ? "涨" : "跌"}到止损距离的1倍再挪到开仓价；不设固定止盈。`);
-      act = `没设止损：按规则放 ${f(rs)}${money(rs)}`; cls = "warn";
+      act = `没设止损：按规则放 ${f(rs)}${money(rs)}`; cls = "warn"; nums.stop = rs; nums.sug = true;
     }
   }
   if (!okDir) L.push(`<span class="plan-bt">提醒：按回测，现在这种环境${up ? "做多" : "做空"}这个品种本来不做（或样本太少）；已经在里面就按上面管，别加仓。</span>`);
   if (warn.length) { L.unshift(`<b class="bad">${warn.map((w) => w[1]).join(" ")}</b>`); if (!/平掉/.test(act)) { act = warn[0][0]; cls = "bad"; } }
-  return { L, act, cls, okDir };
+  return { L, act, cls, okDir, nums: Object.assign(nums, { E, last, side, liq: p.liq }) };
 }
 function renderPos(sym, V, env, g, dipMode, okDir) {
   const box = $("posBox"); if (!box || !V) return;

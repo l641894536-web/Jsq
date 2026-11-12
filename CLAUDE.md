@@ -63,3 +63,7 @@ Local pandas has no pyarrow, so storage is CSV + xz, monthly partitions (`<datas
 - 首页"我的持仓"可以连币安只读 API（用户自己建 key，只勾"允许读取"）：密钥只存手机 localStorage（`jsq.bnkey`），
   经币安 WebSocket API `wss://ws-fapi.binance.com/ws-fapi/v1` 的 `v2/account.position` / `v2/account.status` 读（REST 不允许网页跨域带
   X-MBX-APIKEY）。每分钟同步，覆盖 `jsq.pos.*`（src=bn），止损读不到、沿用手填；本金填合约账户 totalMarginBalance。Claude 不经手密钥。
+- 页面结构（2026-11-12 重排）：一行页头 + 底部四个入口 今天/品种/正股/验证（`#tabs` 是 `.dock`，`setTab` 在 card.js，默认"今天"）。
+  今天页 = 现在要做的（`renderTodo`：持仓要动的 + 可以做的信号）、我的持仓（持仓尺 `railHTML`、仓位格子）、离信号多远（跑道 `sigLane`）、大环境（跑道 `renderEnvLanes`）。
+  品种页 = 原来的结论卡/山脊图/小球板/K线；放量跳空清单在正股页。验证页 = 规则体检（含"最近半年变差"自动警报）、模拟账户（balls.json 按月打乱重排500次）、
+  每半年成绩热力图、自动记账 vs 回测预期带子、影子规则（ledger.py 的 `shadow`：没采用/换下来的做法同时记账）、进化日志（gh-pages `evolution.json`，手工维护）。
