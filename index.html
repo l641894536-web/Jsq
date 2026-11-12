@@ -501,6 +501,150 @@ b.ok { color: var(--good); } b.bad { color: var(--bad); }
 .viz-stats small[data-k="N"] { margin-top: 1px; }
 .seg button:disabled { opacity: .45; }
 .pos-note { display: block; margin-top: 8px; padding: 8px 10px; background: var(--warn-soft); border-radius: 8px; font-size: 14px; line-height: 1.6; }
+
+/* ===== 2026-11-12 重排：一行页头 + 底部四个入口（今天/品种/正股/验证）+ 跑道图 ===== */
+.top { flex-wrap: nowrap; padding: 2px 0 12px; }
+.top .brand { flex-wrap: nowrap; }
+.dock { position: fixed; z-index: 50; left: 0; right: 0; bottom: 0; display: grid; grid-template-columns: repeat(4, 1fr);
+  background: color-mix(in srgb, var(--panel) 92%, transparent); backdrop-filter: saturate(1.4) blur(10px); -webkit-backdrop-filter: saturate(1.4) blur(10px);
+  border-top: 1px solid var(--line); padding: 4px max(6px, env(safe-area-inset-right)) calc(4px + env(safe-area-inset-bottom)) max(6px, env(safe-area-inset-left)); }
+.dock button { position: relative; border: 0; background: transparent; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 7px 0 5px; color: var(--muted); font-size: 11.5px; font-weight: 600; letter-spacing: .02em; border-radius: 10px; }
+.dock svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.dock button[aria-selected="true"] { color: var(--ink); }
+.dock button[aria-selected="true"]::before { content: ""; position: absolute; top: -5px; left: 50%; width: 22px; height: 3px; margin-left: -11px; border-radius: 0 0 3px 3px; background: var(--brass); }
+.dock button:focus-visible { outline: 2px solid var(--brass); outline-offset: -2px; }
+.wrap { padding-bottom: calc(86px + env(safe-area-inset-bottom, 0px)); }
+@media (min-width: 900px) {
+  .dock { left: 50%; right: auto; width: 440px; margin-left: -220px; bottom: 14px; border: 1px solid var(--line); border-radius: 16px; padding: 4px 6px; box-shadow: 0 6px 24px rgba(20, 24, 28, .12); }
+  .dock button { flex-direction: row; justify-content: center; gap: 6px; font-size: 13px; padding: 9px 0; }
+  .dock button[aria-selected="true"] { background: var(--sunk); }
+  .dock button[aria-selected="true"]::before { display: none; }
+}
+.today-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
+.tcol { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; align-content: start; min-width: 0; }
+@media (min-width: 900px) { .today-grid { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); align-items: start; } }
+
+/* 现在要做的 */
+.todo { display: grid; gap: 8px; padding: 10px 14px 14px; }
+.todo-i { display: block; width: 100%; text-align: left; border: 1px solid var(--line); border-left: 4px solid var(--muted); border-radius: 10px; background: var(--panel); padding: 10px 12px; color: var(--ink); font: inherit; cursor: pointer; }
+.todo-i .ti-h { display: block; font-size: 12px; color: var(--muted); margin-bottom: 2px; }
+.todo-i b { display: block; font-size: 15px; line-height: 1.45; font-weight: 700; }
+.todo-i.bad { border-left-color: var(--bad); background: var(--bad-soft); } .todo-i.bad b { color: var(--bad); }
+.todo-i.ok { border-left-color: var(--good); background: var(--good-soft); }
+.todo-i.go { border-left-color: var(--good); background: var(--good-soft); } .todo-i.go b { color: var(--good); }
+.todo-i.warn { border-left-color: var(--warn); background: var(--warn-soft); }
+.todo-i.wait { border-left-color: var(--line); background: var(--sunk); } .todo-i.wait b { font-weight: 600; }
+.todo-none { border: 1px dashed var(--line); border-radius: 10px; padding: 12px; }
+.todo-none > b { display: block; font-size: 17px; margin-bottom: 4px; }
+.todo-none span { font-size: 13.5px; color: var(--muted); line-height: 1.6; } .todo-none span b { color: var(--ink); }
+
+/* 跑道 */
+.lanes { padding: 4px 14px 10px; }
+.lane { display: grid; grid-template-columns: 66px minmax(0, 1fr) 104px; column-gap: 10px; align-items: center; width: 100%; text-align: left; border: 0; border-top: 1px solid var(--hair); background: transparent; padding: 12px 0 9px; font: inherit; color: var(--ink); cursor: pointer; }
+.lane:first-child { border-top: 0; }
+.ln-n b { display: block; font-size: 13.5px; font-weight: 700; line-height: 1.2; }
+.ln-n small, .ln-v small { display: block; font-size: 11px; color: var(--muted); line-height: 1.3; margin-top: 1px; }
+.ln-v { text-align: right; min-width: 0; }
+.ln-v b { display: block; font: 600 12px/1.25 var(--font-num); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ln-note { grid-column: 2 / 4; font-size: 11.5px; color: var(--warn); margin-top: 3px; }
+#envLanes .ln-note { color: var(--ink); font-size: 12.5px; }
+.ln-t { position: relative; display: block; height: 18px; }
+.ln-t::before { content: ""; position: absolute; left: 0; right: 0; top: 8px; height: 2px; background: var(--hair); border-radius: 1px; }
+.ln-z { position: absolute; top: 4px; height: 10px; border-radius: 2px; }
+.ln-z.dn { background: var(--bad-soft); } .ln-z.up { background: var(--good-soft); } .ln-z.near { background: var(--warn-soft); }
+.ln-t.temp::before { top: 4px; height: 10px; border-radius: 3px; background: linear-gradient(90deg, #6E9BD0 0%, #C9D9EC 22%, var(--hair) 50%, #F3C9A6 78%, #E26B5A 100%); }
+.ln-l { position: absolute; top: 1px; bottom: 1px; width: 1.5px; margin-left: -.75px; background: var(--ink); }
+.ln-l.f { background: var(--line); top: 6px; bottom: 6px; }
+.ln-l.sig { width: 2px; margin-left: -1px; top: -2px; bottom: -2px; }
+.ln-l em { position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); margin-bottom: 1px; font: 500 9.5px/1 var(--font-num); font-style: normal; color: var(--muted); white-space: nowrap; }
+.ln-dot { position: absolute; top: 9px; width: 13px; height: 13px; margin: -6.5px 0 0 -6.5px; border-radius: 50%; background: var(--ink); border: 2px solid var(--panel); box-shadow: 0 0 0 1px var(--ink); transition: left .9s cubic-bezier(.2, .8, .2, 1); }
+.ln-dot.up { background: var(--good); box-shadow: 0 0 0 1px var(--good); } .ln-dot.dn { background: var(--bad); box-shadow: 0 0 0 1px var(--bad); }
+.ln-dot.near { background: var(--warn); box-shadow: 0 0 0 1px var(--warn); }
+.ln-dot.past { background: var(--panel); box-shadow: 0 0 0 1.5px var(--muted); }
+.ln-dot.off { background: var(--line); box-shadow: none; }
+.ln-dot.go { animation: lnPulse 1.6s ease-out infinite; }
+@keyframes lnPulse { 0% { box-shadow: 0 0 0 1px currentColor, 0 0 0 0 color-mix(in srgb, var(--good) 45%, transparent); } 100% { box-shadow: 0 0 0 1px currentColor, 0 0 0 9px transparent; } }
+.lane.past .ln-n b, .lane.past .ln-v b { color: var(--muted); }
+.lane.go .ln-v b { color: var(--good); }
+.ln-no { margin: 8px 0 0; font-size: 12px; color: var(--muted); border-top: 1px solid var(--hair); padding-top: 8px; }
+.scan-text { margin: 0 14px 10px; } .scan-text > summary { cursor: pointer; font-size: 12.5px; color: var(--muted); padding: 4px 0; }
+@media (prefers-reduced-motion: reduce) { .ln-dot { transition: none; } .ln-dot.go { animation: none; } }
+
+/* 持仓尺 + 仓位格子 */
+.rail { display: block; margin: 20px 0 14px; }
+.rail .ln-l.st, .rail .ln-l.tg, .rail .ln-l.liq { top: -1px; bottom: -1px; }
+.rail .ln-l.st { background: var(--bad); } .rail .ln-l.st.sug { background: repeating-linear-gradient(var(--bad) 0 3px, transparent 3px 5px); }
+.rail .ln-l.tg { background: var(--good); } .rail .ln-l.one { background: var(--muted); top: 5px; bottom: 5px; }
+.rail .ln-l.liq { background: #000; width: 2px; } .rail .ln-l.liq em { color: var(--ink); font-weight: 700; }
+.rail .ln-l.st em, .rail .ln-l.tg em { bottom: auto; top: 100%; margin: 3px 0 0; }
+.rail .ln-l.st em { left: 0; transform: none; color: var(--bad); }
+.rail .ln-l.tg em { left: auto; right: 0; transform: none; color: var(--good); }
+.rail .ln-l.en em { color: var(--ink); }
+.slots { display: flex; flex-wrap: wrap; gap: 6px 16px; padding: 10px 14px 0; align-items: center; }
+.slot { display: inline-flex; align-items: center; gap: 4px; }
+.slot small { font-size: 11.5px; color: var(--muted); margin-right: 2px; }
+.slot i { width: 11px; height: 11px; border-radius: 50%; border: 1.5px solid var(--ink); display: inline-block; }
+.slot i.on { background: var(--ink); } .slot i.x { background: var(--bad); border-color: var(--bad); }
+.slot.over small { color: var(--bad); font-weight: 700; }
+.slot.per b { font: 700 13px/1 var(--font-num); }
+
+/* 验证页 */
+.val-big { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0; margin: 10px 14px 14px; border: 1px solid var(--hair); border-radius: 10px; }
+.val-big > div { padding: 10px 12px; border-left: 1px solid var(--hair); min-width: 0; }
+.val-big > div:first-child { border-left: 0; }
+.val-big small { display: block; font-size: 11.5px; color: var(--muted); }
+.val-big b { display: block; font: 900 26px/1.15 var(--font-dot); }
+.val-big b.g { color: var(--good); } .val-big b.r { color: var(--bad); }
+.val-big p { margin: 4px 0 0; font-size: 12.5px; color: var(--muted); line-height: 1.5; }
+.val-big .verdict { grid-column: 1 / -1; border-left: 0; border-top: 1px solid var(--hair); font-size: 13.5px; color: var(--ink); }
+#mcCv { height: 260px; } .fwd { display: block; width: calc(100% - 28px); height: 190px; margin: 10px 14px 0; }
+.heat { overflow-x: auto; margin-top: 10px; }
+.heat table { border-collapse: separate; border-spacing: 2px; font-size: 11px; min-width: 100%; }
+.heat th { font-weight: 500; color: var(--muted); white-space: nowrap; padding: 0 2px; text-align: left; }
+.heat td { width: 34px; height: 30px; text-align: center; border-radius: 4px; font: 600 10.5px/1.1 var(--font-num); color: var(--ink); }
+.heat td small { display: block; font-weight: 400; font-size: 9px; opacity: .7; }
+.heat td.e { background: transparent; color: var(--line); }
+.evo { list-style: none; margin: 0; padding: 8px 14px 14px; }
+.evo li { position: relative; padding: 0 0 12px 18px; border-left: 1.5px solid var(--hair); margin-left: 5px; }
+.evo li::before { content: ""; position: absolute; left: -6px; top: 3px; width: 10px; height: 10px; border-radius: 50%; background: var(--panel); border: 2px solid var(--muted); }
+.evo li.y::before { border-color: var(--good); background: var(--good); } .evo li.n::before { border-color: var(--bad); }
+.evo .ev-h { font-size: 11.5px; color: var(--muted); } .evo .ev-h b { color: var(--good); font-weight: 700; } .evo li.n .ev-h b { color: var(--bad); }
+.evo .ev-t { display: block; font-size: 14px; font-weight: 700; margin: 1px 0 2px; }
+.evo .ev-w { font-size: 12.5px; color: var(--muted); line-height: 1.6; }
+.evo .ev-s { display: inline-block; margin-top: 3px; font-size: 11.5px; border: 1px solid var(--line); border-radius: 5px; padding: 1px 6px; color: var(--ink); }
+.shadow-t { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.shadow-t th { text-align: left; font-weight: 500; color: var(--muted); font-size: 11.5px; padding: 4px 4px; border-bottom: 1px solid var(--hair); }
+.shadow-t td { padding: 7px 4px; border-bottom: 1px solid var(--hair); vertical-align: top; }
+.shadow-t td.n { text-align: right; font-family: var(--font-num); white-space: nowrap; }
+.shadow-t small { display: block; color: var(--muted); font-size: 11.5px; }
+
+/* 重排第二轮 */
+.top .brand h1 { white-space: nowrap; font-size: 17px; }
+.top .status { white-space: nowrap; max-width: 9em; overflow: hidden; text-overflow: ellipsis; }
+.top .clk { white-space: nowrap; }
+@media (max-width: 380px) { .top .status span { display: none; } .top .status { padding: 6px; } }
+.val-big .verdict b { font: inherit; font-weight: 700; display: inline; }
+.val-big .verdict b.g { color: var(--good); } .val-big .verdict b.r { color: var(--bad); }
+.heat table { table-layout: fixed; width: 100%; }
+.heat th { font-size: 10.5px; }
+.heat thead th.c { text-align: center; line-height: 1.25; vertical-align: bottom; padding-bottom: 3px; }
+.heat tbody th { width: 46px; }
+.heat td { width: auto; height: 30px; }
+.heat tr.tot td { background: transparent; font-size: 10.5px; color: var(--ink); }
+.heat tr.tot th { font-size: 10px; }
+.rail .ln-l em { transform: translateX(-50%); }
+.rail .ln-l.r em { left: auto; right: 0; transform: none; }
+.rail .ln-l.l em { left: 0; transform: none; }
+.rail .ln-l.st.r em, .rail .ln-l.tg.r em { left: auto; right: 0; }
+.rail .ln-l.st.l em, .rail .ln-l.tg.l em { left: 0; right: auto; }
+.warnc { color: var(--warn); font-size: 11.5px; }
+.lane-key { display: flex; flex-wrap: wrap; gap: 4px 12px; padding: 6px 14px 0; font-size: 11.5px; color: var(--muted); }
+.lane-key i { display: inline-block; vertical-align: -1px; margin-right: 4px; }
+.lane-key .k-line { width: 2px; height: 12px; background: var(--ink); }
+.lane-key .k-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--ink); }
+.lane-key .k-near { width: 16px; height: 8px; background: var(--warn-soft); border-radius: 2px; }
+.evo li.o::before { border-color: var(--warn); background: var(--warn-soft); } .evo li.o .ev-h b { color: var(--warn); }
+.val-big .warnrow { background: var(--bad-soft); border-radius: 0 0 9px 9px; font-size: 13px; }
 </style>
 </head>
 <body>
@@ -510,34 +654,25 @@ b.ok { color: var(--good); } b.bad { color: var(--bad); }
       <h1>Jsq <b>交易台</b></h1>
       <span class="status wait" id="status"><i></i><span id="statusText">正在连接币安…</span></span>
     </div>
-    <div class="seg tabs" id="tabs" role="tablist" aria-label="页面">
-      <button type="button" role="tab" data-tab="contract" aria-selected="true" aria-pressed="true">合约</button>
-      <button type="button" role="tab" data-tab="stock" aria-selected="false" aria-pressed="false">正股</button>
-      <button type="button" role="tab" data-tab="research" aria-selected="false" aria-pressed="false">研究</button>
-    </div>
     <span class="clk" id="clk"></span>
   </header>
-
-  <nav class="sbar" id="sbar" aria-label="市场状态和页面">
-    <div class="sbar-chips" id="sbarChips">
-      <button type="button" class="schip" data-go="stock" id="sbA"><span>A股</span><b>—</b></button>
-      <button type="button" class="schip" data-go="stock" id="sbUS"><span>美股</span><b>—</b></button>
-      <button type="button" class="schip" data-go="contract" data-sym="XAUUSDT" id="sbAU"><span>黄金</span><b>—</b></button>
-      <button type="button" class="schip" data-go="contract" data-sym="XAGUSDT" id="sbAG"><span>白银</span><b>—</b></button>
-      <button type="button" class="schip" data-go="contract" data-sym="BTCUSDT" id="sbBTC"><span>比特币</span><b>—</b></button>
-    </div>
+  <nav class="dock" id="tabs" role="tablist" aria-label="页面">
+    <button type="button" role="tab" data-tab="today" aria-selected="true" aria-pressed="true"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3.2 2"/></svg><span>今天</span></button>
+    <button type="button" role="tab" data-tab="contract" aria-selected="false" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18l4.5-6 3.5 3.5L19 6"/><path d="M15 6h4v4"/></svg><span>品种</span></button>
+    <button type="button" role="tab" data-tab="stock" aria-selected="false" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4.5" y="10" width="3" height="9"/><rect x="10.5" y="6" width="3" height="13"/><rect x="16.5" y="12" width="3" height="7"/></svg><span>正股</span></button>
+    <button type="button" role="tab" data-tab="research" aria-selected="false" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span>验证</span></button>
   </nav>
 
-
-
-  <div class="tab" id="tab-contract">
+  <div class="tab" id="tab-today">
+  <div class="today-grid">
+    <div class="tcol">
   <section class="panel" id="scanPanel" aria-labelledby="scanTitle">
-    <div class="panel-h"><h2 id="scanTitle">今天能做什么</h2><span class="sub" id="scanHead">正在扫描…</span></div>
-    <div class="scan" id="scanList"></div>
-    <p class="note scan-note" id="scanNote"></p>
+    <div class="panel-h"><h2 id="scanTitle">现在要做的</h2><span class="sub" id="scanHead">正在扫描…</span></div>
+    <div class="todo" id="todoList"></div>
   </section>
-  <section class="panel" id="posPanel" hidden aria-labelledby="posTitle">
+  <section class="panel" id="posPanel" aria-labelledby="posTitle">
     <div class="panel-h"><h2 id="posTitle">我的持仓</h2><label class="sub">本金 U（选填）<input id="posAcct" inputmode="decimal" autocomplete="off" style="width:5.5em"></label></div>
+    <div class="slots" id="posSlots"></div>
     <div class="scan" id="posList"></div>
     <p class="note scan-note" id="posSum"></p>
     <details class="bnbox" id="bnBox">
@@ -554,6 +689,26 @@ b.ok { color: var(--good); } b.bad { color: var(--bad); }
       <p class="note" id="bnStat"></p>
     </details>
   </section>
+    </div>
+    <div class="tcol">
+  <section class="panel lanes-panel" id="sigPanel" aria-labelledby="sigTitle">
+    <div class="panel-h"><h2 id="sigTitle">离下一个信号还有多远</h2><span class="sub">点一行看具体怎么做</span></div>
+    <div class="lane-key"><span><i class="k-line"></i>信号价</span><span><i class="k-dot"></i>现在的价格，越靠右越近</span><span><i class="k-near"></i>1小时正常波动就能碰到</span></div>
+    <div class="lanes" id="sigLanes"></div>
+    <details class="scan-text"><summary>文字版清单</summary>
+      <div class="scan" id="scanList"></div>
+    </details>
+    <p class="note scan-note" id="scanNote"></p>
+  </section>
+  <section class="panel lanes-panel" id="envLanePanel" aria-labelledby="envLaneTitle">
+    <div class="panel-h"><h2 id="envLaneTitle">大环境</h2><span class="sub" id="envLaneSub">价格在均线上方还是下方，决定能不能做、做哪边</span></div>
+    <div class="lanes" id="envLanes"></div>
+  </section>
+    </div>
+  </div>
+  </div>
+
+  <div class="tab" id="tab-contract" hidden>
   <div class="controls">
     <div class="syms" id="syms" role="group" aria-label="品种"></div>
     <button type="button" class="btn pick-open" id="pickOpen">全部品种</button>
@@ -606,11 +761,6 @@ b.ok { color: var(--good); } b.bad { color: var(--bad); }
     <div class="viz-stats"><div><small>已落下</small><b data-k="n">0</b><small data-k="N"></small></div><div><small>赚钱的</small><b data-k="w">—</b></div><div><small>平均每笔 U</small><b data-k="a">—</b></div><div><small>合计 U</small><b data-k="s">—</b></div></div>
     <canvas role="img" aria-label="每一笔交易的赚亏分布，像小球落进格子"></canvas>
     <p class="viz-cap"></p>
-  </section>
-  <section class="panel" id="epPanel" aria-labelledby="epTitle">
-    <h2 id="epTitle" class="ep-h">美股放量跳空（日线，纳指牛市才做）</h2>
-    <p class="note" id="epNote">正在载入…</p>
-    <div id="epList"></div>
   </section>
 
 
@@ -707,6 +857,11 @@ b.ok { color: var(--good); } b.bad { color: var(--bad); }
     <div class="panel-h"><h2 id="briefTitle">一眼看懂</h2><span class="sub" id="briefSub"></span></div>
     <div class="brief" id="briefBody"><p class="note">正在载入…</p></div>
   </section>
+  <section class="panel" id="epPanel" aria-labelledby="epTitle">
+    <h2 id="epTitle" class="ep-h">美股放量跳空（日线，纳指牛市才做）</h2>
+    <p class="note" id="epNote">正在载入…</p>
+    <div id="epList"></div>
+  </section>
   <section class="panel" id="mainPanel" aria-labelledby="mainTitle">
     <div class="panel-h"><h2 id="mainTitle">今天的主线：钱往哪些行业走</h2><span class="sub" id="mainSub">正在载入…</span></div>
     <div class="report">
@@ -758,6 +913,22 @@ b.ok { color: var(--good); } b.bad { color: var(--bad); }
   </div>
 
   <div class="tab" id="tab-research" hidden>
+  <section class="panel" id="valHead" aria-labelledby="valTitle">
+    <div class="panel-h"><h2 id="valTitle">规则体检</h2><span class="sub" id="valSub">正在载入…</span></div>
+    <div class="val-big" id="valBig"></div>
+  </section>
+  <section class="panel viz" id="mcPanel" aria-labelledby="mcTitle">
+    <div class="viz-h"><h2 id="mcTitle">照规则做一年，账户可能走成什么样</h2><div class="seg" role="group" aria-label="时长" id="mcSeg"><button type="button" data-m="3">3个月</button><button type="button" data-m="6">半年</button><button type="button" data-m="12" aria-pressed="true">1年</button></div></div>
+    <div class="meta" id="mcMeta"></div>
+    <div class="viz-stats" id="mcStats"></div>
+    <canvas id="mcCv" role="img" aria-label="用过去5年真实成绩随机重排，模拟几百种未来的账户曲线"></canvas>
+    <p class="viz-cap" id="mcCap"></p>
+  </section>
+  <section class="panel viz" id="heatPanel" aria-labelledby="heatTitle">
+    <div class="viz-h"><h2 id="heatTitle">每条规则每半年的成绩</h2></div>
+    <div class="heat" id="heatBox"></div>
+    <p class="viz-cap" id="heatCap"></p>
+  </section>
   <section class="panel viz" id="ballAll" aria-labelledby="ballAllTitle">
     <div class="viz-h"><h2 id="ballAllTitle">现行规则近5年的每一笔</h2></div>
     <div class="meta"></div>
@@ -767,7 +938,17 @@ b.ok { color: var(--good); } b.bad { color: var(--bad); }
   </section>
   <section class="panel" id="ledgerPanel">
     <div class="panel-h"><h2>规则定下来以后的成绩（自动记账）</h2></div>
+    <canvas id="fwdCv" class="fwd" role="img" aria-label="规则定下来以后实际累计盈亏和回测预期范围对比"></canvas>
+    <p class="viz-cap" id="fwdCap"></p>
     <div id="ledgerBox" style="padding:6px 14px 12px"><p class="note">载入中…</p></div>
+  </section>
+  <section class="panel" id="shadowPanel" aria-labelledby="shadowTitle">
+    <div class="panel-h"><h2 id="shadowTitle">影子规则：没采用的做法也在同时记账</h2></div>
+    <div id="shadowBox" style="padding:6px 14px 12px"><p class="note">载入中…</p></div>
+  </section>
+  <section class="panel" id="evoPanel" aria-labelledby="evoTitle">
+    <div class="panel-h"><h2 id="evoTitle">进化日志：规则怎么一步步改过来的</h2></div>
+    <ol class="evo" id="evoList"><li class="note">载入中…</li></ol>
   </section>
   <p class="note" style="margin:10px 2px">这一页是研究记录：现在在用的规则和证据、所有测过的做法（包括没通过的）、技术指标明细。平时下单不用看这页。</p>
       <details class="fold" open><summary>现在在用的规则和证据</summary>
@@ -2271,27 +2452,27 @@ const DMA = {};            // sym -> { price, ma200, vs, bull, at }  日线200�
 let lastRender = 0, timer = null, lastKey = "";
 
 // ================================================================ 页面切换
+const TABS = ["today", "contract", "stock", "research"];
 function setTab(t, push) {
-  if (!["stock", "research"].includes(t)) t = "contract";
-  $("tab-contract").hidden = t !== "contract";
-  $("tab-stock").hidden = t !== "stock";
-  if ($("tab-research")) $("tab-research").hidden = t !== "research";
+  if (!TABS.includes(t)) t = "today";
+  for (const k of TABS) { const el = $("tab-" + k); if (el) el.hidden = k !== t; }
   $("tabs").querySelectorAll("button").forEach((b) => { const on = b.dataset.tab === t; b.setAttribute("aria-selected", String(on)); b.setAttribute("aria-pressed", String(on)); });
   if (push) { try { history.replaceState(null, "", "#" + t); } catch (e) {} }
   try { localStorage.setItem("tab", t); } catch (e) {}
   document.dispatchEvent(new CustomEvent("jsq-tab", { detail: t }));
 }
+// 从今天页跳到某个品种：切到"品种"页、选中、滚到卡片（或卡片里的"我已经有仓位"）
+function goSym(sym, where) {
+  if (!window.JSQ || !U.all.includes(sym)) return;
+  setTab("contract", true); window.JSQ.select(sym);
+  requestAnimationFrame(() => { const c = $(where || "card"); if (where === "posBox" && c) c.open = true; if (c) c.scrollIntoView({ behavior: "smooth", block: "start" }); });
+}
 function initTabs() {
-  $("tabs").querySelectorAll("button").forEach((b) => b.addEventListener("click", () => setTab(b.dataset.tab, true)));
-  $("sbarChips").querySelectorAll("button").forEach((b) => b.addEventListener("click", () => {
-    setTab(b.dataset.go, true);
-    if (b.dataset.sym && window.JSQ && window.JSQ.state.sym !== b.dataset.sym) window.JSQ.select(b.dataset.sym);
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }));
+  $("tabs").querySelectorAll("button").forEach((b) => b.addEventListener("click", () => { setTab(b.dataset.tab, true); window.scrollTo({ top: 0 }); }));
   let t = (location.hash || "").replace("#", "");
-  if (!["stock", "contract", "research"].includes(t)) { try { t = localStorage.getItem("tab") || "contract"; } catch (e) { t = "contract"; } }
+  if (!TABS.includes(t)) t = "today";
   setTab(t, false);
-  window.addEventListener("hashchange", () => { const h = location.hash.replace("#", ""); if (["stock", "contract", "research"].includes(h)) setTab(h, false); });
+  window.addEventListener("hashchange", () => { const h = location.hash.replace("#", ""); if (TABS.includes(h)) setTab(h, false); });
 }
 
 // ================================================================ 环境
@@ -2354,7 +2535,53 @@ function envFor(sym) {
 // ================================================================ 状态栏
 function sChip(id, text, cls) { const b = $(id); if (!b) return; b.querySelector("b").textContent = text; b.className = "schip " + (cls || ""); }
 const band = (t) => t < 20 ? "冰点" : t < 40 ? "偏冷" : t <= 60 ? "中性" : t <= 80 ? "偏热" : "过热";
+// ================================================================ 跑道图（今天页）：一条横道、一根基准线、一个点
+// x 用 0..1。第一次画时点从左边滑进来，之后从上次的位置挪到新位置（只有这一个动效）
+const LANEX = {};
+const pc100 = (x) => (Math.max(0, Math.min(1, x)) * 100).toFixed(2) + "%";
+function trackHTML(o) {
+  const z = (o.zones || []).map(([a, b, c]) => `<i class="ln-z ${c}" style="left:${pc100(a)};width:${pc100(b - a)}"></i>`).join("");
+  const t = (o.ticks || []).map(([x, lb, c]) => `<i class="ln-l ${c || ""}" style="left:${pc100(x)}">${lb ? `<em>${lb}</em>` : ""}</i>`).join("");
+  const prev = LANEX[o.key] != null ? LANEX[o.key] : 0.02; LANEX[o.key] = o.x;
+  return `<span class="ln-t${o.tcls ? " " + o.tcls : ""}">${z}${t}<i class="ln-dot ${o.dot || ""}" style="left:${pc100(prev)}" data-x="${pc100(o.x)}"></i></span>`;
+}
+function laneHTML(o) {
+  return `<button type="button" class="lane ${o.cls || ""}" ${o.sym ? `data-sym="${esc(o.sym)}"` : ""} ${o.go ? `data-go="${o.go}"` : ""}>` +
+    `<span class="ln-n"><b>${esc(o.name)}</b>${o.small ? `<small>${o.small}</small>` : ""}</span>${trackHTML(o)}` +
+    `<span class="ln-v"><b>${o.v || ""}</b>${o.vs ? `<small>${o.vs}</small>` : ""}</span>${o.note ? `<span class="ln-note">${o.note}</span>` : ""}</button>`;
+}
+function slideLanes(box) {
+  requestAnimationFrame(() => requestAnimationFrame(() => box.querySelectorAll(".ln-dot[data-x]").forEach((d) => { d.style.left = d.dataset.x; })));
+  box.querySelectorAll(".lane").forEach((b) => b.addEventListener("click", () => {
+    if (b.dataset.sym) goSym(b.dataset.sym); else if (b.dataset.go) { setTab(b.dataset.go, true); window.scrollTo({ top: 0 }); }
+  }));
+}
+function renderEnvLanes() {
+  const box = $("envLanes"); if (!box) return;
+  const E = window.JSQ_ENV, L = [], sc = (v, R) => 0.5 + Math.max(-1, Math.min(1, v / R)) * 0.46;
+  const half = [[0, 0.5, "dn"], [0.5, 1, "up"]];
+  const u = usNow();
+  const usNote = u && (u.vs >= 0) !== u.bull ? `按上个收盘还是${u.bull ? "牛市" : "熊市"}；现在已经${u.vs >= 0 ? "回到线上" : "跌到线下"}，美股收盘还这样就转${u.bull ? "熊" : "牛"}` : "";
+  if (u) L.push({ key: "e-us", go: "stock", name: "美股", small: "纳指", x: sc(u.vs, 0.12), zones: half, ticks: [[0.5, "200日线"]], dot: u.vs >= 0 ? "up" : "dn",
+    v: `${u.bull ? "牛市" : "熊市"} <span class="num">${pct(u.vs)}</span>`, note: (u.bull ? "AMD/美光/戴尔：突破做多" : "AMD/美光/戴尔：只做大跌后止跌") + (usNote ? `<br><span class="warnc">${usNote}</span>` : "") });
+  const b = DMA.BTCUSDT;
+  if (b && isFinite(b.vs50)) L.push({ key: "e-btc", sym: "BTCUSDT", name: "比特币", small: "日线", x: sc(b.vs50, 0.15), zones: half, ticks: [[0.5, "50日线"]], dot: b.bull50 ? "up" : "dn",
+    v: `${b.bull50 ? "线上" : "线下"} <span class="num">${pct(b.vs50)}</span>`, note: b.bull50 ? "7个币：突破做多" : "7个币：跌破做空" });
+  for (const [sym, nm] of [["XAUUSDT", "黄金"], ["XAGUSDT", "白银"]]) {
+    const m = DMA[sym]; if (!m || !isFinite(m.ma50c)) continue;
+    L.push({ key: "e-" + sym, sym, name: nm, small: "日线", x: sc(m.vs50, 0.12), zones: half, ticks: [[0.5, "50日线"]], dot: m.vs50 >= 0 ? "up" : "dn",
+      v: `${m.bull50c ? "线上" : "线下"} <span class="num">${pct(m.vs50)}</span>`, note: m.bull50c ? `${nm}：突破做多` : `${nm}：不做，等收盘站上 ${fmt(m.ma50, m.price >= 100 ? 0 : 2)}` });
+  }
+  if (E && E.a && E.a.today) {
+    const a = E.a.today, AL = window.JSQ_LIVE_A, t = AL ? AL.temp : a.temp, reg = AL ? AL.regime : a.regime;
+    L.push({ key: "e-a", go: "stock", name: "A股", small: "情绪温度", x: 0.02 + Math.max(0, Math.min(100, t)) / 100 * 0.96, tcls: "temp",
+      ticks: [[0.212, ""], [0.404, ""], [0.596, ""], [0.788, ""]], dot: "ink", v: `${reg} · ${band(t)} <span class="num">${Math.round(t)}</span>`, note: "只作正股参考，不给合约信号" });
+  }
+  if (!L.length) { box.innerHTML = `<p class="note">正在载入…</p>`; return; }
+  box.innerHTML = L.map(laneHTML).join(""); slideLanes(box);
+}
 function renderBar() {
+  renderEnvLanes();
   const E = window.JSQ_ENV;
   if (E) {
     const a = E.a.today, AL = window.JSQ_LIVE_A;
@@ -2610,9 +2837,9 @@ function dipState(sym, V, mode) {
   const mgmt = (e) => `① 止损放 <b>${fmt(e.stop, dp)}</b>（这波最低点 ${fmt(e.low, dp)} 下面一点）；② 涨到 <b>${fmt(e.E0 + e.Rk, dp)}</b> 就把止损挪到开仓价，保证不亏；③ 涨到 <b>${fmt(e.top, dp)}</b>（下跌前的高点）全部平掉；④ 到 <b>${e.deadline}</b> 美股收盘还没到目标，也平掉。`;
   if (ep.stage === "none") {
     const need = ep.top * Math.exp(-2 * sd), lastTxt = ep.last ? `上一波（${nyInfo(ep.last.kt).md}在 ${fmt(ep.last.E0, dp)} 止跌）已经结束：${ep.last.why}。` : "";
-    return { tier: 2, short: `等它大跌：跌到 ${fmt(need, dp)} 以下再找买点（现 ${fmt(last, dp)}）`, dir: "先不做（跌得还不够）", cls: "flat", why: head + lastTxt + `最近5天最高 ${fmt(ep.top, dp)}，要跌到 <b>${fmt(need, dp)}</b> 以下才算跌够（现价 ${fmt(last, dp)}）。` };
+    return { lv: need, ldir: -1, tier: 2, short: `等它大跌：跌到 ${fmt(need, dp)} 以下再找买点（现 ${fmt(last, dp)}）`, dir: "先不做（跌得还不够）", cls: "flat", why: head + lastTxt + `最近5天最高 ${fmt(ep.top, dp)}，要跌到 <b>${fmt(need, dp)}</b> 以下才算跌够（现价 ${fmt(last, dp)}）。` };
   }
-  if (ep.stage === "wait") return { tier: 1, short: `跌够了，等止跌：涨回 ${fmt(ep.trig, dp)} 上方就做多`, dir: "等止跌再做多", cls: "warn", why: head + `已经跌够了（从 ${fmt(ep.top, dp)} 跌到最低 ${fmt(ep.low, dp)}），但还没止跌：等美股开盘时段价格涨回 <b>${fmt(ep.trig, dp)}</b> 上方再做多（按1小时K线收盘算）。` };
+  if (ep.stage === "wait") return { lv: ep.trig, ldir: 1, tier: 1, short: `跌够了，等止跌：涨回 ${fmt(ep.trig, dp)} 上方就做多`, dir: "等止跌再做多", cls: "warn", why: head + `已经跌够了（从 ${fmt(ep.top, dp)} 跌到最低 ${fmt(ep.low, dp)}），但还没止跌：等美股开盘时段价格涨回 <b>${fmt(ep.trig, dp)}</b> 上方再做多（按1小时K线收盘算）。` };
   const age = R.length - 1 - ep.k, upB = ndxUpBefore(ep.kt), kd = nyInfo(ep.kt).md;
   const holder = `<br><span class="plan-bt">如果你在这一波（${kd}，${fmt(ep.E0, dp)} 附近）已经买了，这样管：${mgmt(ep)}</span>`;
   if (age > 3) {
@@ -2729,7 +2956,7 @@ function sigEngine(sym, side, kind, trace) {
   let atr = 0; for (let j = N - 23; j <= N; j++) atr += Math.max(R[j].h - R[j].l, Math.abs(R[j].h - R[j - 1].c), Math.abs(R[j].l - R[j - 1].c)); atr /= 24;
   const lp = PX.m[sym] && Date.now() - PX.at < 180e3 ? PX.m[sym] : last;
   const dist = side * (level - lp), crossed = dist < 0;
-  return Object.assign(baseOut, { stage: "flat", level, dist, lp, crossed, when: crossed ? confirmAt(stock) : null, near: dist <= atr, trendOK: side === 1 ? up[N] : !up[N], stopIf });
+  return Object.assign(baseOut, { stage: "flat", level, dist, lp, atr, crossed, when: crossed ? confirmAt(stock) : null, near: dist <= atr, trendOK: side === 1 ? up[N] : !up[N], stopIf });
 }
 const brk = (sym, side, trace) => sigEngine(sym, side, "brk", trace);
 // "技术面翻多"当进场信号：只给回测里前后两段都赚的组合——AMD/美光/戴尔（纳指牛市做多）、7个主流币（比特币在50日线上方做多）
@@ -2747,8 +2974,8 @@ function symState(sym) {
   const key = statKey(sym), f = (x) => fmt(x, X.dp), envW = env.lbl || (env.w50 ? (env.bull ? "比特币在50日线上方" : "比特币在50日线下方") : env.bull ? "牛市" : "熊市");
   if (key === "stock_main" && (!env.bull || ndxDipped())) {
     const d = VOL[sym] ? dipState(sym, { dp: X.dp, last: X.last }, env.bull ? "bull" : "bear") : null;
-    if (!env.bull) return d ? Object.assign(base, { tier: d.tier, short: d.short, kind: "dip" }) : Object.assign(base, { tier: 9, short: "载入中…" });
-    if (d && d.tier <= 1) return Object.assign(base, { tier: d.tier, short: d.short, kind: "dip" });
+    if (!env.bull) return d ? Object.assign(base, { tier: d.tier, short: d.short, kind: "dip", lv: d.lv, ldir: d.ldir }) : Object.assign(base, { tier: 9, short: "载入中…" });
+    if (d && d.tier <= 1) return Object.assign(base, { tier: d.tier, short: d.short, kind: "dip", lv: d.lv, ldir: d.ldir });
   }
   const stL = statFor(sym, env.bull, "long"), stS = statFor(sym, env.bull, "short"), gL = grade(stL), gS = grade(stS);
   const side = OKG(gL) ? 1 : OKG(gS) ? -1 : 0;
@@ -2799,6 +3026,67 @@ async function scanAll(force) {
     SCAN.at = Date.now();
   } finally { SCAN.busy = false; renderScan(); }
 }
+function laneATR(sym) {
+  const X = H1[sym]; if (!X) return NaN;
+  const R = U.groupOfSym(sym) === "stock" && X.sess.length > 30 ? X.sess : X.rows, N = R.length - 1; if (N < 25) return NaN;
+  let a = 0; for (let j = N - 23; j <= N; j++) a += Math.max(R[j].h - R[j].l, Math.abs(R[j].h - R[j - 1].c), Math.abs(R[j].l - R[j - 1].c));
+  return a / 24;
+}
+// 一行信号跑道：右边那根线是信号线，点越靠右越近；左端 = 离信号还有8倍"1小时平均波动"以上
+function sigLane(r) {
+  const X = H1[r.sym], LINE = 0.84, held = numv(loadPos(r.sym).E) > 0, hp = loadPos(r.sym);
+  const note = held ? `已有${+hp.side === -1 ? "空" : "多"}单` : "";
+  if (r.tier === 9 || !X) return { key: "s-" + r.sym, sym: r.sym, name: r.name, small: "载入中", x: 0.02, dot: "off", v: "—", tier: 9 };
+  const f = (x) => fmt(x, X.dp), side = r.side || (r.kind === "dip" ? 1 : 0);
+  const ticks = [[LINE * 0.25, "", "f"], [LINE * 0.5, "", "f"], [LINE * 0.75, "", "f"], [LINE, "", "sig"]];
+  const zones = [[LINE * 7 / 8, LINE, "near"], [LINE, 1, side === -1 ? "dn" : "up"]];
+  const pos = (n) => LINE - Math.min(1, Math.max(0, n) / 8) * LINE;
+  const o = { key: "s-" + r.sym, sym: r.sym, name: r.name, ticks, zones, note, tier: r.tier, small: side === -1 ? "↓ 做空" : "↑ 做多" };
+  if (r.tier === 0) return Object.assign(o, { x: LINE + 0.05, dot: "go " + (side === -1 ? "dn" : "up"), v: "现在可以做", vs: side === -1 ? "做空" : "做多", cls: "go" });
+  if (r.kind === "dip" && isFinite(r.lv)) {
+    const d = r.ldir * (r.lv - X.last), n = d / laneATR(r.sym);
+    return Object.assign(o, { small: r.ldir === 1 ? "↑ 止跌做多" : "等大跌", x: pos(n), dot: n <= 1 ? "near" : "", v: `${r.ldir === 1 ? "涨回" : "跌到"} ${f(r.lv)}`, vs: `差 ${pabs(d / X.last)}` });
+  }
+  const b = r.b;
+  if (r.kind === "dip" || !b) return Object.assign(o, { x: 0.95, dot: "past", v: "出过信号", vs: "现在不追", cls: "past" });
+  if (b.stage === "open") return Object.assign(o, { x: 0.95, dot: "past", v: "信号进行中", vs: "现在不追", cls: "past" });
+  if (b.crossed) return Object.assign(o, { x: LINE + 0.07, dot: "cross " + (side === -1 ? "dn" : "up"), v: `已${side === -1 ? "跌破" : "涨过"} ${f(b.level)}`, vs: `等${b.when.txt}收盘`, cls: "cross" });
+  const n = b.dist / (b.atr || laneATR(r.sym));
+  return Object.assign(o, { x: pos(n), dot: n <= 1 ? "near" : "", v: `${side === -1 ? "跌破" : "涨过"} ${f(b.level)}`, vs: `差 ${pabs(b.dist / b.lp)}`, note: note || (b.trendOK ? "" : `还要短期走势先转${side === -1 ? "弱" : "强"}`) });
+}
+let SCANROWS = [], SIGL = [];
+function renderSigLanes(rows) {
+  const box = $("sigLanes"); if (!box) return;
+  SIGL = rows.filter((r) => r.tier !== 4 && r.kind !== "ep").map(sigLane).filter(Boolean);
+  SIGL.sort((a, b) => (a.tier === 9) - (b.tier === 9) || b.x - a.x);
+  const no = rows.filter((r) => r.tier === 4).map((r) => r.name);
+  box.innerHTML = SIGL.map(laneHTML).join("") + (no.length ? `<p class="ln-no">不做：${esc(no.join("、"))}</p>` : "");
+  slideLanes(box);
+}
+function renderTodo() {
+  const el = $("todoList"); if (!el) return;
+  const it = [], HELD = {}; for (const p of allPos()) { const g = U.groupOfSym(p.sym); HELD[g] = (HELD[g] || 0) + 1; }
+  const CAPS = { crypto: 4, stock: 3, metal: 2 }, GNM = { crypto: "币", stock: "股票", metal: "金银" };
+  for (const [sym, p] of Object.entries(POSPLAN)) if (p.act && (p.cls !== "flat" || /平掉/.test(p.act)) && !/不动/.test(p.act))
+    it.push({ k: p.cls === "bad" ? 0 : /平掉/.test(p.act) ? 1 : 2, sym, c: p.cls === "bad" ? "bad" : p.cls === "ok" ? "ok" : "warn", h: `持仓 · ${p.name} ${p.side === 1 ? "多单" : "空单"}`, b: p.act, pos: true });
+  for (const r of SCANROWS) {
+    if (r.tier === 0) {
+      const held = numv(loadPos(r.sym).E) > 0, g = U.groupOfSym(r.sym), full = !held && (HELD[g] || 0) >= (CAPS[g] || 99);
+      it.push({ k: held || full ? 4 : 3, sym: r.sym, c: held || full ? "wait" : "go", h: `${held ? "已有仓位" : full ? "到上限了" : "可以做"} · ${r.name}`, b: r.short + (held ? "（已经有仓位，不重复开）" : full ? `（${GNM[g]}已经拿了 ${HELD[g]} 个，先不开）` : "") });
+    } else if (r.tier === 1 && r.b && r.b.crossed) it.push({ k: 5, sym: r.sym, c: "wait", h: `等收盘确认 · ${r.name}`, b: r.short });
+  }
+  it.sort((a, b) => a.k - b.k);
+  const head = $("scanHead");
+  if (!it.length) {
+    const nx = SIGL.filter((l) => l.tier && l.tier <= 2 && l.cls !== "past" && l.x > 0.02).sort((a, b) => b.x - a.x)[0];
+    el.innerHTML = `<div class="todo-none"><b>现在没有要做的</b>${nx ? `<span>离得最近的：<b>${esc(nx.name)}</b> ${nx.v}（${nx.vs}）。不到就不动，手上的单按"我的持仓"里的计划管。</span>` : "<span>等扫描完…</span>"}</div>`;
+    if (head) head.textContent = SCANROWS.length ? "现在没有" : "正在扫描…";
+    return;
+  }
+  if (head) head.textContent = `${it.length} 件`;
+  el.innerHTML = it.map((x) => `<button type="button" class="todo-i ${x.c}" data-sym="${esc(x.sym)}"${x.pos ? ' data-pos="1"' : ""}><span class="ti-h">${esc(x.h)}</span><b>${x.b}</b></button>`).join("");
+  el.querySelectorAll("button").forEach((b) => b.addEventListener("click", () => goSym(b.dataset.sym, b.dataset.pos ? "posBox" : "card")));
+}
 function renderScan() {
   const el = $("scanList"); if (!el) return;
   const rows = scanSyms().map(symState), E = window.JSQ_ENV || {}, u = usNow();
@@ -2819,11 +3107,12 @@ function renderScan() {
     html += t === 4 ? `<details class="scan-more"><summary class="scan-g">${title}（${xs.length}）：${esc(xs.map((r) => r.name).join("、"))}</summary>${body}</details>` : `<div class="scan-g t${t}">${title}（${xs.length}）</div>` + body;
   }
   const n0 = rows.filter((r) => r.tier === 0).length, n1 = rows.filter((r) => r.tier === 1).length, loading = rows.some((r) => r.tier === 9 && !SCANERR[r.sym]);
-  $("scanHead").textContent = loading ? "正在扫描…" : n0 ? `现在有 ${n0} 个可以做` : n1 ? `现在没有可以做的，${n1} 个快到了` : "现在没有可以做的";
+  void n0; void n1; void loading;
   el.innerHTML = html;
+  SCANROWS = rows; renderSigLanes(rows); renderTodo();
   const rest = U.all.length - new Set(rows.map((r) => r.sym)).size;
   $("scanNote").innerHTML = `这里只列验证过能赚钱的品种（黄金、白银、7个主流币、AMD/美光/戴尔）和你收藏的，其余 ${rest} 只都<b>不做</b>。价位按1小时K线收盘算。点一行看具体怎么做。` + (SCAN.at ? `（${new Date(SCAN.at).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" })} 更新，每5分钟刷新）` : "");
-  el.querySelectorAll("button").forEach((b) => b.addEventListener("click", () => { const s = b.dataset.sym; if (U.all.includes(s) && window.JSQ) { window.JSQ.select(s); const c = $("card"); if (c) c.scrollIntoView({ behavior: "smooth", block: "start" }); } }));
+  el.querySelectorAll("button").forEach((b) => b.addEventListener("click", () => goSym(b.dataset.sym)));
 }
 // ---------------------------------------------------------------- 规则冻结后的自动记账（pages/ledger.py 每天生成 ledger.json）
 async function renderLedger() {
@@ -2860,9 +3149,42 @@ function allPos() {
   try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && k.startsWith("jsq.pos.")) { const o = JSON.parse(localStorage.getItem(k) || "{}"); if (o && numv(o.E) > 0) out.push({ sym: k.slice(8), side: +o.side || 1, E: numv(o.E), S: numv(o.S), N: numv(o.N), Q: numv(o.Q), liq: numv(o.liq), bn: o.src === "bn" }); } } } catch (e) {}
   return out;
 }
+// 持仓尺：左边止损（没填就用建议止损，虚线），右边止盈/2倍止损距离；开仓价一根线，现价一个点
+function railHTML(key, q, f) {
+  if (!q || !(q.E > 0) || !(q.last > 0)) return "";
+  const up = q.side === 1, pts = [q.E, q.last].concat([q.stop, q.target, q.one].filter((x) => isFinite(x) && x > 0));
+  const liqOn = q.liq > 0 && Math.abs(q.liq / q.last - 1) < 0.12; if (liqOn) pts.push(q.liq);
+  let lo = Math.min(...pts), hi = Math.max(...pts); const pad = (hi - lo) * 0.06 || q.last * 0.01; lo -= pad; hi += pad;
+  const X = (v) => (up ? (v - lo) / (hi - lo) : (hi - v) / (hi - lo));          // 空单反过来画：右边永远是赚钱的方向
+  const zones = [], ticks = [];
+  const locked = isFinite(q.stop) && q.side * (q.stop - q.E) >= 0, side = (x) => (x > 0.62 ? " r" : x < 0.38 ? " l" : "");
+  if (isFinite(q.stop) && !locked) zones.push([Math.min(X(q.stop), X(q.E)), Math.max(X(q.stop), X(q.E)), "dn"]);
+  const from = locked ? q.stop : q.E;
+  if (isFinite(q.target)) zones.push([Math.min(X(from), X(q.target)), Math.max(X(from), X(q.target)), "up"]);
+  else if (locked) zones.push([X(q.stop), 1, "up"]);
+  if (liqOn) ticks.push([X(q.liq), "强平", "liq"]);
+  if (isFinite(q.stop)) ticks.push([X(q.stop), `${q.sug ? "建议止损" : "止损"} ${f(q.stop)}`, "st" + (q.sug ? " sug" : "") + side(X(q.stop))]);
+  ticks.push([X(q.E), `开 ${f(q.E)}`, "en" + side(X(q.E))]);
+  if (isFinite(q.one) && !locked) ticks.push([X(q.one), "", "one"]);
+  if (isFinite(q.target)) ticks.push([X(q.target), `${q.tgtLb} ${f(q.target)}`, "tg" + side(X(q.target))]);
+  const pnl = q.side * (q.last - q.E);
+  return `<span class="rail">${trackHTML({ key, x: X(q.last), zones, ticks, dot: pnl >= 0 ? "up" : "dn" })}</span>`;
+}
+const POSPLAN = {};
+function renderSlots(P) {
+  const el = $("posSlots"); if (!el) return;
+  const n = {}; for (const p of P) { const g = U.groupOfSym(p.sym); n[g] = (n[g] || 0) + 1; }
+  const acct = numv(($("posAcct") || {}).value), per = acct > 0 ? acct * 0.005 : NaN;
+  const G = [["crypto", "币", 4], ["stock", "股票", 3], ["metal", "金银", 2]];
+  el.innerHTML = G.map(([g, nm, cap]) => { const k = n[g] || 0, over = k > cap;
+    return `<span class="slot${over ? " over" : ""}"><small>${nm}</small>${Array.from({ length: Math.max(cap, k) }, (_, i) => `<i class="${i < k ? (i >= cap ? "x" : "on") : ""}"></i>`).join("")}</span>`; }).join("") +
+    (isFinite(per) ? `<span class="slot per"><small>每笔最多亏</small><b class="num">${per.toFixed(0)}U</b></span>` : "");
+}
 async function renderPosList() {
   const box = $("posPanel"); if (!box) return;
-  const P = allPos(); box.hidden = false; renderBN();
+  const P = allPos(); box.hidden = false; renderBN(); renderSlots(P);
+  for (const k of Object.keys(POSPLAN)) if (!P.some((p) => p.sym === k)) delete POSPLAN[k];
+  if (!P.length) renderTodo();
   if (!P.length) { $("posList").innerHTML = ""; $("posSum").innerHTML = bnKeys() ? "币安合约账户现在没有仓位。" : "还没有仓位。连上币安（下面），开了仓会自动出现在这里；也可以在每个品种卡片的\"我已经有仓位\"里手填。"; return; }
   try { await needPrices(); } catch (e) {}
   await Promise.allSettled(P.map((p) => needH1(p.sym).then(() => statKey(p.sym) === "stock_main" ? needVol(p.sym) : 0)));
@@ -2876,7 +3198,8 @@ async function renderPosList() {
     if (isFinite(pn)) totNow += pn;
     const u1 = (x) => isFinite(x) ? `${x >= 0 ? "+" : "−"}${Math.abs(x).toFixed(1)}U` : "—";
     let pl = null; try { pl = posPlan(p.sym, p, last, dp, posCtx(p.sym, p.side)); } catch (e) {}
-    const act = pl && pl.act ? `<em class="pa ${pl.cls}">${pl.act}</em>` : "";
+    if (pl) POSPLAN[p.sym] = { act: pl.act, cls: pl.cls, name: nm, side: p.side };
+    const act = (pl && pl.act ? `<em class="pa ${pl.cls}">${pl.act}</em>` : "") + (pl ? railHTML("r-" + p.sym, pl.nums, f) : "");
     return { k: pl ? RK[pl.cls] ?? 3 : 4, h: `<button type="button" class="scan-row" data-sym="${esc(p.sym)}"><b>${esc(nm)} ${p.side === 1 ? "多" : "空"}</b><span>开 ${f(p.E)} → 现 ${last ? f(last) : "—"}｜${isFinite(pn) ? (pn >= 0 ? "浮盈 " : "浮亏 ") + u1(pn).replace(/^[+−]/, "") : ""}｜${isFinite(p.S) ? `止损 ${f(p.S)}（打到 ${u1(ps)}）` : "没填止损"}${p.liq > 0 ? `｜强平 ${f(p.liq)}` : ""}${act}</span></button>` };
   }).sort((x, y) => x.k - y.k).map((x) => x.h);
   $("posList").innerHTML = rows.join("");
@@ -2897,7 +3220,8 @@ async function renderPosList() {
   if (big.length) t += ` <b class="bad">这几笔单笔风险偏大：${big.join("、")}</b>，可以减一点仓或把止损挪近。`;
   if (acct > 0 && !over.length && !big.length && !miss.length) t += ` 现在都在规则内。`;
   $("posSum").innerHTML = t;
-  $("posList").querySelectorAll("button").forEach((b) => b.addEventListener("click", () => { const s2 = b.dataset.sym; if (window.JSQ) { window.JSQ.select(s2); const c = $("posBox"); if (c) { c.open = true; c.scrollIntoView({ behavior: "smooth", block: "center" }); } } }));
+  $("posList").querySelectorAll("button").forEach((b) => b.addEventListener("click", () => goSym(b.dataset.sym, "posBox")));
+  slideLanes($("posList")); renderTodo();
 }
 // ---------------------------------------------------------------- 我的持仓：按规则算止损、止盈和后续（只存在这台手机）
 const numv = (x) => { const v = parseFloat(String(x || "").replace(/[,，\s]/g, "")); return isFinite(v) ? v : NaN; };
@@ -2917,7 +3241,7 @@ function posPlan(sym, p, last, dp, ctx) {
   const pnow = side * (last - E);
   const sInfo = isFinite(S) ? (side * (S - E) >= 0 ? `你现在的止损 ${f(S)} 已经在开仓价${up ? "上方" : "下方"}，锁住了一部分利润${money(S)}。` : `你现在的止损 ${f(S)}${money(S)}。`) : "";
   L.push(`现价 ${f(last)}，${pnow >= 0 ? "浮盈" : "浮亏"} ${pabs(pnow / E, 2)}${money(last)}。${sInfo}`);
-  let act = "", cls = "flat";
+  let act = "", cls = "flat", nums = {};
   const warn = [];
   // 风险检查：止损已经被穿过 / 止损在强平价外面 / 没止损但离强平近
   if (isFinite(S) && side * (last - S) <= 0) warn.push([`已经${up ? "跌破" : "涨过"}你的止损 ${f(S)}：现在平掉`, `现价已经${up ? "跌破" : "涨过"}你的止损 ${f(S)}：按计划这单应该已经出场了，币安上要是没设止损单，现在就平。`]);
@@ -2928,6 +3252,7 @@ function posPlan(sym, p, last, dp, ctx) {
   const epUse = ep && (ep.stage === "open" || ep.stage === "done") ? ep : ep && ep.last ? ep.last : null;
   if (epUse && epUse.top > E && (dipMode || E < epUse.E0 + 0.5 * (epUse.top - epUse.E0))) {
     const R = E - epUse.stop, one = E + R, half = E + 0.5 * R;
+    nums = { stop: isFinite(S) ? S : epUse.stop, target: epUse.top, one: R > 0 ? one : NaN, tgtLb: "止盈" };
     L.push(`<b>按"回调企稳"这一套管</b>（这一轮 ${nyInfo(epUse.kt).md} 在 ${f(epUse.E0)} 企稳${epUse.stage === "done" ? "，按规则这一轮已经" + epUse.why : ""}）：`);
     const locked = isFinite(S) && S >= E;
     if (locked) L.push(`① 你的止损 ${f(S)} 已经在开仓价上方，利润锁住了，不用再挪；止损只往上挪，不往下放。`);
@@ -2946,6 +3271,7 @@ function posPlan(sym, p, last, dp, ctx) {
     const rows = g === "stock" && X.sess.length >= 21 ? X.sess : X.rows, n = rows.length, k3 = g === "stock" ? 21 : 72, kL = g === "stock" ? 7 : 24;
     const ext = up ? minL(rows, n - k3, n) : maxH(rows, n - k3, n), trail = up ? Math.max(E, ext) : Math.min(E, ext);
     const R = isFinite(S) && side * (E - S) > 0 ? side * (E - S) : NaN, locked = isFinite(S) && side * (S - E) >= 0;
+    nums = { stop: isFinite(S) ? S : NaN, target: isFinite(R) ? E + side * 2 * R : NaN, one: isFinite(R) ? E + side * R : NaN, tgtLb: "2倍" };
     L.push(`<b>按"突破"这一套管</b>（不设固定止盈）：`);
     if (locked) {
       const nst = up ? Math.max(S, trail) : Math.min(S, trail);
@@ -2963,17 +3289,17 @@ function posPlan(sym, p, last, dp, ctx) {
     } else if (pnow > 0) {
       L.push(`① 止损跟着"过去3天${up ? "最低" : "最高"}点"挪：现在是 ${f(ext)}，止损放 <b>${f(trail)}</b>${money(trail)}（${up ? "不低于" : "不高于"}开仓价），只往有利方向挪。`);
       L.push(`② 不设固定止盈，让行情自己跑；想分批就在浮盈到开仓时止损距离的2倍时先平一半。`);
-      act = `没设止损：放 ${f(trail)}${money(trail)}，之后跟着3天${up ? "最低" : "最高"}点挪`; cls = "warn";
+      act = `没设止损：放 ${f(trail)}${money(trail)}，之后跟着3天${up ? "最低" : "最高"}点挪`; cls = "warn"; nums.stop = trail; nums.sug = true;
     } else {
       const rs = up ? minL(rows, n - kL, n) * 0.999 : maxH(rows, n - kL, n) * 1.001, w = g === "stock" ? "最近7根交易时段小时线" : "最近24小时";
       L.push(`① 现在还没盈利、也没填止损：按规则止损放${w}${up ? "最低" : "最高"}点外 <b>${f(rs)}</b>${money(rs)}（开仓时的止损你要是记得，填在"现在的止损"里更准）。`);
       L.push(`② ${up ? "涨" : "跌"}到止损距离的1倍再挪到开仓价；不设固定止盈。`);
-      act = `没设止损：按规则放 ${f(rs)}${money(rs)}`; cls = "warn";
+      act = `没设止损：按规则放 ${f(rs)}${money(rs)}`; cls = "warn"; nums.stop = rs; nums.sug = true;
     }
   }
   if (!okDir) L.push(`<span class="plan-bt">提醒：按回测，现在这种环境${up ? "做多" : "做空"}这个品种本来不做（或样本太少）；已经在里面就按上面管，别加仓。</span>`);
   if (warn.length) { L.unshift(`<b class="bad">${warn.map((w) => w[1]).join(" ")}</b>`); if (!/平掉/.test(act)) { act = warn[0][0]; cls = "bad"; } }
-  return { L, act, cls, okDir };
+  return { L, act, cls, okDir, nums: Object.assign(nums, { E, last, side, liq: p.liq }) };
 }
 function renderPos(sym, V, env, g, dipMode, okDir) {
   const box = $("posBox"); if (!box || !V) return;
@@ -3665,6 +3991,188 @@ async function updRidge(force) {
   else drawRidge(cv, o, 1);
 }
 
+
+// ---------------------------------------------------------------- 验证页：规则体检、模拟账户、每半年成绩、实际 vs 预期、影子规则、进化日志
+const GRPN = (sym) => { const g = UNI().groupOfSym(sym); return g === "metal" ? "金银" : g === "crypto" ? "币" : "股票"; };
+const st = (a) => { const n = a.length, m = n ? a.reduce((x, y) => x + y, 0) / n : 0, sd = n > 1 ? Math.sqrt(a.reduce((x, y) => x + (y - m) * (y - m), 0) / (n - 1)) : 0; return { n, m, sd, sum: m * n, win: n ? a.filter((u) => u > 0).length / n : 0 }; };
+const qtl = (a, q) => { const b = a.slice().sort((x, y) => x - y), i = (b.length - 1) * q, lo = Math.floor(i), hi = Math.ceil(i); return b[lo] + (b[hi] - b[lo]) * (i - lo); };
+let LEDGER = null, EVO = null;
+async function loadJSON(u) { try { const r = await fetch(u, { cache: "no-store" }); if (r.ok) return await r.json(); } catch (e) {} return null; }
+const acct0 = () => { let a = NaN; try { a = parseFloat(localStorage.getItem("jsq.acct")); } catch (e) {} return a > 0 ? a : 3200; };
+function canvasCtx(cv, H) {
+  const dpr = Math.min(2.5, window.devicePixelRatio || 1), W = cv.clientWidth || 340;
+  cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); cv.style.height = H + "px";
+  const ctx = cv.getContext("2d"); ctx.setTransform(dpr, 0, 0, dpr, 0, 0); return { ctx, W, H };
+}
+
+function renderValHead(B, L) {
+  const el = $("valBig"); if (!el || !B) return;
+  const all = B.t.map((x) => x[2]), S = st(all);
+  const n = L ? L.n || 0 : 0, tot = L ? L.total_u || 0 : 0;
+  // 自动体检：每条规则最近一个半年是不是明显变差（笔数够、平均亏）
+  const half = (ym) => Math.floor(ym / 100) * 2 + (ym % 100 > 6 ? 1 : 0), H = {}, hmax = Math.max(...B.t.map((x) => half(x[3])));
+  for (const [si, ri, u, ym] of B.t) { const k = `${GRPN(B.syms[si])}·${B.rules[ri]}`, h = half(ym); ((H[k] = H[k] || {})[h] = H[k][h] || []).push(u); }
+  const W = [];
+  for (const k of Object.keys(H)) { const a = H[k][hmax] || []; if (a.length < 15) continue; const s1 = st(a); if (s1.m >= 0) continue;
+    let g = 0, t = 0; for (const h of Object.keys(H[k])) { const s2 = st(H[k][h]); t++; if (s2.m > 0) g++; } W.push({ k, n: a.length, m: s1.m, g, t }); }
+  const lo = S.m * n - 1.64 * S.sd * Math.sqrt(n), hi = S.m * n + 1.64 * S.sd * Math.sqrt(n);
+  let v;
+  if (!L) v = "自动记账还没载入。";
+  else if (n < 10) v = `规则定下以后才 <b>${n}</b> 笔，太少，看不出好坏：按回测，至少要30笔左右，才分得清是规则的问题还是运气。现在照做、不挑单。`;
+  else if (tot < lo) v = `<b class="r">低于正常范围</b>：${n} 笔按回测应该在 ${sgn(lo, 0)} ~ ${sgn(hi, 0)}U 之间，实际 ${sgn(tot, 0)}U。要停下来查是不是行情变了。`;
+  else if (tot > hi) v = `<b class="g">好于正常范围</b>：${n} 笔按回测应该在 ${sgn(lo, 0)} ~ ${sgn(hi, 0)}U 之间，实际 ${sgn(tot, 0)}U。多半是运气好，别因此加大仓位。`;
+  else v = `<b>在正常范围里</b>：${n} 笔按回测应该在 ${sgn(lo, 0)} ~ ${sgn(hi, 0)}U 之间，实际 ${sgn(tot, 0)}U。照做。`;
+  el.innerHTML = `<div><small>近5年回测 · 平均每笔</small><b class="${S.m >= 0 ? "g" : "r"}">${sgn(S.m)}U</b><p>${S.n} 笔，赚钱的 ${Math.round(S.win * 100)}%，合计 ${sgn(S.sum, 0)}U</p></div>` +
+    `<div><small>规则定下以后 · 合计</small><b class="${tot >= 0 ? "g" : "r"}">${sgn(tot)}U</b><p>${n} 笔${L ? `（已平 ${L.closed || 0}，持仓中 ${L.open || 0}）` : ""}，${L && L.frozen ? L.frozen.slice(5).replace("-", "月") + "日起" : ""}</p></div>` +
+    `<div class="verdict"><span>${v}</span></div>` + (W.length ? `<div class="verdict warnrow"><span><b class="r">最近半年变差的：</b>${W.map((w) => `${w.k}（${w.n}笔，平均${sgn(w.m, 0)}U；5年里 ${w.g}/${w.t} 个半年是赚的）`).join("、")}。一个半年亏不等于规则失效，但要盯着：规则定下以后这几条的自动记账攒到15笔还是亏的，就先停掉、重新验证。</span></div>` : "");
+  const sub = $("valSub"); if (sub) sub.textContent = L && L.data_to ? `记账数据到 ${String(L.data_to).slice(5, 10).replace("-", "月")}日` : "";
+}
+
+// 模拟账户：把过去5年每个月的真实合计打乱重排，模拟几百种未来
+const MC = { m: 12, paths: null, key: "", anim: 0 };
+function mcSim(B, M) {
+  const by = {}; for (const x of B.t) by[x[3]] = (by[x[3]] || 0) + x[2];
+  const months = []; let y = +B.from.slice(2, 4), m = +B.from.slice(5, 7); const end = +B.to.slice(2, 4) * 100 + +B.to.slice(5, 7);
+  while (y * 100 + m <= end) { months.push(by[y * 100 + m] || 0); m++; if (m > 12) { m = 1; y++; } }
+  const A0 = acct0(), N = 500, P = [], dd = [], fin = [];
+  let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  for (let k = 0; k < N; k++) { const p = [A0]; let peak = A0, mdd = 0; for (let i = 0; i < M; i++) { const v = p[i] + months[Math.floor(rnd() * months.length)]; p.push(v); peak = Math.max(peak, v); mdd = Math.max(mdd, peak - v); } P.push(p); dd.push(mdd); fin.push(p[M] - A0); }
+  const band = []; for (let i = 0; i <= M; i++) { const col = P.map((p) => p[i]); band.push([0.05, 0.1, 0.25, 0.5, 0.75, 0.9, 0.95].map((q) => qtl(col, q))); }
+  return { A0, P, band, dd, fin, months };
+}
+function drawMC(cv, R, M, t) {
+  const { ctx, W, H } = canvasCtx(cv, 260), padL = 8, padR = 74, padT = 14, padB = 22;
+  let lo = Infinity, hi = -Infinity; for (const b of R.band) { lo = Math.min(lo, b[0]); hi = Math.max(hi, b[6]); }
+  lo = Math.min(lo, R.A0); hi = Math.max(hi, R.A0); const pad = (hi - lo) * 0.08; lo -= pad; hi += pad;
+  const X = (i) => padL + (W - padL - padR) * i / M, Y = (v) => padT + (H - padT - padB) * (1 - (v - lo) / (hi - lo));
+  const ink = CSSV("--ink") || "#161718", mut = CSSV("--muted") || "#85898F", good = CSSV("--good") || "#1E9A4C", bad = CSSV("--bad") || "#D3203B", hair = CSSV("--hair") || "#E8E9EA";
+  ctx.clearRect(0, 0, W, H);
+  // 起点线：今天的账户
+  ctx.strokeStyle = mut; ctx.setLineDash([4, 4]); ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(padL, Y(R.A0)); ctx.lineTo(W - padR, Y(R.A0)); ctx.stroke(); ctx.setLineDash([]);
+  ctx.fillStyle = mut; ctx.font = "500 10px " + (CSSV("--font-num") || "monospace"); ctx.textAlign = "left"; ctx.fillText(`今天 ${Math.round(R.A0)}U`, padL + 2, Y(R.A0) - 4);
+  // 月份刻度
+  ctx.fillStyle = mut; ctx.textAlign = "center";
+  for (let i = 0; i <= M; i += M > 6 ? 3 : 1) { ctx.fillText(i === 0 ? "现在" : `${i}个月`, X(i), H - 6); ctx.strokeStyle = hair; ctx.beginPath(); ctx.moveTo(X(i), padT); ctx.lineTo(X(i), H - padB); ctx.stroke(); }
+  const upto = Math.max(0.0001, t) * M;
+  ctx.save(); ctx.beginPath(); ctx.rect(0, 0, X(upto) + 1, H); ctx.clip();
+  // 一部分单独的路径（细线），再叠上 10%-90% 和 25%-75% 的带子
+  ctx.lineWidth = 1;
+  for (let k = 0; k < 70; k++) { const p = R.P[k]; ctx.strokeStyle = p[M] >= R.A0 ? "rgba(30,154,76,.16)" : "rgba(211,32,59,.16)"; ctx.beginPath(); p.forEach((v, i) => i ? ctx.lineTo(X(i), Y(v)) : ctx.moveTo(X(i), Y(v))); ctx.stroke(); }
+  const area = (a, b, col) => { ctx.fillStyle = col; ctx.beginPath(); R.band.forEach((q, i) => i ? ctx.lineTo(X(i), Y(q[a])) : ctx.moveTo(X(i), Y(q[a]))); for (let i = M; i >= 0; i--) ctx.lineTo(X(i), Y(R.band[i][b])); ctx.closePath(); ctx.fill(); };
+  area(1, 5, "rgba(22,23,24,.07)"); area(2, 4, "rgba(22,23,24,.10)");
+  const med = R.band[M][3]; ctx.strokeStyle = med >= R.A0 ? good : bad; ctx.lineWidth = 2.2; ctx.beginPath(); R.band.forEach((q, i) => i ? ctx.lineTo(X(i), Y(q[3])) : ctx.moveTo(X(i), Y(q[3]))); ctx.stroke();
+  ctx.restore();
+  if (t >= 1) {
+    ctx.textAlign = "left"; ctx.font = "600 10.5px " + (CSSV("--font-num") || "monospace");
+    const lab = [[5, "好的10%", ink], [3, "中间", med >= R.A0 ? good : bad], [1, "差的10%", ink]], ys = [];
+    for (const [qi, txt, col] of lab) { let y = Y(R.band[M][qi]); for (const y0 of ys) if (Math.abs(y - y0) < 24) y = y0 + (y > y0 ? 24 : -24); ys.push(y);
+      ctx.fillStyle = col; ctx.fillText(txt, W - padR + 6, y - 2); ctx.fillStyle = mut; ctx.font = "500 10px " + (CSSV("--font-num") || "monospace"); ctx.fillText(`${Math.round(R.band[M][qi])}U`, W - padR + 6, y + 10); ctx.font = "600 10.5px " + (CSSV("--font-num") || "monospace"); }
+  }
+}
+function renderMC(B, force) {
+  const cv = $("mcCv"); if (!cv || !B) return;
+  const M = MC.m, key = M + "|" + acct0() + "|" + (cv.clientWidth || 0); if (!force && key === MC.key) return; MC.key = key;
+  const R = mcSim(B, M), A0 = R.A0;
+  const pLoss = R.fin.filter((x) => x < 0).length / R.fin.length, medDD = qtl(R.dd, 0.5), badDD = qtl(R.dd, 0.9);
+  const stEl = $("mcStats");
+  if (stEl) stEl.innerHTML = `<div><small>中间情况</small><b class="${R.band[M][3] >= A0 ? "g" : "r"}">${sgn(R.band[M][3] - A0, 0)}</b></div><div><small>亏钱概率</small><b class="${pLoss > 0.3 ? "r" : ""}">${Math.round(pLoss * 100)}%</b></div>` +
+    `<div><small>差的10%</small><b class="${R.band[M][1] >= A0 ? "g" : "r"}">${sgn(R.band[M][1] - A0, 0)}</b></div><div><small>中途回撤</small><b>${Math.round(medDD)}U</b></div>`;
+  const mt = $("mcMeta"); if (mt) mt.textContent = `从 ${Math.round(A0)}U 开始 · 500 种可能 · 按100U开5倍`;
+  const cap = $("mcCap");
+  if (cap) cap.innerHTML = `把过去5年每个月的真实成绩（${R.months.length} 个月）随机打乱重排，模拟 500 种未来：每条细线是一种可能，灰色带子里是中间八成的情况。` +
+    `照规则做 ${M === 12 ? "一年" : M + " 个月"}，最后亏钱的可能约 <b>${Math.round(pLoss * 100)}%</b>；中途从高点回撤一般 <b>${Math.round(medDD)}U</b>，差的时候 <b>${Math.round(badDD)}U</b>——<b>这些回撤是正常的，不是规则坏了</b>。` +
+    `前提：验证过的品种出信号都做、每笔100U开5倍、不挑单。只是概率，不是预测。`;
+  cancelAnimationFrame(MC.anim);
+  if (RM) drawMC(cv, R, M, 1);
+  else { const t0 = performance.now(); const step = (now) => { const t = Math.min(1, (now - t0) / 1100); drawMC(cv, R, M, t); if (t < 1) MC.anim = requestAnimationFrame(step); }; MC.anim = requestAnimationFrame(step); }
+}
+
+// 每条规则每半年的成绩
+function renderHeat(B) {
+  const el = $("heatBox"); if (!el || !B) return;
+  const half = (yymm) => { const y = Math.floor(yymm / 100), m = yymm % 100; return y * 2 + (m > 6 ? 1 : 0); };
+  const rows = {}, cols = new Set();
+  for (const [si, ri, u, ym] of B.t) { const k = `${GRPN(B.syms[si])} · ${B.rules[ri]}`, h = half(ym); cols.add(h); (rows[k] = rows[k] || {}); (rows[k][h] = rows[k][h] || []).push(u); (rows["全部"] = rows["全部"] || {}); (rows["全部"][h] = rows["全部"][h] || []).push(u); }
+  const C = [...cols].sort((a, b) => a - b), order = Object.keys(rows).filter((k) => k !== "全部").sort().concat(["全部"]);
+  const col = (avg) => { const a = Math.min(1, Math.abs(avg) / 12); return avg >= 0 ? `rgba(30,154,76,${0.12 + a * 0.6})` : `rgba(211,32,59,${0.12 + a * 0.6})`; };
+  const hd = (k) => k === "全部" ? "全部" : k.replace(" · ", "<br>").replace("指标转多", "指标").replace("回调企稳", "企稳");
+  let html = `<table><thead><tr><th></th>${order.map((k) => `<th class="c">${hd(k)}</th>`).join("")}</tr></thead><tbody>`;
+  const cnt = {}; for (const k of order) cnt[k] = [0, 0];
+  for (const h of C) {
+    html += `<tr><th>${String(Math.floor(h / 2)).padStart(2, "0")}年${h % 2 ? "下" : "上"}</th>` + order.map((k) => { const a = (rows[k] || {})[h]; if (!a || !a.length) return `<td class="e">·</td>`; const s2 = st(a); cnt[k][1]++; if (s2.m > 0) cnt[k][0]++; return `<td style="background:${col(s2.m)}" title="${k} ${s2.n}笔 平均${sgn(s2.m)}U">${s2.m >= 0 ? "+" : "−"}${Math.abs(s2.m).toFixed(0)}<small>${s2.n}</small></td>`; }).join("") + `</tr>`;
+  }
+  html += `<tr class="tot"><th>赚的半年</th>${order.map((k) => `<td>${cnt[k][0]}/${cnt[k][1]}</td>`).join("")}</tr>`;
+  el.innerHTML = html + "</tbody></table>";
+  const sum = order.map((k) => [k, cnt[k][0], cnt[k][1]]);
+  const cap = $("heatCap"), A = sum.find((x) => x[0] === "全部");
+  if (cap) cap.innerHTML = `每一格是一条规则在那半年里<b>平均每笔赚亏多少U</b>（小字是笔数）；绿色是赚，红色是亏，颜色越深越多。一条规则要<b>大多数半年是绿的</b>，才说明不是碰上了某一段好行情。` +
+    (A ? `全部规则合起来 ${A[2]} 个半年里有 <b>${A[1]}</b> 个是赚的。` : "") + `格子很浅或笔数很少的，那半年说明不了什么。`;
+}
+
+// 规则定下以后：实际累计 vs 回测预期范围
+function drawFwd(cv, L, B) {
+  const all = B.t.map((x) => x[2]), S = st(all);
+  const tr = (L && L.trades ? L.trades.slice() : []).sort((a, b) => String(a.t_in).localeCompare(String(b.t_in)));
+  const n = tr.length, K = Math.max(30, n + 5);
+  const { ctx, W, H } = canvasCtx(cv, 190), padL = 34, padR = 10, padT = 10, padB = 20;
+  const cum = [0]; for (const x of tr) cum.push(cum[cum.length - 1] + (+x.u || 0));
+  let lo = Math.min(0, ...cum, S.m * K - 1.64 * S.sd * Math.sqrt(K)), hi = Math.max(0, ...cum, S.m * K + 1.64 * S.sd * Math.sqrt(K)); const pad = (hi - lo) * 0.06; lo -= pad; hi += pad;
+  const X = (k) => padL + (W - padL - padR) * k / K, Y = (v) => padT + (H - padT - padB) * (1 - (v - lo) / (hi - lo));
+  const ink = CSSV("--ink") || "#161718", mut = CSSV("--muted") || "#85898F", good = CSSV("--good") || "#1E9A4C", bad = CSSV("--bad") || "#D3203B", hair = CSSV("--hair") || "#E8E9EA";
+  ctx.clearRect(0, 0, W, H); ctx.font = "500 10px " + (CSSV("--font-num") || "monospace");
+  ctx.fillStyle = "rgba(22,23,24,.08)"; ctx.beginPath();
+  for (let k = 0; k <= K; k++) { const v = S.m * k + 1.64 * S.sd * Math.sqrt(k); k ? ctx.lineTo(X(k), Y(v)) : ctx.moveTo(X(k), Y(v)); }
+  for (let k = K; k >= 0; k--) ctx.lineTo(X(k), Y(S.m * k - 1.64 * S.sd * Math.sqrt(k))); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = mut; ctx.setLineDash([4, 4]); ctx.beginPath(); ctx.moveTo(X(0), Y(0)); ctx.lineTo(X(K), Y(S.m * K)); ctx.stroke(); ctx.setLineDash([]);
+  ctx.strokeStyle = hair; ctx.beginPath(); ctx.moveTo(padL, Y(0)); ctx.lineTo(W - padR, Y(0)); ctx.stroke();
+  ctx.fillStyle = mut; ctx.textAlign = "right"; ctx.fillText("0", padL - 4, Y(0) + 3); ctx.fillText(sgn(hi, 0), padL - 4, padT + 8); ctx.fillText(sgn(lo, 0), padL - 4, H - padB);
+  ctx.textAlign = "center"; for (const k of [0, 10, 20, 30, 40, 60, 80, 100].filter((k) => k <= K)) ctx.fillText(k ? `${k}笔` : "", X(k), H - 5);
+  ctx.textAlign = "left"; ctx.fillText("回测预期", X(K * 0.62), Y(S.m * K * 0.62) - 8);
+  if (n) {
+    ctx.strokeStyle = ink; ctx.lineWidth = 2; ctx.beginPath(); cum.forEach((v, k) => k ? ctx.lineTo(X(k), Y(v)) : ctx.moveTo(X(k), Y(v))); ctx.stroke();
+    tr.forEach((x, i) => { ctx.beginPath(); ctx.arc(X(i + 1), Y(cum[i + 1]), 3.5, 0, 7); if (x.status === "已平") { ctx.fillStyle = x.u >= 0 ? good : bad; ctx.fill(); } else { ctx.fillStyle = "#fff"; ctx.fill(); ctx.strokeStyle = (+x.u >= 0 ? good : bad); ctx.lineWidth = 1.5; ctx.stroke(); } });
+  }
+  return { n, tot: cum[n], S, K };
+}
+function renderFwd(L, B) {
+  const cv = $("fwdCv"); if (!cv || !B) return;
+  const r = drawFwd(cv, L, B), cap = $("fwdCap");
+  if (cap) cap.innerHTML = `黑线是规则定下以后自动记账的累计盈亏（实心点是已平的单，空心点是还没平的），灰色带子是按回测算出来的<b>正常范围</b>（九成的情况落在里面）。` +
+    `<b>线一直在带子里就照做；掉到带子下面才说明规则可能失效</b>，要停下来查。` + (r.n < 30 ? `现在才 ${r.n} 笔，判断不了，至少等到30笔。` : "");
+}
+
+function renderShadow(L) {
+  const el = $("shadowBox"); if (!el) return;
+  if (!L) { el.innerHTML = `<p class="note">载入中…</p>`; return; }
+  const sh = L.shadow || [];
+  if (!sh.length) { el.innerHTML = `<p class="note">影子记账从下一次数据更新开始（每天北京时间早上）。</p>`; return; }
+  const row = (nm, why, n, cl, u, me) => `<tr${me ? ' class="me"' : ""}><td><b>${nm}</b><small>${why}</small></td><td class="n">${n} 笔${cl != null ? `<small>已平 ${cl}</small>` : ""}</td><td class="n"><b style="color:var(${u >= 0 ? "--good" : "--bad"})">${sgn(u)}U</b></td></tr>`;
+  el.innerHTML = `<table class="shadow-t"><thead><tr><th>做法</th><th>笔数</th><th>合计</th></tr></thead><tbody>` +
+    row("现在用的规则", "交易台上显示的就是这一套", L.n || 0, L.closed, L.total_u || 0, true) +
+    sh.map((x) => row(x.name, x.why, x.n, x.closed, x.u)).join("") + `</tbody></table>` +
+    `<p class="note">没采用、被换下来的做法，从${(L.frozen || "").slice(5).replace("-", "月")}日起和现行规则用同一份数据同时记账。<b>换规则的条件</b>：影子规则攒够30笔以上、明显比现行规则好，而且5年回测前后两半也都更好——到时候我会在进化日志里写出来，你同意了才换。</p>`;
+}
+function renderEvo(E, L) {
+  const el = $("evoList"); if (!el) return;
+  if (!E || !E.items) { el.innerHTML = `<li class="note">进化日志没载入。</li>`; return; }
+  const SH = {}; for (const x of (L && L.shadow) || []) SH[x.key] = x;
+  el.innerHTML = E.items.map((x) => { const s2 = x.shadow && SH[x.shadow];
+    return `<li class="${x.kind === "采用" ? "y" : x.kind === "观察" ? "o" : "n"}"><span class="ev-h">${x.d.slice(5).replace("-", "月")}日 · <b>${x.kind}</b></span><span class="ev-t">${x.title}</span><span class="ev-w">${x.why}</span>` +
+      (s2 ? `<br><span class="ev-s">影子记账：${s2.name}，${s2.n} 笔，${sgn(s2.u)}U</span>` : "") + `</li>`; }).join("");
+}
+async function initVal() {
+  if (!$("valHead")) return;
+  const [B, L, E] = await Promise.all([loadBalls(), loadJSON("ledger.json"), loadJSON("evolution.json")]);
+  LEDGER = L; EVO = E;
+  renderValHead(B, L); renderHeat(B); renderShadow(L); renderEvo(E, L);
+  const seg = $("mcSeg");
+  if (seg) seg.addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; MC.m = +b.dataset.m; seg.querySelectorAll("button").forEach((x) => x.setAttribute("aria-pressed", String(x === b))); renderMC(B, true); });
+  const show = () => { if ($("tab-research") && !$("tab-research").hidden) { renderMC(B, false); renderFwd(L, B); } };
+  document.addEventListener("jsq-tab", (e) => { if (e.detail === "research") requestAnimationFrame(show); });
+  if ("ResizeObserver" in window && $("mcCv")) { let w0 = 0; new ResizeObserver(() => { const w = $("mcCv").clientWidth; if (w && Math.abs(w - w0) > 2) { w0 = w; renderMC(B, true); renderFwd(L, B); } }).observe($("mcCv")); }
+  show();
+}
+
 // ---------------------------------------------------------------- 底部状态条
 async function foot() {
   const el = $("sfoot"); if (!el) return;
@@ -3684,6 +4192,7 @@ function init() {
   setTimeout(() => updRidge(true), 2500); setInterval(() => updRidge(false), 60e3);
   if ("ResizeObserver" in window && $("ridgeCv")) { let w0 = 0; new ResizeObserver(() => { const w = $("ridgeCv").clientWidth; if (w && Math.abs(w - w0) > 2) { w0 = w; updRidge(true); } }).observe($("ridgeCv")); }
   foot(); setInterval(foot, 120e3);
+  initVal();
   setInterval(() => { const sp = document.querySelector("#sfoot span"); if (!sp) return; const live = (($("status") || {}).className || "").includes("live");
     sp.className = live ? "on" : ""; sp.textContent = "行情 " + ((($("statusText") || {}).textContent) || "—"); }, 3000);
 }
