@@ -135,6 +135,9 @@ def dip_episodes(S, ndx_up, bear):
 def main():
     syms = METALS + CRYPTO + MAIN
     H = load.binance("1h", syms, start=str((FREEZE - pd.Timedelta(days=150)).date())).sort_values(["symbol", "ts"])
+    # 另外回放最近30天（不管是不是冻结以前），给页面一个"最近一个月照规则做会怎样"的参照；它不算验证
+    DMAX = pd.Timestamp(H.ts.max()); DMAX = DMAX.tz_localize("UTC") if DMAX.tzinfo is None else DMAX
+    R30 = DMAX - pd.Timedelta(days=30); START = min(FREEZE, R30)
     D = load.binance("1d", syms, start="2024-06-01"); D["ts"] = pd.to_datetime(D["ts"] if "ts" in D else D["date"], utc=True); D = D.sort_values(["symbol", "ts"])
     us = load.us_daily(["QQQ", "^NDX"]); us["date"] = pd.to_datetime(us.date); px = us.pivot(index="date", columns="ticker", values="close")
     qqq_bull = above_ma(px["QQQ"], 200); ndx = px["^NDX"].dropna(); ndx_up = (ndx > ndx.shift(1)).astype(float).shift(1)
@@ -153,7 +156,7 @@ def main():
         dest = trades if dest is None else shadow.setdefault(dest, [])
         for _, x in t.iterrows():
             ts = pd.Timestamp(x.ts).tz_localize("UTC") if pd.Timestamp(x.ts).tzinfo is None else pd.Timestamp(x.ts)
-            if ts < FREEZE: continue
+            if ts < START: continue
             d = ts.tz_convert(tz).tz_localize(None).normalize(); b = bull_flag.reindex([d], method="ffill").iloc[0]
             if pd.isna(b) or bool(b) != want_bull: continue
             dest.append(dict(sym=sym, name=NAME[sym], rule=rule, dir="多" if x.side == 1 else "空", t_in=ts.isoformat(), px_in=round(float(x.entry), 6), stop=round(float(x.stop0), 6),
@@ -181,7 +184,7 @@ def main():
             if len(g) >= 200:
                 bl24, _ = brk_signals(g, 24); add(sym, "突破(24h)", simulate(g, 24, bl24, pd.Series(False, index=g.index), 24), qqq_bull, True, "America/New_York", dest="s24")
             for e in dip_episodes(R, ndx_up, (qqq_bull == 0).astype(float).where(qqq_bull.notna())):
-                if e["ts"] < FREEZE or not e["ok"]: continue
+                if e["ts"] < START or not e["ok"]: continue
                 trades.append(dict(sym=sym, name=NAME[sym], rule="回调企稳", dir="多", t_in=e["ts"].isoformat(), px_in=round(e["entry"], 4), stop=round(e["stop"], 4),
                                    t_out=None if e["why"] == "open" else e["exit_ts"].isoformat(), px_out=round(e["px"], 4), status="持仓中" if e["why"] == "open" else "已平",
                                    why={"stop": "止损/保本", "target": "到目标", "time": "满10天", "open": ""}[e["why"]], u=round(e["u"], 1)))
@@ -195,7 +198,7 @@ def main():
             g = g.sort_values("date").reset_index(drop=True)
             if len(g) < 60: continue
             v50 = g.volume.rolling(50).mean().shift(1); pc = g.close.shift(1)
-            for i in np.flatnonzero(((g.open / pc - 1 >= 0.08) & (g.volume >= 3 * v50) & (pc > 3) & (g.date >= FREEZE.tz_localize(None))).to_numpy()):
+            for i in np.flatnonzero(((g.open / pc - 1 >= 0.08) & (g.volume >= 3 * v50) & (pc > 3) & (g.date >= START.tz_localize(None))).to_numpy()):
                 b = qqq_bull.reindex([g.date[i]], method="ffill").iloc[0]
                 if i + 1 >= len(g) or pd.isna(b) or not bool(b): continue
                 E0, stop = g.open[i + 1], g.low[i]
@@ -211,6 +214,19 @@ def main():
     except Exception as e:
         print("ep skipped:", repr(e))
     trades.sort(key=lambda x: x["t_in"], reverse=True)
+    tin = lambda t: pd.Timestamp(t["t_in"]).tz_localize("UTC") if pd.Timestamp(t["t_in"]).tzinfo is None else pd.Timestamp(t["t_in"])
+    rep = [t for t in trades if tin(t) >= R30]
+    trades = [t for t in trades if tin(t) >= FREEZE]
+    for k in list(shadow): shadow[k] = [t for t in shadow[k] if tin(t) >= FREEZE]
+    rb = {}
+    for t in rep:
+        k = t["rule"]; d = rb.setdefault(k, dict(n=0, closed=0, closed_u=0.0, open_u=0.0, win=0))
+        d["n"] += 1
+        if t["status"] == "已平": d["closed"] += 1; d["closed_u"] = round(d["closed_u"] + t["u"], 1); d["win"] += int(t["u"] > 0)
+        else: d["open_u"] = round(d["open_u"] + t["u"], 1)
+    replay30 = dict(start=str(R30.date()), n=len(rep), closed=sum(1 for t in rep if t["status"] == "已平"),
+                    closed_u=round(sum(t["u"] for t in rep if t["status"] == "已平"), 1), open_u=round(sum(t["u"] for t in rep if t["status"] != "已平"), 1),
+                    win=sum(1 for t in rep if t["status"] == "已平" and t["u"] > 0), by_rule=rb)
     T = pd.DataFrame(trades); closed = T[T.status == "已平"] if len(T) else T
     by = [] if not len(T) else [dict(rule=k, n=int(len(x)), closed=int((x.status == "已平").sum()), u=round(float(x.u.sum()), 1), win=int((x.u > 0).sum())) for k, x in T.groupby("rule")]
     out = dict(frozen=args.freeze, data_to=str(H.ts.max()), n=int(len(T)), closed=int(len(closed)), open=int(len(T) - len(closed)),
@@ -222,6 +238,7 @@ def main():
         sh.append(dict(key=k, name=nm, why=why, n=len(x), closed=len(cl), u=round(sum(t["u"] for t in x), 1), closed_u=round(sum(t["u"] for t in cl), 1),
                        win=sum(1 for t in cl if t["u"] > 0), trades=x[:60]))
     out["shadow"] = sh
+    out["replay30"] = replay30
     json.dump(out, open(args.out, "w"), ensure_ascii=False, separators=(",", ":"), allow_nan=False)
     print(f"ledger: {out['n']} trades since {args.freeze} ({out['closed']} closed, {out['closed_u']:+.1f}U), data to {out['data_to']}")
     return out, T

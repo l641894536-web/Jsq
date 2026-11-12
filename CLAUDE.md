@@ -67,3 +67,6 @@ Local pandas has no pyarrow, so storage is CSV + xz, monthly partitions (`<datas
   今天页 = 现在要做的（`renderTodo`：持仓要动的 + 可以做的信号）、我的持仓（持仓尺 `railHTML`、仓位格子）、离信号多远（跑道 `sigLane`）、大环境（跑道 `renderEnvLanes`）。
   品种页 = 原来的结论卡/山脊图/小球板/K线；放量跳空清单在正股页。验证页 = 规则体检（含"最近半年变差"自动警报）、模拟账户（balls.json 按月打乱重排500次）、
   每半年成绩热力图、自动记账 vs 回测预期带子、影子规则（ledger.py 的 `shadow`：没采用/换下来的做法同时记账）、进化日志（gh-pages `evolution.json`，手工维护）。
+- 模拟仓（今天页 `renderPaper`，2026-11-13）：以 ledger.json 为准，页面用实时小时线把没平的单子往前推（`sigEngine` 的 trace 带出场价/原因），
+  记账数据之后新出的信号先记成"今天的"；和 ledger.py 逐笔对过（同一时间、同一原因、U 差 <0.6）。ledger.json 另有 `replay30`（最近30天回放，不算验证）。
+  验证页"模拟仓按规则看"（`renderPaperRules`）拿已平单和这条规则5年回测平均比。我的持仓每笔下面有止损拉杆（`initStopBars`），拖动/输入实时分析，松手才存。

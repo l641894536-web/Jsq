@@ -252,8 +252,14 @@ function canvasCtx(cv, H) {
   const ctx = cv.getContext("2d"); ctx.setTransform(dpr, 0, 0, dpr, 0, 0); return { ctx, W, H };
 }
 
-function renderValHead(B, L) {
-  const el = $("valBig"); if (!el || !B) return;
+// 模拟仓（页面实时推过的）转成和 ledger.json 一样的格式
+function paperAsLedger(L) {
+  const P = window.JSQ_PAPER; if (!P) return L;
+  const tr = P.book.map((b) => ({ t_in: new Date(b.t_in).toISOString(), u: +b.u || 0, status: b.status }));
+  return Object.assign({}, L || {}, { trades: tr, n: tr.length, closed: P.cl.length, open: P.op.length, total_u: Math.round((P.closedU + P.openU) * 10) / 10, frozen: P.frozen || (L && L.frozen) });
+}
+function renderValHead(B, L0) {
+  const el = $("valBig"); if (!el || !B) return; const L = paperAsLedger(L0);
   const all = B.t.map((x) => x[2]), S = st(all);
   const n = L ? L.n || 0 : 0, tot = L ? L.total_u || 0 : 0;
   // 自动体检：每条规则最近一个半年是不是明显变差（笔数够、平均亏）
@@ -381,8 +387,8 @@ function drawFwd(cv, L, B) {
   }
   return { n, tot: cum[n], S, K };
 }
-function renderFwd(L, B) {
-  const cv = $("fwdCv"); if (!cv || !B) return;
+function renderFwd(L0, B) {
+  const cv = $("fwdCv"); if (!cv || !B) return; const L = paperAsLedger(L0);
   const r = drawFwd(cv, L, B), cap = $("fwdCap");
   if (cap) cap.innerHTML = `黑线是规则定下以后自动记账的累计盈亏（实心点是已平的单，空心点是还没平的），灰色带子是按回测算出来的<b>正常范围</b>（九成的情况落在里面）。` +
     `<b>线一直在带子里就照做；掉到带子下面才说明规则可能失效</b>，要停下来查。` + (r.n < 30 ? `现在才 ${r.n} 笔，判断不了，至少等到30笔。` : "");
@@ -407,11 +413,36 @@ function renderEvo(E, L) {
     return `<li class="${x.kind === "采用" ? "y" : x.kind === "观察" ? "o" : "n"}"><span class="ev-h">${x.d.slice(5).replace("-", "月")}日 · <b>${x.kind}</b></span><span class="ev-t">${x.title}</span><span class="ev-w">${x.why}</span>` +
       (s2 ? `<br><span class="ev-s">影子记账：${s2.name}，${s2.n} 笔，${sgn(s2.u)}U</span>` : "") + `</li>`; }).join("");
 }
+
+// 模拟仓按规则看：每条规则模拟了多少笔、赚亏多少，和这条规则5年回测的平均比
+function renderPaperRules(B) {
+  const el = $("paperRules"), P = window.JSQ_PAPER; if (!el || !B || !P) return;
+  const RN = { "技术面翻多": "指标转多", "跌破": "突破", "突破": "突破", "回调企稳": "回调企稳" };
+  const bt = {}; for (const [si, ri, u] of B.t) { const k = GRPN(B.syms[si]) + "·" + B.rules[ri]; (bt[k] = bt[k] || []).push(u); }
+  const rows = {}; for (const b of P.book) { const g = b.rule === "放量跳空" ? "美股" : GRPN(b.sym), k = g + "·" + b.rule; (rows[k] = rows[k] || { k, g, rule: b.rule, cl: [], op: [] })[b.status === "已平" ? "cl" : "op"].push(+b.u || 0); }
+  const R = Object.values(rows).sort((a, b) => b.cl.length + b.op.length - a.cl.length - a.op.length);
+  if (!R.length) { el.innerHTML = `<p class="note">还没有模拟单。</p>`; return; }
+  const flag = [];
+  const tr = R.map((r) => {
+    const sc = st(r.cl), ref = bt[r.g + "·" + (RN[r.rule] || "")], sb = ref ? st(ref) : null;
+    let v = "—";
+    if (!sb) v = "没有可比的回测";
+    else if (sc.n < 10) v = `才 ${sc.n} 笔已平，看不出来`;
+    else { const z = (sc.m - sb.m) / (sb.sd / Math.sqrt(sc.n)); v = z < -1.64 ? `<b class="r">明显差于回测</b>` : z > 1.64 ? `<b class="g">好于回测</b>（多半运气）` : "和回测一致"; if (z < -1.64 && sc.n >= 15) flag.push(r.k); }
+    const op = r.op.reduce((a, b) => a + b, 0);
+    return `<div class="prl"><b class="prn">${r.k}</b><span class="prv"><b class="${sc.sum >= 0 ? "g" : "r"}">${sgn(sc.sum)}U</b></span>` +
+      `<small class="prd">模拟仓已平 ${sc.n} 笔${sc.n ? `，每笔 ${sgn(sc.m)}U` : ""}${r.op.length ? `；持仓中 ${r.op.length} 笔，浮动 ${sgn(op)}U` : ""}。5年回测每笔 ${sb ? `${sgn(sb.m)}U（${sb.n} 笔）` : "—"}</small><span class="prj">${v}</span></div>`;
+  }).join("");
+  el.innerHTML = `<div class="prls">${tr}</div>` +
+    `<p class="note">"判断"是拿模拟仓已平的单子和这条规则5年回测的平均比：笔数少于10笔说明不了什么；够多了还明显差于回测，说明这条规则可能失效了。` +
+    (flag.length ? `<b class="bad">现在要查：${flag.join("、")}</b>——我会把它写进进化日志，先停掉这条、重新验证，你同意了才改。` : `现在没有哪条明显变差。`) + `</p>`;
+}
 async function initVal() {
   if (!$("valHead")) return;
   const [B, L, E] = await Promise.all([loadBalls(), loadJSON("ledger.json"), loadJSON("evolution.json")]);
   LEDGER = L; EVO = E;
   renderValHead(B, L); renderHeat(B); renderShadow(L); renderEvo(E, L);
+  renderPaperRules(B); document.addEventListener("jsq-paper", () => { renderPaperRules(B); renderValHead(B, L); if ($("tab-research") && !$("tab-research").hidden) renderFwd(L, B); });
   const seg = $("mcSeg");
   if (seg) seg.addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; MC.m = +b.dataset.m; seg.querySelectorAll("button").forEach((x) => x.setAttribute("aria-pressed", String(x === b))); renderMC(B, true); });
   const show = () => { if ($("tab-research") && !$("tab-research").hidden) { renderMC(B, false); renderFwd(L, B); } };
