@@ -151,7 +151,7 @@ function init() {
   const go = () => { if (!US && !A) loadAll(); else renderPick(); };
   if (window.JSQ_ENV) go();
   document.addEventListener("jsq-env-ready", go);
-  document.addEventListener("jsq-live", () => { if (US || A) $("pickRegime") && ($("pickRegime").innerHTML = regimeLanes(window.JSQ_ENV)); });
+  document.addEventListener("jsq-live", () => { if (US || A) renderPick(); });
 }
 init();
 })();

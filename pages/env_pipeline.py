@@ -38,13 +38,13 @@ def r(x, n=2):
 
 
 # ============================================================ A股：面板
-cols = ["date", "code", "high", "low", "close", "preclose", "amount", "tradestatus", "pctChg", "isST"]
+cols = ["date", "code", "open", "high", "low", "close", "preclose", "amount", "tradestatus", "pctChg", "isST"]
 parts = []
 for f in sorted(glob.glob(f"{args.data}/a_share/daily/*/*.csv.xz")):
     if int(f.split("/")[-2]) < 2014:
         continue
     d = pd.read_csv(f, usecols=cols, dtype={"date": str, "code": str})
-    for c in ["high", "low", "close", "preclose", "amount", "pctChg"]:
+    for c in ["open", "high", "low", "close", "preclose", "amount", "pctChg"]:
         d[c] = pd.to_numeric(d[c], errors="coerce").astype("float32")
     d["tradestatus"] = pd.to_numeric(d["tradestatus"], errors="coerce").fillna(0).astype("int8")
     d["isST"] = pd.to_numeric(d["isST"], errors="coerce").fillna(0).astype("int8")
@@ -54,7 +54,7 @@ df = df[df.code.str.match(r"^(sh\.6|sz\.0|sz\.3)")]
 dates_s = np.sort(df.date.unique()); codes = np.sort(df.code.unique())
 di = pd.Index(dates_s).get_indexer(df.date); ci = pd.Index(codes).get_indexer(df.code)
 P = {}
-for c, dt, fill in [("high", "float32", np.nan), ("close", "float32", np.nan), ("preclose", "float32", np.nan),
+for c, dt, fill in [("open", "float32", np.nan), ("high", "float32", np.nan), ("close", "float32", np.nan), ("preclose", "float32", np.nan),
                     ("amount", "float32", np.nan), ("pctChg", "float32", np.nan), ("tradestatus", "int8", 0), ("isST", "int8", 0)]:
     m = np.full((len(dates_s), len(codes)), fill, dtype=dt)
     m[di, ci] = df[c].to_numpy()
@@ -132,6 +132,18 @@ a_today = dict(date=str(last.date()), regime="牛市" if L["等权指数"] > L["
                temp_min10=r(recent["温度"].min(), 1), temp_min10_date=str(recent["温度"].idxmin().date()),
                amount=r(L["成交额亿"], 0), heat=r(L["成交额热度"], 2), zt=int(L["涨停"]), dt=int(L["跌停"]),
                lb=int(L["连板高度"]), adv=r(L["上涨占比"], 3))
+# 短线情绪阶段（research/ashare_cycle_bt.py）：温度 + 和前5天平均比
+_t = s["温度"]; _prev5 = _t.shift(1).rolling(5).mean()
+
+
+def phase(t, p5):
+    if t < 20: return "冰点"
+    if t >= 80: return "高潮"
+    if t < 50: return "低位回升" if t > p5 else "低位回落"
+    return "中高位升温" if t > p5 else "中高位退潮"
+
+
+a_today.update(phase=phase(L["温度"], _prev5.iloc[-1]), t_prev5=r(_prev5.iloc[-1], 1), zbl=r(L["炸板率"], 3), prem=r(L["昨日涨停今日涨幅"] / 100, 4))
 w = s.loc["2016-01-01":].dropna(subset=["温度", "fwd60"]).copy()
 w["档"] = pd.cut(w["温度"], [-1, 20, 40, 60, 80, 101], labels=["冰点", "偏冷", "中性", "偏热", "过热"])
 w["reg"] = w["牛熊"].map({"牛": "牛市", "熊": "熊市"})
@@ -382,6 +394,23 @@ def _stocks():
     _sb = pd.read_csv(f"{args.data}/a_share/meta/stock_basic.csv", dtype=str).set_index("code").code_name
     _pool = _uni & (_g_r >= 0.7) & (_a_r >= 0.7)
     _bs, _bup, _a200 = bounce_stages(adj)
+    # 开盘习惯（research/ashare_gap_bt.py）：近250天 高开/低开 2%~7%（开盘涨跌停除外）之后收在开盘上下、比大盘
+    with np.errstate(all="ignore"):
+        _o = P["open"][-250:].astype("float64"); _c = P["close"][-250:].astype("float64"); _p = P["preclose"][-250:].astype("float64")
+        _g = _o / _p - 1; _oc = _c / _o - 1
+        _ul = np.floor(_p * (1 + lim[-250:]) * 100 + 0.5) / 100; _dl = np.floor(_p * (1 - lim[-250:]) * 100 + 0.5) / 100
+        _lo = (np.abs(_o - _ul) < 0.0051) | (np.abs(_o - _dl) < 0.0051)
+        _U = ok[-250:] & np.isfinite(_g) & np.isfinite(_oc) & (_o > 0) & ~_lo
+        _mk = np.nanmean(np.where(_U, _oc, np.nan), 1)[:, None]
+        _mu = _U & (_g >= 0.02) & (_g < 0.07); _md = _U & (_g <= -0.02) & (_g > -0.07)
+        _gu_n, _gd_n = _mu.sum(0), _md.sum(0)
+        _gu_f, _gd_f = (_mu & (_oc < 0)).sum(0), (_md & (_oc > 0)).sum(0)
+        _gu_x = np.where(_mu, _oc - _mk, 0).sum(0) / np.maximum(_gu_n, 1)
+        _gd_x = np.where(_md, _oc - _mk, 0).sum(0) / np.maximum(_gd_n, 1)
+        _v20 = np.nanstd(np.where(traded[-20:], P["pctChg"][-20:].astype("float64"), np.nan), 0)
+    _vr = pd.Series(np.where(ok[-1], _v20, np.nan)).rank(pct=True).to_numpy()
+    _vq = np.where(np.isfinite(_vr), np.clip(np.ceil(_vr * 5), 1, 5), 0).astype(int)
+    _ztk = np.where(zt[-1], streak[-1], 0).astype(int)
     with np.errstate(invalid="ignore", divide="ignore"):
         _dd = adj[-1] / np.nanmax(adj[-250:], axis=0) - 1                    # 离一年高点（复权）
     _ix = s["等权指数"].to_numpy(float)[-60:]
@@ -393,11 +422,13 @@ def _stocks():
         rows.append([c[3:], _sb.get(c, ""), ind_of[i] if isinstance(ind_of[i], str) else "", r(_gr[i], 3), r(_ac[i], 3), r(_g_r[i], 3), r(_a_r[i], 3),
                      r(_mom120[i], 3), r(_m_r[i], 3), r(_mom20[i], 3), r(_last.roeAvg.iloc[i], 3),
                      str(_last.statDate.iloc[i].date()) if pd.notna(_last.statDate.iloc[i]) else "", int(_uni[i]), int(_pool[i]),
-                     int(_bs[i]), r(_bup[i], 3), int(_a200[i]), r(float(_a20[i]) / 1e8, 2), r(float(_dd[i]), 3)])
+                     int(_bs[i]), r(_bup[i], 3), int(_a200[i]), r(float(_a20[i]) / 1e8, 2), r(float(_dd[i]), 3),
+                     int(_gu_n[i]), int(_gu_f[i]), r(float(_gu_x[i]), 4), int(_gd_n[i]), int(_gd_f[i]), r(float(_gd_x[i]), 4), int(_vq[i]), int(_ztk[i])])
     _pi = pd.Series([x for x, p in zip(ind_of, _pool) if p and isinstance(x, str) and x]).value_counts().head(8)
     stocks = dict(date=str(dates[-1].date()), regime=a_today["regime"], n_uni=int(_uni.sum()), n_pool=int(_pool.sum()),
                   pool_ind=[[k, int(v)] for k, v in _pi.items()],
-                  fields=["code", "name", "ind", "growth", "accel", "g_r", "a_r", "mom120", "m_r", "mom20", "roe", "stat", "uni", "pool", "bs", "bup", "a200", "amt", "dd"], rows=rows, mbounce=_mb,
+                  fields=["code", "name", "ind", "growth", "accel", "g_r", "a_r", "mom120", "m_r", "mom20", "roe", "stat", "uni", "pool", "bs", "bup", "a200", "amt", "dd",
+                          "gu_n", "gu_f", "gu_x", "gd_n", "gd_f", "gd_x", "vq", "ztk"], rows=rows, mbounce=_mb,
                   bs_n=[int(x) for x in np.bincount(_bs[elig], minlength=5)])
     json.dump(stocks, open(os.path.join(os.path.dirname(os.path.abspath(args.out)), "stocks_a.json"), "w"), ensure_ascii=False, separators=(",", ":"), allow_nan=False)
     stocks_note = dict(date=stocks["date"], n_uni=stocks["n_uni"], n_pool=stocks["n_pool"], pool_ind=stocks["pool_ind"])
@@ -419,7 +450,7 @@ if args.fund and os.path.exists(f"{args.fund}/a_share/growth.csv.xz"):
         print("stocks_a.json skipped:", repr(e))
 env = dict(asof=max(a_today["date"], us_today["date"]), stocks_a=stocks_note, stocks_us=stocks_us_note, a=dict(today=a_today, stats=stats, series=a_series),
            us=dict(today=us_today, series=us_series), live=live, findings=findings,
-           contract_stats=static.get("contract_stats"), contract_stats_note=static.get("contract_stats_note"), earnings=earn, ep=ep_events, stock_perps=_perps_all, bt_quarters=static.get("bt_quarters"))
+           contract_stats=static.get("contract_stats"), contract_stats_note=static.get("contract_stats_note"), gap_research=static.get("gap_research"), earnings=earn, ep=ep_events, stock_perps=_perps_all, bt_quarters=static.get("bt_quarters"))
 json.dump(env, open(args.out, "w"), ensure_ascii=False, separators=(",", ":"))
 
 # ============================================================ 变化摘要

@@ -71,6 +71,10 @@ Local pandas has no pyarrow, so storage is CSV + xz, monthly partitions (`<datas
   （`pages/stocks_us.py`，env_pipeline 每天生成：营收+净利润同比都前30%、近半年不是最弱30%、离一年高点不到30%；跌太多的列"观察"并给回到线上的价格），
   A股观察名单读 `stocks_a.json`（新增字段 amt=近20日均成交亿、dd=离一年高点）。依据 research/us_entry_bt.py（直接买、单只不设均线止损）。
   "美股当晚 → 第二天A股"面板的数字写死在脚本里，来自 research/us_cn_link_bt.py（重跑后要手动改 LINK 常量）。
+- 正股页"A股短线情绪：现在在哪一段"（2026-11-13，`research/workbench_cycle.js`，内联 `<script id="cyclejs">`）：阶段 = 情绪温度 + 和前5天平均比，
+  env_pipeline 写进 `a.today.phase`（另有 zbl 炸板率、prem 涨停次日）；各阶段数字在 env_static.json 的 `gap_research`（env_pipeline 原样带进 env.json，
+  由 research/build_gap_research.py 生成）。查个股（`research/workbench_stock_lookup.js`）加"开盘习惯"：stocks_a.json 新字段 gu_n/gu_f/gu_x、gd_n/gd_f/gd_x
+  （近250天高开/低开2~7%之后）、vq（波动五分位）、ztk（最后一天连板数）；盘中从 qt.gtimg.cn 取单只完整行情（f[3]现价 f[4]前收 f[5]开盘）对照今天的开盘。
 - 模拟仓（今天页 `renderPaper`，2026-11-13）：以 ledger.json 为准，页面用实时小时线把没平的单子往前推（`sigEngine` 的 trace 带出场价/原因），
   记账数据之后新出的信号先记成"今天的"；和 ledger.py 逐笔对过（同一时间、同一原因、U 差 <0.6）。ledger.json 另有 `replay30`（最近30天回放，不算验证）。
   验证页"模拟仓按规则看"（`renderPaperRules`）拿已平单和这条规则5年回测平均比。我的持仓每笔下面有止损拉杆（`initStopBars`），拖动/输入实时分析，松手才存。
