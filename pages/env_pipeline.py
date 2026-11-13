@@ -143,7 +143,7 @@ def phase(t, p5):
     return "中高位升温" if t > p5 else "中高位退潮"
 
 
-a_today.update(phase=phase(L["温度"], _prev5.iloc[-1]), t_prev5=r(_prev5.iloc[-1], 1), zbl=r(L["炸板率"], 3), prem=r(L["昨日涨停今日涨幅"] / 100, 4))
+a_today.update(ew_vs_ma20=r(L["等权指数"] / s["等权指数"].iloc[-20:].mean() - 1, 4), phase=phase(L["温度"], _prev5.iloc[-1]), t_prev5=r(_prev5.iloc[-1], 1), zbl=r(L["炸板率"], 3), prem=r(L["昨日涨停今日涨幅"] / 100, 4))
 w = s.loc["2016-01-01":].dropna(subset=["温度", "fwd60"]).copy()
 w["档"] = pd.cut(w["温度"], [-1, 20, 40, 60, 80, 101], labels=["冰点", "偏冷", "中性", "偏热", "过热"])
 w["reg"] = w["牛熊"].map({"牛": "牛市", "熊": "熊市"})
@@ -204,7 +204,7 @@ live_a = dict(
     dir=dict(LIVE5),
     other_pct={k: r(s[k + "_分位"].iloc[-1], 4) for k in other},                        # 其余6个指标沿用最近收盘的分位
     other_dir={k: ("cold" if k in COLD else "hot") for k in other},
-    ew_last=r(s["等权指数"].iloc[-1], 6), ew_sum199=r(s["等权指数"].iloc[-199:].sum(), 6),
+    ew_last=r(s["等权指数"].iloc[-1], 6), ew_sum199=r(s["等权指数"].iloc[-199:].sum(), 6), ew_sum19=r(s["等权指数"].iloc[-19:].sum(), 6),
     amount_avg250=r(s["成交额亿"].iloc[-250:].mean(), 1),
 )
 # 盘中要拉行情的股票：最近10个交易日有成交、最近一次成交时不是ST、到下个交易日上市满20天

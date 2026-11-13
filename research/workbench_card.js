@@ -1416,7 +1416,8 @@ function renderBrief() {
     else if (u.spxVs > 0) uDo = `科技股在调整、标普还没破：正股可以分批买、留足现金；合约少做`;
     else uDo = `大盘也破了200日线：分批、留现金；纳指跌到 ${fmt(u.stop, 0)}（认错线）就减仓`;
   }
-  aDo += "；小市值30只组合照常拿，每月初换（正股页有名单）";
+  const v20 = AL && AL.ew_vs20 != null ? AL.ew_vs20 : a.ew_vs_ma20;
+  aDo += v20 == null ? "" : v20 < 0 ? "；小市值组合刹车中（全A等权在20日线下，站回再买）" : "；小市值30只组合拿着（全A等权在20日线上），每月初换";
   const mt = window.JSQ_MAIN_TOP || (a.top_ind || []);
   const rows = [
     ["A股", `${reg} · ${b}（${Math.round(t)}）`, aDo, reg === "牛市" ? "good" : "warn"],

@@ -78,6 +78,8 @@ Local pandas has no pyarrow, so storage is CSV + xz, monthly partitions (`<datas
 - A股小市值轮动（2026-11-14，research/ashare_factor_bt.py → ashare_small_bt.py）：日均成交≥3000万、非ST、上市满250天里总市值最小30只，每月第一个交易日换。
   stocks_a.json 新字段 cap（总市值亿，最近一期财报总股本×收盘）、sm（市值排名1..60），顶层 small.cut30。正股页"A股"段落显示名单和选股方法体检（FAC 常量写死在 workbench_picks.js）。
   `pages/stock_ledger.py`（env-page 里 ledger 之后跑）每月第一次出数据时记一篮（A股小市值30、美股成长名单），写 gh-pages `stock_ledger.json`，验证页"正股名单记账"显示。
+- A股交易做法体检（2026-11-14，research/ashare_trader_bt.py：打板/接力/回马枪/回踩/超跌/断层/二八/行业轮动/隔夜/节前）；结果常量 TRD/TRD2 写死在 workbench_picks.js。
+  小市值"刹车"（research/ashare_brake_small.py）：全A等权跌破20日线清仓；env_pipeline 写 `a.today.ew_vs_ma20`、`live.a.ew_sum19`，页面 JSQ_LIVE_A.ew_vs20 盘中估算。
 - 美国大数据日研究 research/event_bt.py（CPI/非农/议息日期写死在脚本里，来自美联储和 BLS 官网存档）：结论在 env_static findings，页面"本周大事"提醒还没做。
 - 模拟仓（今天页 `renderPaper`，2026-11-13）：以 ledger.json 为准，页面用实时小时线把没平的单子往前推（`sigEngine` 的 trace 带出场价/原因），
   记账数据之后新出的信号先记成"今天的"；和 ledger.py 逐笔对过（同一时间、同一原因、U 差 <0.6）。ledger.json 另有 `replay30`（最近30天回放，不算验证）。
