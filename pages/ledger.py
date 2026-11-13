@@ -149,6 +149,7 @@ def main():
         "mshort": ("金银：50日线下方跌破做空", "回测不赚，没采用"),
         "s24": ("AMD/美光/戴尔：24小时K线突破", "11-12 测过不稳定，没采用（现在只认美股时段收盘）"),
         "c200": ("7个币：按比特币200日线分多空", "换下来的旧规则（现在用50日线）"),
+        "asia": ("三星/SK海力士/腾讯合约：美股当晚涨跌超1%，第二天亚洲开盘反着做到收盘", "11-13 测过，样本只有5个月（24-49天），先影子记账"),
     }
 
     def add(sym, rule, t, bull_flag, want_bull, tz="UTC", dest=None):
@@ -213,6 +214,27 @@ def main():
                                    why={"stop": "止损", "time": "满20天", "open": ""}[why], u=round(float(((px / E0 - 1) - COST - 0.0003 * days) * NOTIONAL), 1)))
     except Exception as e:
         print("ep skipped:", repr(e))
+    # 影子：亚洲股票合约 美股当晚大涨大跌 → 第二天亚洲开盘反着做到收盘（research/asia_perp_bt.py）
+    try:
+        AD = load.us_daily(["QQQ", "005930.KS", "000660.KS", "0700.HK"]); AD["date"] = pd.to_datetime(AD.date)
+        AP = {t: g.set_index("date").sort_index() for t, g in AD.groupby("ticker")}
+        qi = AP["QQQ"].close / AP["QQQ"].open - 1
+        for perp, tk, oh, ch, nm in [("SAMSUNGUSDT", "005930.KS", 0, 7, "三星"), ("SKHYNIXUSDT", "000660.KS", 0, 7, "SK海力士"), ("TENCENTUSDT", "0700.HK", 1, 8, "腾讯")]:
+            HA = load.binance("1h", perp, start=str((FREEZE - pd.Timedelta(days=10)).date())).set_index("ts").sort_index()
+            if HA.empty or tk not in AP: continue
+            for b in AP[tk].index[AP[tk].index >= FREEZE.tz_localize(None).normalize()]:
+                prev = qi.index[qi.index < b]
+                if not len(prev) or abs(qi.loc[prev[-1]]) < 0.01: continue
+                side = -1 if qi.loc[prev[-1]] > 0 else 1
+                to = pd.Timestamp(b).tz_localize("UTC") + pd.Timedelta(hours=oh); tc = pd.Timestamp(b).tz_localize("UTC") + pd.Timedelta(hours=ch)
+                if to not in HA.index: continue
+                po = float(HA.open.loc[to]); done = tc in HA.index
+                px = float(HA.open.loc[tc]) if done else float(HA.close.iloc[-1])
+                shadow.setdefault("asia", []).append(dict(sym=perp, name=nm, rule="美股当晚反着做", dir="多" if side == 1 else "空", t_in=to.isoformat(), px_in=round(po, 4),
+                    stop=None, t_out=tc.isoformat() if done else None, px_out=round(px, 4), status="已平" if done else "持仓中", why="亚洲收盘" if done else "",
+                    u=round(NOTIONAL * (side * (px - po) / po - COST), 1)))
+    except Exception as e:
+        print("asia shadow:", repr(e))
     trades.sort(key=lambda x: x["t_in"], reverse=True)
     tin = lambda t: pd.Timestamp(t["t_in"]).tz_localize("UTC") if pd.Timestamp(t["t_in"]).tzinfo is None else pd.Timestamp(t["t_in"])
     rep = [t for t in trades if tin(t) >= R30]
