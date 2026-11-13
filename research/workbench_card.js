@@ -402,6 +402,19 @@ function dipState(sym, V, mode) {
   if (ep.stage === "wait") return { lv: ep.trig, ldir: 1, tier: 1, short: `跌够了，等止跌：涨回 ${fmt(ep.trig, dp)} 上方就做多`, dir: "等止跌再做多", cls: "warn", why: head + `已经跌够了（从 ${fmt(ep.top, dp)} 跌到最低 ${fmt(ep.low, dp)}），但还没止跌：等美股开盘时段价格涨回 <b>${fmt(ep.trig, dp)}</b> 上方再做多（按1小时K线收盘算）。` };
   const age = R.length - 1 - ep.k, upB = ndxUpBefore(ep.kt), kd = nyInfo(ep.kt).md;
   const holder = `<br><span class="plan-bt">如果你在这一波（${kd}，${fmt(ep.E0, dp)} 附近）已经买了，这样管：${mgmt(ep)}</span>`;
+  // 这一轮还没结束（没碰止损、没到目标、没过期限）：晚进也行。回测（research/late_entry_bt.py，5年熊市91次）：
+  // 晚1天还能进的74次平均+3.2U、晚2天51次+8.6U、晚3天32次+9.1U、晚5天20次+13.3U；止损沿用这一轮的（已过1倍就是原开仓价），止盈原目标，期限不变
+  if (age > 3 && bear && upB !== true && ep.stage === "open" && last > ep.st && last < ep.top) {
+    const st2 = ep.st, Rk2 = last - st2;
+    PLANNUM = { E0: last, stop: st2, target: ep.top, side: 1 };
+    const late = `${kd}在 ${fmt(ep.E0, dp)} 止跌买入的这一轮还没结束`;
+    return { tier: 0, late: true, short: `${late}：现在进也行，止损 ${fmt(st2, dp)}，止盈 ${fmt(ep.top, dp)}，最晚 ${ep.deadline}`,
+      dir: "可以做多（晚进这一轮）", cls: "up",
+      why: head + `${late}（还没碰止损、没到目标、没过期限）。<b>晚进也验证过</b>：5年里熊市这样的买点91次，信号出来以后晚1天还能进的74次平均每次赚3.2U，晚2-5天进的平均赚8-13U（次数越晚越少，20-50次）。止损用这一轮的止损${st2 >= ep.E0 ? "（已经涨过1倍，挪到了原开仓价）" : ""}，止盈和期限不变。`,
+      plan: `现在买的做法（现价 ${fmt(last, dp)}，错了亏 ${pc(Rk2 / last)}，到目标赚 ${pc((ep.top - last) / last)}）：` +
+        (st2 >= ep.E0 ? `① 止损放 <b>${fmt(st2, dp)}</b>（这一轮的开仓价，这一轮已经涨过1倍止损距离）；` : `① 止损放 <b>${fmt(st2, dp)}</b>（这波最低点 ${fmt(ep.low, dp)} 下面一点）；② 涨到 <b>${fmt(ep.E0 + ep.Rk, dp)}</b> 就把止损挪到 ${fmt(ep.E0, dp)}（这一轮的开仓价）；`) +
+        `${st2 >= ep.E0 ? "②" : "③"} 涨到 <b>${fmt(ep.top, dp)}</b>（下跌前的高点）全部平掉；${st2 >= ep.E0 ? "③" : "④"} 到 <b>${ep.deadline}</b> 美股收盘还没到目标，也平掉。<br><span class="plan-bt">晚进的次数不多，轻仓。</span>` };
+  }
   if (age > 3) {
     const drop = pc(1 - Math.exp(-2 * sd)), nxt = `这一波到 ${ep.deadline} 前结束（先涨到 ${fmt(ep.top, dp)} 或跌破 ${fmt(ep.st, dp)} 就提前结束），之后从那时的5天高点再跌 ${drop} 左右才算跌够`;
     return { tier: 3, short: `${kd}出过买入信号（${fmt(ep.E0, dp)}），现在不追；${nxt}`, dir: "上一个买点已过，现在不追", cls: "flat",
