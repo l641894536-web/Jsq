@@ -1411,7 +1411,8 @@ function renderBrief() {
   let uDo = "—", uWhat = "";
   if (u) {
     uWhat = `纳指离200日线 ${pct(u.vs)}，标普 ${pct(u.spxVs)}`;
-    if (u.bull) uDo = "牛市：正股正常拿着；合约不做空";
+    const SU = (window.JSQ_ENV || {}).stocks_us;
+    if (u.bull) uDo = SU && SU.picks ? `牛市：正股按名单买（现在 ${SU.picks.length} 只${SU.picks.length ? "：" + SU.picks.join("、") : ""}），跌了30%以上的不抄；合约不做空` : "牛市：正股正常拿着；合约不做空";
     else if (u.spxVs > 0) uDo = `科技股在调整、标普还没破：正股可以分批买、留足现金；合约少做`;
     else uDo = `大盘也破了200日线：分批、留现金；纳指跌到 ${fmt(u.stop, 0)}（认错线）就减仓`;
   }

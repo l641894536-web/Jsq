@@ -382,6 +382,8 @@ def _stocks():
     _sb = pd.read_csv(f"{args.data}/a_share/meta/stock_basic.csv", dtype=str).set_index("code").code_name
     _pool = _uni & (_g_r >= 0.7) & (_a_r >= 0.7)
     _bs, _bup, _a200 = bounce_stages(adj)
+    with np.errstate(invalid="ignore", divide="ignore"):
+        _dd = adj[-1] / np.nanmax(adj[-250:], axis=0) - 1                    # 离一年高点（复权）
     _ix = s["等权指数"].to_numpy(float)[-60:]
     _mb = bool(_ix[-1] / np.nanmin(_ix) - 1 >= 0.05 and int(np.nanargmin(_ix)) >= 20)     # 大盘自己也在反弹
     rows = []
@@ -391,22 +393,31 @@ def _stocks():
         rows.append([c[3:], _sb.get(c, ""), ind_of[i] if isinstance(ind_of[i], str) else "", r(_gr[i], 3), r(_ac[i], 3), r(_g_r[i], 3), r(_a_r[i], 3),
                      r(_mom120[i], 3), r(_m_r[i], 3), r(_mom20[i], 3), r(_last.roeAvg.iloc[i], 3),
                      str(_last.statDate.iloc[i].date()) if pd.notna(_last.statDate.iloc[i]) else "", int(_uni[i]), int(_pool[i]),
-                     int(_bs[i]), r(_bup[i], 3), int(_a200[i])])
+                     int(_bs[i]), r(_bup[i], 3), int(_a200[i]), r(float(_a20[i]) / 1e8, 2), r(float(_dd[i]), 3)])
     _pi = pd.Series([x for x, p in zip(ind_of, _pool) if p and isinstance(x, str) and x]).value_counts().head(8)
     stocks = dict(date=str(dates[-1].date()), regime=a_today["regime"], n_uni=int(_uni.sum()), n_pool=int(_pool.sum()),
                   pool_ind=[[k, int(v)] for k, v in _pi.items()],
-                  fields=["code", "name", "ind", "growth", "accel", "g_r", "a_r", "mom120", "m_r", "mom20", "roe", "stat", "uni", "pool", "bs", "bup", "a200"], rows=rows, mbounce=_mb,
+                  fields=["code", "name", "ind", "growth", "accel", "g_r", "a_r", "mom120", "m_r", "mom20", "roe", "stat", "uni", "pool", "bs", "bup", "a200", "amt", "dd"], rows=rows, mbounce=_mb,
                   bs_n=[int(x) for x in np.bincount(_bs[elig], minlength=5)])
     json.dump(stocks, open(os.path.join(os.path.dirname(os.path.abspath(args.out)), "stocks_a.json"), "w"), ensure_ascii=False, separators=(",", ":"), allow_nan=False)
     stocks_note = dict(date=stocks["date"], n_uni=stocks["n_uni"], n_pool=stocks["n_pool"], pool_ind=stocks["pool_ind"])
     print(f"stocks_a.json: {len(rows)} rows, universe {stocks['n_uni']}, pool {stocks['n_pool']}")
     return stocks_note
+stocks_us_note = None
+if args.fund and os.path.exists(f"{args.fund}/us/financials.csv.xz"):
+    try:
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        import stocks_us as _su
+        stocks_us_note = _su.build(args.fund, os.path.join(os.path.dirname(os.path.abspath(args.out)), "stocks_us.json"), load, us_state)
+        print(f"stocks_us.json: pick {stocks_us_note['picks']} watch {len(stocks_us_note['watch'])}")
+    except Exception as e:
+        print("stocks_us.json skipped:", repr(e))
 if args.fund and os.path.exists(f"{args.fund}/a_share/growth.csv.xz"):
     try:
         stocks_note = _stocks()
     except Exception as e:
         print("stocks_a.json skipped:", repr(e))
-env = dict(asof=max(a_today["date"], us_today["date"]), stocks_a=stocks_note, a=dict(today=a_today, stats=stats, series=a_series),
+env = dict(asof=max(a_today["date"], us_today["date"]), stocks_a=stocks_note, stocks_us=stocks_us_note, a=dict(today=a_today, stats=stats, series=a_series),
            us=dict(today=us_today, series=us_series), live=live, findings=findings,
            contract_stats=static.get("contract_stats"), contract_stats_note=static.get("contract_stats_note"), earnings=earn, ep=ep_events, stock_perps=_perps_all, bt_quarters=static.get("bt_quarters"))
 json.dump(env, open(args.out, "w"), ensure_ascii=False, separators=(",", ":"))

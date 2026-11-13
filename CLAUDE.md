@@ -67,6 +67,10 @@ Local pandas has no pyarrow, so storage is CSV + xz, monthly partitions (`<datas
   今天页 = 现在要做的（`renderTodo`：持仓要动的 + 可以做的信号）、我的持仓（持仓尺 `railHTML`、仓位格子）、离信号多远（跑道 `sigLane`）、大环境（跑道 `renderEnvLanes`）。
   品种页 = 原来的结论卡/山脊图/小球板/K线；放量跳空清单在正股页。验证页 = 规则体检（含"最近半年变差"自动警报）、模拟账户（balls.json 按月打乱重排500次）、
   每半年成绩热力图、自动记账 vs 回测预期带子、影子规则（ledger.py 的 `shadow`：没采用/换下来的做法同时记账）、进化日志（gh-pages `evolution.json`，手工维护）。
+- 正股页（2026-11-13）"正股：现在买什么"（`research/workbench_picks.js`，内联在 index.html `<script id="picksjs">`）：美股名单读 gh-pages `stocks_us.json`
+  （`pages/stocks_us.py`，env_pipeline 每天生成：营收+净利润同比都前30%、近半年不是最弱30%、离一年高点不到30%；跌太多的列"观察"并给回到线上的价格），
+  A股观察名单读 `stocks_a.json`（新增字段 amt=近20日均成交亿、dd=离一年高点）。依据 research/us_entry_bt.py（直接买、单只不设均线止损）。
+  "美股当晚 → 第二天A股"面板的数字写死在脚本里，来自 research/us_cn_link_bt.py（重跑后要手动改 LINK 常量）。
 - 模拟仓（今天页 `renderPaper`，2026-11-13）：以 ledger.json 为准，页面用实时小时线把没平的单子往前推（`sigEngine` 的 trace 带出场价/原因），
   记账数据之后新出的信号先记成"今天的"；和 ledger.py 逐笔对过（同一时间、同一原因、U 差 <0.6）。ledger.json 另有 `replay30`（最近30天回放，不算验证）。
   验证页"模拟仓按规则看"（`renderPaperRules`）拿已平单和这条规则5年回测平均比。我的持仓每笔下面有止损拉杆（`initStopBars`），拖动/输入实时分析，松手才存。
