@@ -411,6 +411,13 @@ def _stocks():
     _vr = pd.Series(np.where(ok[-1], _v20, np.nan)).rank(pct=True).to_numpy()
     _vq = np.where(np.isfinite(_vr), np.clip(np.ceil(_vr * 5), 1, 5), 0).astype(int)
     _ztk = np.where(zt[-1], streak[-1], 0).astype(int)
+    # 小市值轮动（research/ashare_small_bt.py）：总市值 = 最近一期已公告财报的总股本 × 收盘价；范围 = 今天正常交易、非ST、上市满250个交易日、近20日日均成交 ≥ 3000万
+    _prof = pd.read_csv(f"{args.fund}/a_share/profit.csv.xz", dtype={"code": str}, usecols=["code", "pubDate", "statDate", "totalShare"], parse_dates=["pubDate", "statDate"])
+    _ts = _prof[_prof.pubDate <= dates[-1]].sort_values(["code", "statDate"]).groupby("code").totalShare.last().reindex(codes).to_numpy(float)
+    _cap = P["close"][-1].astype("float64") * _ts / 1e8
+    _smu = traded[-1] & ~(P["isST"][-1] == 1) & (age[-1] >= 250) & (_a20 >= 3e7) & np.isfinite(_cap) & (_cap > 0)
+    _order = np.where(_smu)[0][np.argsort(_cap[_smu])]
+    _smr = np.zeros(len(codes), int); _smr[_order[:60]] = np.arange(1, min(60, len(_order)) + 1)
     with np.errstate(invalid="ignore", divide="ignore"):
         _dd = adj[-1] / np.nanmax(adj[-250:], axis=0) - 1                    # 离一年高点（复权）
     _ix = s["等权指数"].to_numpy(float)[-60:]
@@ -423,12 +430,14 @@ def _stocks():
                      r(_mom120[i], 3), r(_m_r[i], 3), r(_mom20[i], 3), r(_last.roeAvg.iloc[i], 3),
                      str(_last.statDate.iloc[i].date()) if pd.notna(_last.statDate.iloc[i]) else "", int(_uni[i]), int(_pool[i]),
                      int(_bs[i]), r(_bup[i], 3), int(_a200[i]), r(float(_a20[i]) / 1e8, 2), r(float(_dd[i]), 3),
-                     int(_gu_n[i]), int(_gu_f[i]), r(float(_gu_x[i]), 4), int(_gd_n[i]), int(_gd_f[i]), r(float(_gd_x[i]), 4), int(_vq[i]), int(_ztk[i])])
+                     int(_gu_n[i]), int(_gu_f[i]), r(float(_gu_x[i]), 4), int(_gd_n[i]), int(_gd_f[i]), r(float(_gd_x[i]), 4), int(_vq[i]), int(_ztk[i]),
+                     r(float(_cap[i]), 1), int(_smr[i])])
     _pi = pd.Series([x for x, p in zip(ind_of, _pool) if p and isinstance(x, str) and x]).value_counts().head(8)
     stocks = dict(date=str(dates[-1].date()), regime=a_today["regime"], n_uni=int(_uni.sum()), n_pool=int(_pool.sum()),
                   pool_ind=[[k, int(v)] for k, v in _pi.items()],
                   fields=["code", "name", "ind", "growth", "accel", "g_r", "a_r", "mom120", "m_r", "mom20", "roe", "stat", "uni", "pool", "bs", "bup", "a200", "amt", "dd",
-                          "gu_n", "gu_f", "gu_x", "gd_n", "gd_f", "gd_x", "vq", "ztk"], rows=rows, mbounce=_mb,
+                          "gu_n", "gu_f", "gu_x", "gd_n", "gd_f", "gd_x", "vq", "ztk", "cap", "sm"], rows=rows,
+                  small=dict(n_uni=int(_smu.sum()), cut30=r(float(_cap[_order[29]]), 1) if len(_order) >= 30 else None), mbounce=_mb,
                   bs_n=[int(x) for x in np.bincount(_bs[elig], minlength=5)])
     json.dump(stocks, open(os.path.join(os.path.dirname(os.path.abspath(args.out)), "stocks_a.json"), "w"), ensure_ascii=False, separators=(",", ":"), allow_nan=False)
     stocks_note = dict(date=stocks["date"], n_uni=stocks["n_uni"], n_pool=stocks["n_pool"], pool_ind=stocks["pool_ind"])

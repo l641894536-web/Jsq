@@ -75,6 +75,10 @@ Local pandas has no pyarrow, so storage is CSV + xz, monthly partitions (`<datas
   env_pipeline 写进 `a.today.phase`（另有 zbl 炸板率、prem 涨停次日）；各阶段数字在 env_static.json 的 `gap_research`（env_pipeline 原样带进 env.json，
   由 research/build_gap_research.py 生成）。查个股（`research/workbench_stock_lookup.js`）加"开盘习惯"：stocks_a.json 新字段 gu_n/gu_f/gu_x、gd_n/gd_f/gd_x
   （近250天高开/低开2~7%之后）、vq（波动五分位）、ztk（最后一天连板数）；盘中从 qt.gtimg.cn 取单只完整行情（f[3]现价 f[4]前收 f[5]开盘）对照今天的开盘。
+- A股小市值轮动（2026-11-14，research/ashare_factor_bt.py → ashare_small_bt.py）：日均成交≥3000万、非ST、上市满250天里总市值最小30只，每月第一个交易日换。
+  stocks_a.json 新字段 cap（总市值亿，最近一期财报总股本×收盘）、sm（市值排名1..60），顶层 small.cut30。正股页"A股"段落显示名单和选股方法体检（FAC 常量写死在 workbench_picks.js）。
+  `pages/stock_ledger.py`（env-page 里 ledger 之后跑）每月第一次出数据时记一篮（A股小市值30、美股成长名单），写 gh-pages `stock_ledger.json`，验证页"正股名单记账"显示。
+- 美国大数据日研究 research/event_bt.py（CPI/非农/议息日期写死在脚本里，来自美联储和 BLS 官网存档）：结论在 env_static findings，页面"本周大事"提醒还没做。
 - 模拟仓（今天页 `renderPaper`，2026-11-13）：以 ledger.json 为准，页面用实时小时线把没平的单子往前推（`sigEngine` 的 trace 带出场价/原因），
   记账数据之后新出的信号先记成"今天的"；和 ledger.py 逐笔对过（同一时间、同一原因、U 差 <0.6）。ledger.json 另有 `replay30`（最近30天回放，不算验证）。
   验证页"模拟仓按规则看"（`renderPaperRules`）拿已平单和这条规则5年回测平均比。我的持仓每笔下面有止损拉杆（`initStopBars`），拖动/输入实时分析，松手才存。

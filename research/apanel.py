@@ -6,30 +6,33 @@ import numpy as np, pandas as pd
 DATA = os.environ.get("MARKET_DATA", "/home/claude/market-data")
 CACHE = "/home/claude/bt/_apanel.npz"
 COLS = ["open", "high", "low", "close", "preclose", "amount", "turn", "pctChg", "tradestatus", "isST"]
+CACHE2 = "/home/claude/bt/_apanel2.npz"
+COLS2 = COLS + ["peTTM", "pbMRQ"]
 
 
-def build(start_year=2015):
-    if os.path.exists(CACHE):
-        z = np.load(CACHE, allow_pickle=True)
+def build(start_year=2015, extra=False):
+    cache, COLS_ = (CACHE2, COLS2) if extra else (CACHE, COLS)
+    if os.path.exists(cache):
+        z = np.load(cache, allow_pickle=True)
         return {k: z[k] for k in z.files}
     parts = []
     for f in sorted(glob.glob(f"{DATA}/a_share/daily/*/*.csv.xz")):
         if int(f.split("/")[-2]) < start_year:
             continue
-        d = pd.read_csv(f, usecols=["date", "code"] + COLS, dtype={"date": str, "code": str})
+        d = pd.read_csv(f, usecols=["date", "code"] + COLS_, dtype={"date": str, "code": str})
         d = d[d.code.str.match(r"^(sh\.6|sz\.0|sz\.3)")]
-        for c in COLS:
+        for c in COLS_:
             d[c] = pd.to_numeric(d[c], errors="coerce").astype("float32")
         parts.append(d)
     df = pd.concat(parts, ignore_index=True)
     dates = np.sort(df.date.unique()); codes = np.sort(df.code.unique())
     di = pd.Index(dates).get_indexer(df.date); ci = pd.Index(codes).get_indexer(df.code)
     out = {"dates": dates, "codes": codes}
-    for c in COLS:
+    for c in COLS_:
         m = np.full((len(dates), len(codes)), np.nan, dtype="float32")
         m[di, ci] = df[c].to_numpy()
         out[c] = m
-    np.savez(CACHE, **out)
+    np.savez(cache, **out)
     return out
 
 
