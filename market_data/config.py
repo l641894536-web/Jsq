@@ -27,7 +27,9 @@ US_EXTRA_STOCKS = ["MSTR", "COIN", "HOOD", "CRCL", "TSM", "ASML", "BABA", "PDD",
                    "CRWV", "SNOW", "SHOP", "RDDT", "NET", "SOFI", "RKLB", "IONQ", "OKLO",
                    "GME", "AMC", "SPOT", "SE", "MELI", "NU", "UBER", "ABNB",
                    # Nasdaq-100 members not in the S&P 500
-                   "AZN", "CCEP", "TEAM", "GFS", "ZS", "MDB", "MRVL", "TRI"]
+                   "AZN", "CCEP", "TEAM", "GFS", "ZS", "MDB", "MRVL", "TRI",
+                   # underlyings of the Asian stock perps, their indices and FX (for after-close deviation research)
+                   "005930.KS", "000660.KS", "0700.HK", "^KS11", "^HSI", "^N225", "KRW=X", "HKD=X", "EWY"]
 # Long daily history (back to 1985 or listing) for indices, index ETFs, metals and a few stocks,
 # so environment research covers 2000-02 and 2008. Everything else starts at US_START.
 US_LONG_START = "1985-01-01"
@@ -37,7 +39,7 @@ US_LONG_TICKERS = ["^GSPC", "^NDX", "^DJI", "^RUT", "^VIX", "^TNX", "DX-Y.NYB",
 US_LONG_SINCE = "2026-10-22"   # tickers last fully fetched before this date get one long refetch
 # hourly bars (Yahoo keeps only ~730 days of 1h history; we accumulate from there)
 US_HOURLY = ["GC=F", "SI=F", "SPY", "QQQ", "TSLA", "NVDA", "AAPL", "MSFT", "AMZN", "GOOGL",
-             "META", "MSTR", "COIN", "HOOD"]
+             "META", "MSTR", "COIN", "HOOD", "005930.KS", "000660.KS", "0700.HK"]
 US_SMOKE = ["AAPL", "TSLA", "NVDA", "SPY", "GC=F", "SI=F", "^VIX"]
 US_SMOKE_HOURLY = ["GC=F", "TSLA"]
 
@@ -48,7 +50,9 @@ BN_15M_START = "2022-01-01"
 # intraday watchlist; detected stock perpetuals (e.g. TSLAUSDT) are added automatically
 BN_WATCH = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT", "DOGEUSDT",
             "XAUUSDT", "XAGUSDT", "PAXGUSDT", "XAUTUSDT",
-            "ADAUSDT", "XPTUSDT", "XPDUSDT", "COPPERUSDT", "NATGASUSDT"]
+            "ADAUSDT", "XPTUSDT", "XPDUSDT", "COPPERUSDT", "NATGASUSDT",
+            # Asian single-stock perps (underlying trades in Seoul / Hong Kong; perp trades 24/7)
+            "SAMSUNGUSDT", "SKHYNIXUSDT", "TENCENTUSDT"]
 BN_STOCK_PERP_SINCE = "2025-06-01"   # a stock-ticker-named perp first listed after this = stock perp
 BN_SMOKE = ["BTCUSDT", "XAUUSDT", "PAXGUSDT", "TSLAUSDT"]
 

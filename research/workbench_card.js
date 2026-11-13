@@ -279,7 +279,7 @@ function plan(V, side, tf, at, sym, env, stp) {
   const be = E0 + side * R, half = E0 + side * 2 * R;
   PLANNUM = { E0, stop, target: half, side };
   const head = at ? `${side === 1 ? "站上" : "跌破"} ${fmt(at, dp)} 之后${side === 1 ? "做多" : "做空"}参考` : `确认以后按现价（约 ${fmt(E0, dp)}）${side === 1 ? "做多" : "做空"}参考`;
-  const sk = statKey(sym), pyr = sk === "crypto" || (sk === "stock_main" && env && env.bull && side === 1);
+  const sk = statKey(sym), pyr = side === 1 && (sk === "crypto" || (sk === "stock_main" && env && env.bull) || sk === "XAUUSD" || sk === "XAGUSD");
   const ex = pyr ? "" : exitLine(sym, env, side);
   return `${head}：止损 <b>${fmt(stop, dp)}</b>（${day}${side === 1 ? "最低" : "最高"}点外，亏 ${pabs(R / E0, 2)}）。` +
     `<br>① 浮盈到 <b>${fmt(be, dp)}</b>（1倍止损距离）把止损挪到开仓价；` +
@@ -719,7 +719,7 @@ async function needPrices() {
 }
 function allPos() {
   const out = [];
-  try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && k.startsWith("jsq.pos.")) { const o = JSON.parse(localStorage.getItem(k) || "{}"); if (o && numv(o.E) > 0) out.push({ sym: k.slice(8), side: +o.side || 1, E: numv(o.E), S: numv(o.S), N: numv(o.N), Q: numv(o.Q), liq: numv(o.liq), bn: o.src === "bn" }); } } } catch (e) {}
+  try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && k.startsWith("jsq.pos.")) { const o = JSON.parse(localStorage.getItem(k) || "{}"); if (o && numv(o.E) > 0) out.push({ sym: k.slice(8), side: +o.side || 1, E: numv(o.E), S: numv(o.S), N: numv(o.N), Q: numv(o.Q), liq: numv(o.liq), bn: o.src === "bn", avgDn: +o.avgDn || 0, addUp: +o.addUp || 0 }); } } } catch (e) {}
   return out;
 }
 // ================================================================ 模拟仓：信号一出就按规则自动开、自动平（每笔100U开5倍）
@@ -932,7 +932,7 @@ async function renderPosList() {
     const u1 = (x) => isFinite(x) ? `${x >= 0 ? "+" : "−"}${Math.abs(x).toFixed(1)}U` : "—";
     let pl = null; try { pl = posPlan(p.sym, p, last, dp, posCtx(p.sym, p.side)); } catch (e) {}
     if (pl) POSPLAN[p.sym] = { act: pl.act, cls: pl.cls, name: nm, side: p.side };
-    const act = pl && pl.act ? `<em class="pa ${pl.cls}">${pl.act}</em>` : "";
+    const act = (pl && pl.act ? `<em class="pa ${pl.cls}">${pl.act}</em>` : "") + (pl && pl.addTxt && !/平掉/.test(pl.act) ? `<em class="pa-add">${pl.addTxt}</em>` : "");
     // 止损拉杆：规则建议的止损（不看你填的）当参照；没填就先放在建议上（虚线把手），拖了/填了才算你的
     let bar = "";
     if (pl && last > 0) {
@@ -999,7 +999,7 @@ function posPlan(sym, p, last, dp, ctx) {
   const epUse = ep && (ep.stage === "open" || ep.stage === "done") ? ep : ep && ep.last ? ep.last : null;
   if (epUse && epUse.top > E && (dipMode || E < epUse.E0 + 0.5 * (epUse.top - epUse.E0))) {
     const R = E - epUse.stop, one = E + R, half = E + 0.5 * R;
-    nums = { stop: isFinite(S) ? S : epUse.stop, target: epUse.top, one: R > 0 ? one : NaN, tgtLb: "止盈" };
+    nums = { stop: isFinite(S) ? S : epUse.stop, target: epUse.top, one: R > 0 ? one : NaN, tgtLb: "止盈", dip: true };
     L.push(`<b>按"回调企稳"这一套管</b>（这一轮 ${nyInfo(epUse.kt).md} 在 ${f(epUse.E0)} 企稳${epUse.stage === "done" ? "，按规则这一轮已经" + epUse.why : ""}）：`);
     const locked = isFinite(S) && S >= E;
     if (locked) L.push(`① 你的止损 ${f(S)} 已经在开仓价上方，利润锁住了，不用再挪；止损只往上挪，不往下放。`);
@@ -1044,9 +1044,22 @@ function posPlan(sym, p, last, dp, ctx) {
       act = `没设止损：按规则放 ${f(rs)}${money(rs)}`; cls = "warn"; nums.stop = rs; nums.sug = true;
     }
   }
+  // 赚了再加（research/add_winners_bt.py，5年顺势开的单子）：做多到1倍止损距离再加一份，全部止损挪到第一笔开仓价；空单不加；亏着永远不加
+  const S1 = isFinite(S) ? S : nums.stop, Rx = isFinite(S1) ? side * (E - S1) : NaN, N1 = p.N > 0 ? p.N : NaN;
+  let addTxt = "";
+  if (nums.dip) { L.push(`<b>加仓</b>：大跌后企稳的单子有固定止盈，一次性开，不加仓（加仓没验证过）。`); addTxt = "加仓：这类单子不加"; }
+  else if (!up) { L.push(`<b>加仓</b>：空单不加（回测里空单加仓平均反而变差）。亏着的单子永远不加。`); addTxt = "加仓：空单不加"; }
+  else if (isFinite(Rx) && Rx > 0) {
+    const a1 = E + Rx, a2 = E + 2 * Rx, more = g === "crypto" ? `；再涨到 <b>${f(a2)}</b> 可以再加一份，全部止损挪到 ${f(a1)}` : g === "stock" ? "；股票只加这一次（隔夜跳空，加两次最差一笔会大很多）" : "；金银只加这一次（再加没更好）";
+    addTxt = last < a1 ? `加仓：涨到 ${f(a1)} 再加一份，全部止损挪到 ${f(E)}；亏着不加` : `加仓：1倍已到过，没加就不追加`;
+    L.push(last < a1 ? `<b>赚了再加</b>：涨到 <b>${f(a1)}</b>（1倍止损距离）再加一份同样大的${isFinite(N1) ? `（约 ${N1.toFixed(0)}U 持仓价值）` : ""}，加完把<b>全部止损挪到 ${f(E)}</b>，这样加了仓也亏不了${more}。亏着的时候永远不加。`
+      : `<b>赚了再加</b>：已经到过 ${f(a1)}（1倍止损距离）。那时加了一份的话，全部止损应该在 ${f(E)} 或更高${g === "crypto" && last < a2 ? `，涨到 ${f(a2)} 还能再加一份` : ""}；没加就不追着加了（回测是到价那一刻加）。`);
+    L.push(`<span class="plan-bt">回测（5年里顺着走势开的多单）：涨到1倍止损距离再加一份，每笔平均 币 +1.5U→+3.2U、股票 +5.6U→+8.3U、金银 +1.6U→+2.9U，前后两段都更好，最差一笔基本不变（股票隔夜跳空例外）；亏着再加（拉均价）每一组都更差，最差一笔大一倍。</span>`);
+  } else if (isFinite(Rx) && Rx <= 0) L.push(`<b>加仓</b>：止损已经在开仓价${up ? "上方" : "下方"}，按这套第一份加仓应该已经加过；之后只挪止损，不再加。`);
+  if (p.avgDn && Date.now() - p.avgDn < 3 * 864e5) warn.push([`刚才是亏着加仓（拉均价），别再加`, `你刚才是在亏着的时候加仓（拉均价）：回测里亏了再加，最差一笔亏损大一倍左右，你以前的大亏也是这样来的。别再加，按止损走。`]);
   if (!okDir) L.push(`<span class="plan-bt">提醒：按回测，现在这种环境${up ? "做多" : "做空"}这个品种本来不做（或样本太少）；已经在里面就按上面管，别加仓。</span>`);
   if (warn.length) { L.unshift(`<b class="bad">${warn.map((w) => w[1]).join(" ")}</b>`); if (!/平掉/.test(act)) { act = warn[0][0]; cls = "bad"; } }
-  return { L, act, cls, okDir, nums: Object.assign(nums, { E, last, side, liq: p.liq }) };
+  return { L, act, cls, okDir, addTxt, nums: Object.assign(nums, { E, last, side, liq: p.liq }) };
 }
 function renderPos(sym, V, env, g, dipMode, okDir) {
   const box = $("posBox"); if (!box || !V) return;
@@ -1061,7 +1074,7 @@ function renderPos(sym, V, env, g, dipMode, okDir) {
   const o0 = loadPos(sym); savePos(sym, Object.assign(o0, { side, E: $("posE").value.trim(), S: $("posS").value.trim(), N: $("posN").value.trim() }));
   if (!(E > 0)) { out.innerHTML = "填开仓价就能算（持仓价值填币安上的\"持仓数量(USDT)\"）。"; return; }
   if (!H1[sym]) { needH1(sym).then((ch) => { if (ch && window.JSQ.state.sym === sym) renderCard(true); }).catch(() => {}); out.innerHTML = "正在取小时线…"; return; }
-  const P = posPlan(sym, { side, E, S, N: NV, Q: numv(o0.Q), liq: numv(o0.liq) }, V.last, V.dp, { g, dipMode, okDir });
+  const P = posPlan(sym, { side, E, S, N: NV, Q: numv(o0.Q), liq: numv(o0.liq), avgDn: +o0.avgDn || 0 }, V.last, V.dp, { g, dipMode, okDir });
   out.innerHTML = P ? P.L.join("<br>") : "";
 }
 // 币安后来新上的股票合约：数据管线每天检测（和美股价格对得上才算），这里补进'全部品种'
@@ -1149,8 +1162,13 @@ async function bnSync(manual) {
     for (const sym of Object.keys(got)) {
       const g = got[sym], old = loadPos(sym), same = +old.side === g.side && numv(old.E) > 0 && Math.abs(g.E / numv(old.E) - 1) < 0.05;
       const S = same && isFinite(numv(old.S)) ? old.S : "";                              // 止损：币安读不到条件单，同一笔单（方向一样、开仓价差不到5%）沿用你填过的
+      let avgDn = +old.avgDn || 0, addUp = +old.addUp || 0;
+      if (+old.side === g.side && numv(old.Q) > 0 && g.q > numv(old.Q) * 1.02) {             // 数量变多了 = 加了仓
+        const mk = PX.m[sym] || (H1[sym] || {}).last || g.E;
+        if (g.side * (mk - numv(old.E)) < 0) avgDn = Date.now(); else addUp = Date.now();
+      }
       const dp = g.E >= 100 ? 2 : g.E >= 1 ? 4 : 6;
-      savePos(sym, { side: g.side, E: String(+g.E.toFixed(dp)), S, N: String(+g.nv.toFixed(2)), Q: String(g.q), liq: g.liq > 0 ? String(+g.liq.toFixed(dp)) : "", src: "bn" });
+      savePos(sym, { side: g.side, E: String(+g.E.toFixed(dp)), S, N: String(+g.nv.toFixed(2)), Q: String(g.q), liq: g.liq > 0 ? String(+g.liq.toFixed(dp)) : "", src: "bn", avgDn, addUp });
     }
     BN.n = Object.keys(got).length;
     const a = res[1] && res[1].ok ? res[1].r : null, bal = a ? +(a.totalMarginBalance || a.totalWalletBalance) : NaN;
@@ -1312,16 +1330,18 @@ function renderCard(force) {
     const acct = numv(($("posAcct") || {}).value) || numv(localStorage.getItem("jsq.acct")) || 3200, rk = Math.abs(PLANNUM.stop / PLANNUM.E0 - 1), lose = acct * 0.005;
     if (rk > 0) { const not = Math.min(lose / rk, acct * 0.8);
       $("cardPlan").innerHTML += `<br><b>这单开多大</b>：止损打到最多亏 <b>${lose.toFixed(0)}U</b>（本金 ${acct.toFixed(0)}U 的0.5%）→ 满仓持仓价值约 <b>${not.toFixed(0)}U</b>（开5倍就是 ${(not / 5).toFixed(0)}U 保证金）。止损离得远就少开，离得近可以多开。`;
-      // 赚了再加（research/pyramid_bt.py）：币牛熊都更好、AMD/美光/戴尔牛市突破更好；金银和"大跌后止跌"一次性开
+      // 赚了再加（research/add_winners_bt.py，2026-11-13 起）：做多 开一份→1R 再加一份、全部止损挪到第一笔开仓价；币可在 2R 再加；空单不加；"大跌后止跌"一次性开
       const sk = statKey(sym), sd2 = PLANNUM.side || side || 1, E0 = PLANNUM.E0, Rr = Math.abs(E0 - PLANNUM.stop), F = (x) => fmt(x, V.dp);
       if (!dipPlan && (sk === "crypto" || (sk === "stock_main" && env && env.bull && sd2 === 1))) {
         const a1 = E0 + sd2 * Rr, a2 = E0 + sd2 * 2 * Rr, mv = sd2 === 1 ? "涨" : "跌";
-        const PB = sk === "crypto" ? (env && env.bull ? ["+2.2", "+2.2", "−31", "−57"] : ["+0.8", "+0.3", "−40", "−64"]) : ["+3.0", "+4.2", "−40", "−95"];
-        $("cardPlan").innerHTML += `<br><b>赚了再加</b>：① 先开3成（约 ${(0.3 * not).toFixed(0)}U），止损 ${F(PLANNUM.stop)}；` +
-          `② ${mv}到 <b>${F(a1)}</b> 再加3成（约 ${(0.3 * not).toFixed(0)}U），所有仓位的止损挪到 <b>${F(E0)}</b>；③ ${mv}到 <b>${F(a2)}</b> 再加4成（约 ${(0.4 * not).toFixed(0)}U），之后止损跟着最近3天${sd2 === 1 ? "最低" : "最高"}点挪；` +
-          `④ 一起出场：止损打到、小时趋势掉头或满10天。没到 ${F(a1)} 就不加，亏着的仓位永远不加。` +
-          `<br><span class="plan-bt">回测（${SAMPLE[sk] || sk}，按100U开5倍满仓算）：赚了再加每次 ${PB[0]}U，一上来满仓 ${PB[1]}U；最差的一次 ${PB[2]}U 对 ${PB[3]}U。只有约五分之一的单子能加满，赚的差不多，最坏的亏损少一半。</span>`;
-      } else if (sk === "XAUUSD" || sk === "XAGUSD" || dipPlan) $("cardPlan").innerHTML += `<br>这类单子一次性开，不加仓（回测里加仓不如一次性）。`;
+        const one = sd2 === 1, PBN = sk === "crypto" ? ["+1.5", "+3.2"] : ["+5.6", "+8.3"];
+        $("cardPlan").innerHTML += one ? `<br><b>赚了再加</b>：① 按上面开一份，止损 ${F(PLANNUM.stop)}；② ${mv}到 <b>${F(a1)}</b>（1倍止损距离）再加一份同样大的，加完<b>全部止损挪到 ${F(E0)}</b>，加了仓也亏不了；` +
+          (sk === "crypto" ? `③ 再${mv}到 <b>${F(a2)}</b> 可以再加一份，全部止损挪到 ${F(a1)}；` : `③ 股票只加这一次（隔夜跳空，加两次最差一笔大很多）；`) +
+          `之后止损跟着最近3天最低点挪，一起出场。没到 ${F(a1)} 就不加，亏着的仓位永远不加。` +
+          `<br><span class="plan-bt">回测（5年顺着走势开的多单，research/add_winners_bt.py）：不加每笔 ${PBN[0]}U，涨到1倍再加一份 ${PBN[1]}U，前后两段都更好；亏着加（拉均价）更差。</span>`
+          : `<br><b>加仓</b>：空单不加（回测里空单加仓平均反而变差）。`;
+      } else if (sk === "XAUUSD" || sk === "XAGUSD") $("cardPlan").innerHTML += `<br><b>赚了再加</b>：涨到1倍止损距离再加一份同样大的，全部止损挪到第一笔开仓价；金银只加这一次（回测：不加每笔 +1.6U，加一次 +2.9U）。`;
+      else if (dipPlan) $("cardPlan").innerHTML += `<br>这类单子一次性开，不加仓（有固定止盈，加仓没验证过）。`;
     }
   }
   // 历史
