@@ -115,6 +115,19 @@ def a_share_index(codes=None, start=None, end=None) -> pd.DataFrame:
     return df.reset_index(drop=True)
 
 
+def a_share_min(codes=None, start: str | None = None, end: str | None = None) -> pd.DataFrame:
+    """A-share 5-minute bars (UNADJUSTED) for the watchlist in config.A_MIN_CODES.
+    Columns: date, time (bar END, e.g. 20260112093500000), code, open, high, low, close, volume, amount, plus ts (bar end, Beijing time)."""
+    df = _parts("a_share/min5", start, end, dtype={"date": str, "time": str, "code": str})
+    df = _clip(df, "date", start, end)
+    if codes is not None and len(df):
+        df = df[df["code"].isin(set([codes] if isinstance(codes, str) else codes))]
+    if len(df):
+        df["ts"] = pd.to_datetime(df["time"].str.slice(0, 14), format="%Y%m%d%H%M%S")
+        df["date"] = pd.to_datetime(df["date"])
+    return df.sort_values(["code", "time"]).reset_index(drop=True) if len(df) else df
+
+
 def trade_dates() -> pd.Series:
     cal = pd.read_csv(DATA / "a_share" / "meta" / "trade_dates.csv", dtype=str)
     return pd.to_datetime(cal.loc[cal["is_trading_day"] == "1", "calendar_date"]).reset_index(drop=True)

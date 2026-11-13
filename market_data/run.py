@@ -7,7 +7,7 @@ import shutil
 import time
 from pathlib import Path
 
-from . import a_share, binance, binance_extra, dukascopy, us
+from . import a_share, a_share_min, binance, binance_extra, dukascopy, us
 from .common import Stage, utcnow, write_json
 
 
@@ -17,7 +17,7 @@ def main() -> None:
     ap.add_argument("--data-dir", default="data")
     ap.add_argument("--budget-min", type=float, default=290)
     ap.add_argument("--continue-flag", default="continue.flag")
-    ap.add_argument("--only", default="", help="comma list of stages to run (binance,binance_extra,dukascopy,us,a_share)")
+    ap.add_argument("--only", default="", help="comma list of stages to run (binance,binance_extra,dukascopy,us,a_share,a_share_min)")
     args = ap.parse_args()
 
     t0 = time.time()
@@ -67,6 +67,10 @@ def main() -> None:
     complete = True if (not only or "a_share" in only) else bool(prev.get("backfill_complete", True))
     if not only or "a_share" in only:
         status["stages"]["a_share"], complete = a_share.run(root, args.mode, deadline - 15 * 60)
+
+    if not only or "a_share_min" in only:
+        status["stages"]["a_share_min"] = a_share_min.run(root, args.mode, deadline - 3 * 60)
+        write_json(status, status_path)
 
     status["finished_utc"] = utcnow().isoformat(timespec="seconds")
     status["minutes"] = round((time.time() - t0) / 60, 1)

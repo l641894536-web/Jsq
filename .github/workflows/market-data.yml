@@ -76,8 +76,11 @@ jobs:
         run: |
           mkdir -p ../data/logs
           set -o pipefail
+          ONLY="${{ inputs.only }}"
+          if [ "$GITHUB_EVENT_NAME" = push ] && [ -s market_data/push_only.txt ]; then ONLY=$(tr -d '[:space:]' < market_data/push_only.txt); fi
+          echo "only=$ONLY"
           ../venv/bin/python -u -m market_data.run --mode "${{ steps.mode.outputs.mode }}" \
-            --data-dir ../data --continue-flag ../continue.flag --only "${{ inputs.only }}" 2>&1 | tee ../data/logs/last_run.log
+            --data-dir ../data --continue-flag ../continue.flag --only "$ONLY" 2>&1 | tee ../data/logs/last_run.log
 
       - name: Save data (single-commit snapshot on branch "data")
         if: always()

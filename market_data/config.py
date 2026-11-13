@@ -12,6 +12,11 @@ A_INDICES = {
     "sz.399006": "创业板指",
     "sh.000688": "科创50",
 }
+# 5-minute bars (baostock) for the owner's tech holdings and peers: intraday research on gap-up selling / gap-down 做T
+A_MIN_START = "2021-01-01"
+A_MIN_CODES = ["sz.002463", "sh.601138", "sh.512760", "sh.512480", "sh.588000",          # 沪电股份 工业富联 半导体ETF(国泰/国联安) 科创50ETF
+               "sz.300308", "sz.300502", "sz.300476", "sz.300394", "sz.002916", "sz.002475", "sz.000063",
+               "sh.603986", "sz.002371", "sh.688981", "sh.688256", "sh.688012", "sh.688041", "sz.002156", "sh.600584"]
 A_SMOKE_CODES = ["sh.600519", "sz.000001", "sh.688981", "sz.300750", "sz.002415",
                  "sh.600570", "sz.300059", "sh.601138", "sz.000725", "sh.603501"]
 
@@ -29,7 +34,9 @@ US_EXTRA_STOCKS = ["MSTR", "COIN", "HOOD", "CRCL", "TSM", "ASML", "BABA", "PDD",
                    # Nasdaq-100 members not in the S&P 500
                    "AZN", "CCEP", "TEAM", "GFS", "ZS", "MDB", "MRVL", "TRI",
                    # underlyings of the Asian stock perps, their indices and FX (for after-close deviation research)
-                   "005930.KS", "000660.KS", "0700.HK", "^KS11", "^HSI", "^N225", "KRW=X", "HKD=X", "EWY"]
+                   "005930.KS", "000660.KS", "0700.HK", "^KS11", "^HSI", "^N225", "KRW=X", "HKD=X", "EWY",
+                   # 国泰半导体ETF（baostock 没有 ETF 时用 Yahoo 的日线/小时线）
+                   "512760.SS"]
 # Long daily history (back to 1985 or listing) for indices, index ETFs, metals and a few stocks,
 # so environment research covers 2000-02 and 2008. Everything else starts at US_START.
 US_LONG_START = "1985-01-01"
