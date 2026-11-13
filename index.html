@@ -569,6 +569,9 @@ b.ok { color: var(--good); } b.bad { color: var(--bad); }
 .lane.past .ln-n b, .lane.past .ln-v b { color: var(--muted); }
 .lane.go .ln-v b { color: var(--good); }
 .lane.nolink { cursor: default; }
+.tk-r { padding: 10px 0; border-bottom: 1px solid var(--hair); } .tk-r p { margin: 4px 0; font-size: 13px; line-height: 1.6; }
+.tk-h { display: flex; align-items: center; gap: 8px; } .tk-h b { font-size: 15px; } .tk-p { font-size: 14px; margin-left: auto; }
+.tk-edit { display: flex; gap: 8px; margin-top: 10px; } .tk-edit input { flex: 1; min-width: 0; font: inherit; font-size: 14px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); color: var(--ink); }
 .trd-t td small { line-height: 1.4; } .trd2 { margin-top: 6px; }
 .sm-list { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; }
 .sm-r { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; gap: 6px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--hair); }
@@ -959,6 +962,19 @@ b.ok { color: var(--good); } b.bad { color: var(--bad); }
   <section class="panel" id="stockBrief" aria-labelledby="briefTitle">
     <div class="panel-h"><h2 id="briefTitle">一眼看懂</h2><span class="sub" id="briefSub"></span></div>
     <div class="brief" id="briefBody"><p class="note">正在载入…</p></div>
+  </section>
+  <section class="panel" id="techPanel" aria-labelledby="techTitle">
+    <div class="panel-h"><h2 id="techTitle">我的科技股：今天开盘怎么办</h2><span class="sub">5分钟线回测</span></div>
+    <div class="pk-body">
+      <div id="techBody"><p class="note">正在取行情…</p></div>
+      <details class="pk-more"><summary>规则从哪来、哪些参照没用</summary>
+        <div class="pk-rule"><b>高开：等15分钟再决定</b><p>20只科技股和半导体ETF近5年的5分钟线：高开2%以上，当天最高点有42%出现在开盘15分钟里，但收盘平均还比开盘高0.18%，所以开盘就全卖并不划算。9:45还在开盘价上方的，之后到收盘平均 +0.56%（前后两段 +0.30%/+0.68%）；在下方的 −0.07%。按"下方就卖、上方拿着"做，比开盘卖平均多 +0.2%，最差的10%从 −4.7% 缩到 −2.9%。"从最高回落1.5%~3%就卖"反而比开盘卖还差。</p></div>
+        <div class="pk-rule"><b>低开：开盘附近买最便宜</b><p>低开2%以上，9:45、10点、收盘买都比开盘买贵0.35%~0.5%；"站上开盘15分钟高点再买"贵2.3%。用底仓做T：开盘买、收盘卖同样数量，扣费后每次 +0.26%（前后两段 +0.41%/+0.19%）。当天最低点43%在开盘15分钟，22%在最后一小时。</p></div>
+        <div class="pk-rule"><b>没用的参照</b><p>前一晚费城半导体/英伟达涨跌、同类是不是一起高开、开盘15分钟成交量、情绪阶段，都不能稳定判断当天是冲高回落还是继续涨（前后两段方向不一致）。平开、高开日的"先卖后买"做T扣费后都是亏的。</p></div>
+      </details>
+      <div class="tk-edit"><input id="techCodes" autocomplete="off" spellcheck="false" aria-label="持仓代码"><button type="button" class="btn" id="techSave">改持仓</button></div>
+      <p class="note">代码用逗号隔开，例如 sz002463,sh601138,sh512760。行情来自腾讯，盘中每分钟刷新。</p>
+    </div>
   </section>
   <section class="panel" id="pickPanel" aria-labelledby="pickTitle">
     <div class="panel-h"><h2 id="pickTitle">正股：现在买什么</h2><span class="sub" id="pickSub">正在载入…</span></div>
@@ -4143,6 +4159,104 @@ function init() {
   $("stkList").addEventListener("click", (e) => { const b = e.target.closest("button[data-c]"); if (b) { q.value = b.querySelector("b").textContent; show(b.dataset.c); } });
   if (window.JSQ_ENV) summary();
   document.addEventListener("jsq-env-ready", summary);
+}
+init();
+})();
+</script>
+<script id="techjs">
+(() => {
+"use strict";
+// 正股页：我的科技股——今天高开/低开怎么办（research/intraday_t_bt.py，20只科技股+半导体ETF 5分钟线，2021-11→2026-11）
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const pc = (x, d = 1) => x == null || !isFinite(x) ? "—" : (x >= 0 ? "+" : "−") + Math.abs(x * 100).toFixed(d) + "%";
+const KEY = "jsq.techhold";
+const DEF = ["sz002463", "sh601138", "sh512760"];
+// 每只的回测小结（5分钟线；ETF 数据从 2026 年才有，样本少）
+const PER = {
+  sz002463: { n: "沪电股份", hi: 82, up945: "−0.09%", weak: true, note: "沪电高开后'9:45还在开盘上方就拿着'这条不灵（52天，之后平均 −0.09%），高开≥2% 直接在9:45前后卖一部分更稳。低开做T 每次 +0.15%。" },
+  sh601138: { n: "工业富联", hi: 86, up945: "+0.41%", note: "工业富联最符合规律：9:45还在开盘上方的，之后到收盘平均 +0.41%；在下方的 −0.06%。低开开盘买、收盘卖做T 每次 +0.80%。" },
+  sh512760: { n: "半导体ETF(国泰)", hi: 13, up945: "+0.60%", note: "ETF 5分钟线只有约200天，样本太少，按同类科技股的规律做。ETF 没有印花税，做T成本低。" },
+};
+const loadQ = (url) => new Promise((res, rej) => { const s = document.createElement("script"); s.src = url; s.charset = "gbk"; s.async = true;
+  const t = setTimeout(() => { s.remove(); rej(new Error("timeout")); }, 8000);
+  s.onload = () => { clearTimeout(t); s.remove(); res(); }; s.onerror = () => { clearTimeout(t); s.remove(); rej(new Error("load")); };
+  document.head.appendChild(s); });
+const take = (k) => { const v = window[k]; try { delete window[k]; } catch (e) { window[k] = undefined; } return v; };
+function codes() { try { const v = JSON.parse(localStorage.getItem(KEY) || "null"); if (Array.isArray(v) && v.length) return v; } catch (e) {} return DEF; }
+
+async function quote(sym) {
+  await loadQ("https://qt.gtimg.cn/q=" + sym);
+  const v = take("v_" + sym); if (typeof v !== "string") return null;
+  const f = v.split("~");
+  return { name: f[1], price: +f[3], prev: +f[4], open: +f[5], hi: +f[33], lo: +f[34], stamp: f[30] || "" };
+}
+async function minutes(sym) {     // 腾讯分时：每分钟 "HHMM 价格 累计量 累计额"
+  const k = "jsq_min_" + sym;
+  try {
+    await loadQ(`https://web.ifzq.gtimg.cn/appstock/app/minute/query?_var=${k}&code=${sym}`);
+    const j = take(k); const d = j && j.data && j.data[sym] && j.data[sym].data;
+    const arr = d && (d.data || []);
+    return arr.map((s) => { const p = String(s).split(" "); return { hm: p[0], px: +p[1], vol: +p[2], amt: +p[3] }; }).filter((x) => x.px > 0);
+  } catch (e) { return null; }
+}
+
+function advise(q, mins, P) {
+  const g = q.open / q.prev - 1, now = q.price / q.open - 1;
+  const hm = q.stamp.length >= 12 ? +q.stamp.slice(8, 12) : 0;
+  const m945 = mins ? mins.filter((x) => +x.hm <= 945).slice(-1)[0] : null;
+  const p945 = m945 && +m945.hm >= 944 ? m945.px : null;
+  const or = mins ? mins.filter((x) => +x.hm <= 945) : [];
+  const orl = or.length ? Math.min(...or.map((x) => x.px)) : null;
+  let cls = "", head = "", body = "";
+  if (!(q.open > 0)) return { cls: "", head: "还没开盘", body: "开盘后按下面的规则看。" };
+  if (g >= 0.02 && g < 0.095) {
+    cls = "warn"; head = `高开 ${pc(g)}`;
+    if (hm && hm < 945) body = `先别急着卖：等到 9:45 看一眼。那时还在开盘价 <b>${q.open.toFixed(2)}</b> 上方就拿着，跌到下方就卖（或减一部分）。`;
+    else if (p945 != null && p945 > q.open) body = P && P.weak
+      ? `9:45 是 ${p945.toFixed(2)}，在开盘价上方。同类股票这种情况之后平均还涨 +0.56%，但${P.n}自己这条不灵（之后平均 ${P.up945}）→ <b>可以先减一部分，剩下的跌破开盘15分钟最低价${orl ? " " + orl.toFixed(2) : ""}再卖</b>。`
+      : `9:45 是 ${p945.toFixed(2)}，在开盘价上方 → <b>拿着</b>。同类股票这种情况之后到收盘平均 +0.56%，59% 的当天最高点在10点以后。${orl ? `要防守的话，跌破开盘15分钟最低价 ${orl.toFixed(2)} 再卖。` : ""}`;
+    else if (p945 != null) body = `9:45 是 ${p945.toFixed(2)}，已经在开盘价下方 → <b>按规则该卖（或减）</b>。同类股票这种情况之后到收盘平均 −0.07%，最高点多半已经过去。`;
+    else body = `9:45 时在开盘价 ${q.open.toFixed(2)} 上方就拿着，下方就卖。现在比开盘 ${pc(now)}。`;
+  } else if (g <= -0.02 && g > -0.095) {
+    cls = "up"; head = `低开 ${pc(g)}`;
+    body = `手里有底仓、想做T的：<b>在开盘附近买</b>，收盘前卖掉同样数量。同类低开2%以上这样做平均每次 +0.26%（扣费后），一半多一点赢；别等"站上开盘15分钟高点"再买，那样平均贵2.3%。手里的别在开盘砍。现在比开盘 ${pc(now)}。`;
+  } else {
+    head = `开盘 ${pc(g)}`; body = `没有大跳空，按平常拿着。平开的日子做T扣费后平均是亏的，不用做。`;
+  }
+  return { cls, head, body };
+}
+
+async function render() {
+  const box = $("techBody"); if (!box) return;
+  const list = codes();
+  const rows = await Promise.all(list.map(async (sym) => {
+    let q = null, mins = null;
+    try { q = await quote(sym); } catch (e) {}
+    if (q && q.open > 0) mins = await minutes(sym);
+    return { sym, q, mins };
+  }));
+  box.innerHTML = rows.map(({ sym, q, mins }) => {
+    const P = PER[sym] || {};
+    if (!q) return `<div class="tk-r"><b>${esc(P.n || sym)}</b><p class="note">行情取不到（${sym}）。</p></div>`;
+    const a = advise(q, mins, P);
+    const day = q.stamp.length >= 8 ? `${+q.stamp.slice(4, 6)}月${+q.stamp.slice(6, 8)}日 ${q.stamp.slice(8, 10)}:${q.stamp.slice(10, 12)}` : "";
+    return `<div class="tk-r"><div class="tk-h"><b>${esc(P.n || q.name)}</b><span class="tk-p num">${q.price.toFixed(q.price < 10 ? 3 : 2)}</span><span class="chip ${a.cls}">${a.head}</span></div>
+      <p>${a.body}</p>${P.note ? `<p class="note">${P.note}</p>` : ""}<p class="note">${day}；开盘 ${q.open > 0 ? q.open.toFixed(2) : "—"}，前收 ${q.prev.toFixed(2)}${mins && mins.length ? `，分时 ${mins.length} 分钟` : ""}</p></div>`;
+  }).join("");
+}
+
+function init() {
+  if (!$("techPanel")) return;
+  $("techCodes").value = codes().join(",");
+  $("techSave").addEventListener("click", () => {
+    const v = $("techCodes").value.split(/[,，\s]+/).map((x) => x.trim().toLowerCase()).filter((x) => /^(sh|sz)\d{6}$/.test(x));
+    if (v.length) { localStorage.setItem(KEY, JSON.stringify(v)); render(); }
+  });
+  const go = () => { if (!document.getElementById("tab-stock").hidden) render(); };
+  document.addEventListener("jsq-tab", go);
+  render();
+  setInterval(go, 60e3);
 }
 init();
 })();
