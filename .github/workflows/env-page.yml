@@ -36,7 +36,7 @@ jobs:
           git clone -q --depth 1 "$REPO_URL" code
           git clone -q --depth 1 --branch gh-pages "$REPO_URL" site
           git clone -q --depth 1 --filter=blob:none --sparse --branch data "$REPO_URL" data
-          pats="/status.json /us/meta /us/daily /a_share/meta"
+          pats="/status.json /us/meta /us/daily /a_share/meta /a_share/index_daily.csv.xz"
           y=$(date -u +%Y); for d in um_1h um_1d; do pats="$pats /binance/$d/$y /binance/$d/$((y-1)) /binance/$d/$((y-2))"; done   # 自动记账用的币安小时线/日线
           for y in $(seq 2014 $(date -u +%Y)); do pats="$pats /a_share/daily/$y"; done
           git -C data sparse-checkout set --no-cone $pats

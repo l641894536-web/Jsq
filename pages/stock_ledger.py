@@ -23,7 +23,7 @@ HOLD = 20
 
 def a_prices(codes, start):
     d = load.a_share(start=start, codes=codes, adjust=None)[["date", "code", "close", "pctChg", "tradestatus"]]
-    d = d[d.tradestatus.astype(str) == "1"]
+    d = d[pd.to_numeric(d.tradestatus, errors="coerce") == 1]
     out = {}
     for c, g in d.groupby("code"):
         g = g.sort_values("date")
