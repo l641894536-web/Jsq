@@ -85,6 +85,15 @@ function regime(isUS) {           // 大盘在200日线下？A股 = 全A等权�
   return { down: E.us.today.ndx_vs < 0, vs: E.us.today.ndx_vs, name: "纳指100", live: false };
 }
 
+// 卖在高处（research/ashare_top3_bt.py）：比60日线高40%以上卖一半，跌回60日线买回；近5年和2016~2021平均都比一直拿着多0.5个点左右
+function sellHigh(row, k) {
+  if (row.v60 == null || !isFinite(row.v60)) return `<b>卖在高处</b>：没有60日线数据。`;
+  const ma = row.px / (1 + row.v60), p = row.px * k, v = p / ma - 1, tgt = ma * 1.4;
+  return v >= 0.4
+    ? `<b>卖在高处</b>：现在比60日线（${fp(ma)}）高 ${pc(v)}，<b>涨过头了，卖一半</b>；之后跌回60日线附近再买回。`
+    : `<b>卖在高处</b>：涨到比60日线高40%（现在约 <b>${fp(tgt)}</b>，60日线 ${fp(ma)} 每天在变）就卖一半，跌回60日线再买回。现在比60日线 ${pc(v)}。`;
+}
+
 function judge(h, row, live, isUS, isETF) {
   const k = live && row.px && Math.abs(live / row.px - 1) < 0.4 ? live / row.px : 1, p = row.px * k;
   const hi = row.px / (1 + row.dd), dd = p / hi - 1;
@@ -96,11 +105,7 @@ function judge(h, row, live, isUS, isETF) {
   if (dd > -0.3) {
     o.chips.push(["flat", `离一年高点 ${pc(dd)}`]);
     o.state = "none";
-    const stop = hi * 0.9;
-    if (!row.ru) o.lines.push(`<b>卖在高处</b>：它近一年没有"大涨50%后创新高"，"回落10%卖一半"这条没在这种票上测过，按平常拿着。`);
-    else o.lines.push(dd > -0.1
-      ? `<b>卖在高处</b>：一年最高收盘 ${fp(hi)}，<b>收盘跌到 ${fp(stop)}（比最高低10%）就卖一半</b>，另一半拿着。大涨过的票这样做，最差的10%从亏40%缩到亏24%，代价是平均少赚3~5个点（有些票之后还会翻倍）。`
-      : `<b>卖在高处</b>：已经比最高收盘 ${fp(hi)} 低了 ${pc(-dd).replace("+", "")}，按"回落10%卖一半"这一半该卖了；另一半拿着。`);
+    o.lines.push(sellHigh(row, k));
     o.lines.push(`<b>跌了加不加</b>：还不算被套（跌到 <b>${fp(line30)}</b> 才算跌了30%），这之前别因为"跌了便宜"就加。`);
     return o;
   }
@@ -146,6 +151,7 @@ function judge(h, row, live, isUS, isETF) {
   } else {
     o.lines.push(`<b>涨了卖不卖</b>：<b>反弹不卖，拿着</b>。${bTxt ? bTxt + "。" : ""}"反弹卖、回落接"试了12种，平均都不比拿着强。`);
   }
+  if (row.v60 != null) o.lines.push(sellHigh(row, k));
   if (S) o.lines.push(`<span class="note">像这样的 ${S.n.toLocaleString()} 次：死扛250天后平均 ${S.hold}，最差10% ${S.w}，${S.f20} 之后又再跌了20%以上；按规则越跌越加平均 ${S.add}，最差10% ${S.aw}（按原来1份算）。${isETF ? "ETF 套用的是个股的规律。" : ""}</span>`);
   else o.lines.push(`<span class="note">美股这种状态（大盘在200日线下、它自己多跌20%以上）近5年不到30次，没有单独的数字，按"不加"处理。</span>`);
   return o;

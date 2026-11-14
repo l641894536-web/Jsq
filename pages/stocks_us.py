@@ -75,15 +75,15 @@ def holdings_block(load, bounce):
     stage, up, _ = bounce(a)
     with np.errstate(invalid="ignore", divide="ignore"):
         hi = np.nanmax(a[-252:], axis=0); ma = np.nanmean(a[-200:], axis=0)
-        dd = a[-1] / hi - 1; v200 = a[-1] / ma - 1; m60 = a[-1] / a[-61] - 1
+        dd = a[-1] / hi - 1; v200 = a[-1] / ma - 1; m60 = a[-1] / a[-61] - 1; v60 = a[-1] / np.nanmean(a[-60:], axis=0) - 1
     f3 = lambda x: None if x is None or not np.isfinite(x) else round(float(x), 3)
     rows = []
     for k, t in enumerate(A.columns):
         if not np.isfinite(a[-1, k]) or not np.isfinite(C.iloc[-1, k]) or np.isnan(a[-60:, k]).sum() > 5:
             continue
-        rows.append([t, f3(C.iloc[-1, k]), f3(dd[k]), f3(v200[k]), f3(m60[k]), int(stage[k]), f3(up[k])])
+        rows.append([t, f3(C.iloc[-1, k]), f3(dd[k]), f3(v200[k]), f3(m60[k]), int(stage[k]), f3(up[k]), f3(v60[k])])
     return dict(date=str(A.index[-1].date()), qqq60=f3(q.iloc[-1] / q.iloc[-61] - 1),
-                fields=["t", "px", "dd", "v200", "m60", "bs", "bup"], rows=rows)
+                fields=["t", "px", "dd", "v200", "m60", "bs", "bup", "v60"], rows=rows)
 
 
 def build(fund, out, load, us_state=None, bounce=None):
