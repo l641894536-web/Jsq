@@ -573,7 +573,7 @@ b.ok { color: var(--good); } b.bad { color: var(--bad); }
 .tk-h { display: flex; align-items: center; gap: 8px; } .tk-h b { font-size: 15px; } .tk-p { font-size: 14px; margin-left: auto; }
 .tk-edit { display: flex; gap: 8px; margin-top: 10px; } .tk-edit input { flex: 1; min-width: 0; font: inherit; font-size: 14px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); color: var(--ink); }
 .hd-sum { margin: 10px 0 2px; font-size: 13.5px; line-height: 1.6; } .hd-c { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 6px 0 2px; }
-.hd-pl { font-size: 12px; font-family: var(--font-num); font-variant-numeric: tabular-nums; } .hd-pl.up { color: var(--up); } .hd-pl.down { color: var(--down); }
+.hd-pl { font-size: 12px; font-family: var(--font-num); font-variant-numeric: tabular-nums; } .hd-pl.up { color: var(--up); } .hd-pl.down { color: var(--down); } .hd-mk { margin-left: 6px; padding: 2px 8px; font-size: 12px; }
 .trd-t td small { line-height: 1.4; } .trd2 { margin-top: 6px; }
 .sm-list { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; }
 .sm-r { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; gap: 6px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--hair); }
@@ -968,13 +968,13 @@ b.ok { color: var(--good); } b.bad { color: var(--bad); }
   <section class="panel" id="holdPanel" aria-labelledby="holdTitle">
     <div class="panel-h"><h2 id="holdTitle">被套了怎么办：我的正股</h2><span class="sub">A股近5年+2016~2021复核</span></div>
     <div class="pk-body">
-      <div class="pk-rule"><b>三条规矩（先做A股）</b><p><b>涨过头时卖一半</b>：收盘比60日线高40%以上，第二天开盘卖掉当时一半；收盘跌回60日线，第二天开盘买回。<br><b>被套后反弹</b>：从低点涨15%只算反弹，涨到低点的1.3倍才像反转；反弹不卖，"高抛低吸"试了12种都不比拿着强。<br><b>跌了想加</b>：只有全A等权也在200日线下、它跟着大盘跌（60天没比大盘多跌20%）才加，跌到一年高点的63%、56%各加1份，最多3份。</p></div>
+      <div class="pk-rule"><b>三条规矩（先做A股）</b><p><b>涨过头时卖一半（候选）</b>：收盘比60日线高40%以上，第二天开盘卖掉当时一半；这一轮不再卖，收盘跌回60日线，第二天开盘买回。全A两段都有效；电子/通信/计算机股和ETF还没证明，先不当纪律。<br><b>被套后反弹</b>：从低点涨15%只算反弹，涨到低点的1.3倍才像反转；反弹不卖，"高抛低吸"试了12种都不比拿着强。<br><b>跌了想加</b>：只有全A等权也在200日线下、它跟着大盘跌（60天没比大盘多跌20%）才加，跌到一年高点的63%、56%各加1份，最多3份。</p></div>
       <p class="hd-sum" id="holdSum"></p>
       <div id="holdBody"><p class="note">正在载入…</p></div>
       <details class="pk-more"><summary>规则从哪来、哪些没用</summary>
         <div class="pk-rule"><b>怎么测的</b><p>A股近5年：①每只股票第一次跌到一年高点的70%以下算"被套"（2.1万次）；②大涨50%以上后创一年新高算"在高位"（1.07万次）。都看之后250个交易日，前后两段分开看（2024-05为界），再拿2016~2021年（1.6万次、8400次）复核；规则没在复核那段上挑过。卖出、买回都扣0.15%。</p></div>
         <div class="pk-rule"><b>大盘拿哪个比</b><p>试了全A等权、沪深300、中证500、中证1000、创业板指、上证指数、它所在的行业。全A等权分得最开：好状态加仓的最差10%是 −41.7%，其他时候 −83.7%；行业差不多（−44.6% / −85.2%）；沪深300（−66.5% / −74.7%）和创业板指（−68.9% / −70.5%）几乎分不开，因为大部分股票跟它们走得不一样。</p></div>
-        <div class="pk-rule"><b>在高位怎么卖（2026-11-14 修正）</b><p>三组完整记账：事件当天收盘时持有资金1，看250个交易日；收盘出信号、下一个能成交的交易日开盘成交（停牌、一字板顺延）；卖出 = 当时实际股数的一半，买回用全部现金，每笔扣0.15%。<br>A 一直持有：近5年净收益平均 +8.8%（中位 −7.6%），每天净值的最大回撤平均 −43.7%；2016~2021 +6.3%、−43.7%。<br>B 偏离60日线40%卖半、跌回60日线买回：+11.4%、回撤 −40.2%，平均持股94%，一年卖0.8次；比持有多2.6个点（按月份分块自助法95%区间 +1.2~+3.9）；2016~2021 多2.0个点（+1.2~+2.8）。和"固定拿94%股票"比也是收益高、回撤略小。只有24%的时候买回价比卖出价贵。电子股：近5年少1个多点到2个点（−2.0），2016~2021多1.5个点，不稳定。<br>C 结构破坏后减仓（收盘跌破60日线且破前20天最低→卖半；创60日新高→买回）：比持有少6.0个点（−8.5~−3.5），2016~2021少3.8个点；回撤小（−36%）主要因为平均只拿68%仓位，而"固定拿68%股票、其余现金"收益更高（+6.0%）、回撤更小（−32%），所以不用。<br>你的三只按这套逐日回放（只是例子，不当依据）：B 沪电 +85%（持有 +105%）、工业富联 +18%（+58%）、半导体ETF −20%（−29%）；C 分别 +111%、+84%、−16%。</p></div>
+        <div class="pk-rule"><b>在高位怎么卖（候选，2026-11-14 第二次修正）</b><p>完整记账（research/ashare_top6_bt.py）：事件当天收盘持有资金1，看250个交易日；收盘出信号，下一个能成交的交易日开盘成交——开盘在跌停价不能卖、在涨停价不能买（主板10%、创业板/科创板20%、ST 5%），停牌顺延；卖出 = 当时实际股数的一半，买回用全部现金，每笔0.15%。区间先按起始月份平均，再用 Newey-West（12个月滞后）和12个月移动块自助法取更宽的。对照用"固定94%股票+6%现金"（规则的平均持股，事前就能定）。<br><b>全A</b>：卖半比一直持有 近5年 +2.3个点（区间 +1.1~+4.4），2016~2021 +1.8（+1.0~+1.6）；比固定94% +2.8（+1.8~+4.0）/ +2.1（+0.6~+2.3）。<br><b>科技池</b>（证监会 C39 电子/通信/计算机设备、I63 电信、I64 互联网、I65 软件）：比持有 近5年 +0.4（−3.1~+4.9），2016~2021 +2.3（−0.6~+1.7）；比固定94% +1.4（−1.7~+4.6）/ +2.7（−0.1~+2.0）——<b>都不显著</b>。其中 C39：−2.3 / +1.3，同样不显著。回撤平均少3~4个点（−46% → −43%）。<br><b>ETF</b>（15只科技类，Yahoo 日线清洗拆分）：事件挤在11轮行情里，只有3轮真的卖过（2轮好、1轮差），下不了结论。<br>所以对你的科技股还没证明有用，先当候选；验证页"候选规则前向记账"从2026-11-16起按冻结的规则记新事件。另一种"跌破60日线且破前20天最低就减半、创60日新高买回"比持有少4~6个点，还不如固定少拿仓位——这只否定这一种写法，不代表所有趋势退出方法都不行。</p></div>
         <div class="pk-rule"><b>反弹还是反转</b><p>被套后第一波反弹（从低点涨15%），之后120天里38%先涨到低点的1.5倍，44%先跌破低点（2016~2021是30% / 55%）。反弹那天这7条迹象对上越多越像反转：全A等权在200日线下（大家一起跌）、跌得深（低点不到高点55%）、10天内就涨了15%、情绪在升温、行业也跟着涨5%以上、还在60日线下、没放量。对上6~7条：54%反转、29%失败；0~2条：27% / 55%（2016~2021是41% / 47% 和 26% / 58%，方向一样但差得少）。"放量"和"已经站上60日线"反而更容易失败。最简单的确认是涨到低点的1.3倍：之后只有29%（2016~2021：37%）再破低点。站上半年线、20日线上穿60日线都不如它。</p></div>
         <div class="pk-rule"><b>被套后高抛低吸</b><p>试了12种：反弹15%/25%卖、回落8%卖、碰60日线卖、情绪高潮退潮卖、只卖"像反弹"的、卖一半；接回用回到低点附近、比卖价跌10%、情绪冰点，涨过卖价8%追回。近5年全都比一直拿着少赚1.7~10个点，只有情绪那种多1个点（2016~2021也是+0.8个点），但后半段少赚。被套后的拿着 vs 反弹卖一半：+19.8% vs +14.4%。</p></div>
         <div class="pk-rule"><b>没用的</b><p>跌得急还是慢、赚不赚钱（市盈率正负）分不出死扛好坏。ETF 套用个股的规律。美股先不按这套做，等A股做好了再单独研究。</p></div>
@@ -1116,6 +1116,10 @@ b.ok { color: var(--good); } b.bad { color: var(--bad); }
   <section class="panel" id="sledPanel" aria-labelledby="sledTitle">
     <div class="panel-h"><h2 id="sledTitle">正股名单记账：每月的名单之后实际涨了多少</h2><span class="sub" id="sledSub"></span></div>
     <div id="sledBox" style="padding:6px 14px 12px"><p class="note">载入中…</p></div>
+  </section>
+  <section class="panel" id="tledPanel" aria-labelledby="tledTitle">
+    <div class="panel-h"><h2 id="tledTitle">候选规则前向记账：高于60日线40%卖半</h2><span class="sub" id="tledSub"></span></div>
+    <div id="tledBox" style="padding:6px 14px 12px"><p class="note">载入中…</p></div>
   </section>
   <section class="panel" id="shadowPanel" aria-labelledby="shadowTitle">
     <div class="panel-h"><h2 id="shadowTitle">影子规则：没采用的做法也在同时记账</h2></div>
@@ -4272,13 +4276,21 @@ function regime(isUS) {           // 大盘在200日线下？A股 = 全A等权�
   return { down: E.us.today.ndx_vs < 0, vs: E.us.today.ndx_vs, name: "纳指100", live: false };
 }
 
-// 卖在高处（research/ashare_top5_bt.py，完整记账、收盘确认第二天开盘成交）：比60日线高40%以上卖当时股数的一半，收盘跌回60日线第二天开盘买回；近5年+2.6个点、2016~2021+2.0个点（比一直持有）
-function sellHigh(row, k) {
-  if (row.v60 == null || !isFinite(row.v60)) return `<b>卖在高处</b>：没有60日线数据。`;
-  const ma = row.px / (1 + row.v60), p = row.px * k, v = p / ma - 1, tgt = ma * 1.4;
-  return v >= 0.4
-    ? `<b>卖在高处</b>：现在比60日线（${fp(ma)}）高 ${pc(v)}，<b>收盘还在这上面，第二天开盘卖一半</b>；以后收盘跌回60日线，第二天开盘买回。`
-    : `<b>卖在高处</b>：收盘比60日线高40%（现在约 <b>${fp(tgt)}</b>，60日线 ${fp(ma)} 每天在变）就第二天开盘卖一半，收盘跌回60日线再买回。现在比60日线 ${pc(v)}。`;
+// 卖在高处【候选，未验证到科技股】（research/ashare_top5_bt.py / ashare_top6_bt.py，完整记账、收盘确认第二天开盘成交）：
+// 满仓时收盘比60日线高40%以上 → 第二天开盘卖当时股数的一半；这一轮卖过以后不再卖，等收盘跌回60日线 → 第二天开盘买回，回到满仓。
+// 状态存在持仓里：h.s60 = "half" 表示这一轮已经卖过一半（h.s60d 日期、h.s60p 价格）；和回测的"满仓 → 卖半 → 等买回"一致。
+function sellHigh(h, row, k, dataDate) {
+  if (row.v60 == null || !isFinite(row.v60)) return `<b>卖在高处（候选）</b>：没有60日线数据。`;
+  const ma = row.px / (1 + row.v60), p = row.px * k, v = p / ma - 1, tgt = ma * 1.4, vc = row.v60;
+  const tag = `<b>卖在高处（候选，没验证到科技股）</b>：`;
+  if (h.s60 === "half") {
+    const done = `这一轮 ${h.s60d || ""} 已经卖过一半${h.s60p ? `（${fp(h.s60p)}）` : ""}，之后不再卖。`;
+    if (vc <= 0) return tag + done + `${dataDate} 收盘已经跌回60日线（${fp(ma)}）以下：<b>今天开盘买回</b>（用卖出的钱全部买回）。<button type="button" class="btn hd-mk" data-c="${h.c}" data-s="full">已买回</button>`;
+    return tag + done + `等收盘跌回60日线（现在约 ${fp(ma)}）再在第二天开盘买回。现在比60日线 ${pc(v)}。`;
+  }
+  if (vc >= 0.4) return tag + `${dataDate} 收盘比60日线（${fp(ma)}）高 ${pc(vc)}：<b>今天开盘卖掉当时股数的一半</b>，卖完点一下，这一轮就不再提示卖。<button type="button" class="btn hd-mk" data-c="${h.c}" data-s="half" data-p="${p.toFixed(3)}">已卖一半</button>`;
+  if (v >= 0.4) return tag + `盘中比60日线高 ${pc(v)}；<b>今天收盘还在 ${fp(tgt)} 以上</b>，明天开盘卖一半（收盘才算数）。`;
+  return tag + `收盘比60日线高40%（现在约 <b>${fp(tgt)}</b>，60日线 ${fp(ma)} 每天在变）就第二天开盘卖一半；跌回60日线再买回。现在比60日线 ${pc(v)}。`;
 }
 
 function judge(h, row, live, isUS, isETF) {
@@ -4292,7 +4304,7 @@ function judge(h, row, live, isUS, isETF) {
   if (dd > -0.3) {
     o.chips.push(["flat", `离一年高点 ${pc(dd)}`]);
     o.state = "none";
-    o.lines.push(sellHigh(row, k));
+    o.lines.push(sellHigh(h, row, k, isUS ? U.date : A.date));
     o.lines.push(`<b>跌了加不加</b>：还不算被套（跌到 <b>${fp(line30)}</b> 才算跌了30%），这之前别因为"跌了便宜"就加。`);
     return o;
   }
@@ -4338,7 +4350,7 @@ function judge(h, row, live, isUS, isETF) {
   } else {
     o.lines.push(`<b>涨了卖不卖</b>：<b>反弹不卖，拿着</b>。${bTxt ? bTxt + "。" : ""}"反弹卖、回落接"试了12种，平均都不比拿着强。`);
   }
-  if (row.v60 != null) o.lines.push(sellHigh(row, k));
+  if (row.v60 != null) o.lines.push(sellHigh(h, row, k, isUS ? U.date : A.date));
   if (S) o.lines.push(`<span class="note">像这样的 ${S.n.toLocaleString()} 次：死扛250天后平均 ${S.hold}，最差10% ${S.w}，${S.f20} 之后又再跌了20%以上；按规则越跌越加平均 ${S.add}，最差10% ${S.aw}（按原来1份算）。${isETF ? "ETF 套用的是个股的规律。" : ""}</span>`);
   else o.lines.push(`<span class="note">美股这种状态（大盘在200日线下、它自己多跌20%以上）近5年不到30次，没有单独的数字，按"不加"处理。</span>`);
   return o;
@@ -4374,13 +4386,42 @@ async function render() {
   $("holdNote").textContent = `收盘数据 A股 ${ad || "—"}、美股 ${ud || "—"}；现价来自腾讯行情，取不到就用收盘价。`;
 }
 
+// 验证页：候选规则前向记账（pages/top_ledger.py，冻结 2026-11-14，只记 2026-11-16 起的新事件）
+async function renderTopLedger() {
+  const box = $("tledBox"); if (!box) return;
+  const L = await getJ("top_ledger.json");
+  if (!L) { box.innerHTML = `<p class="note">记账文件还没生成，每天收盘数据更新后自动跑。</p>`; return; }
+  $("tledSub").textContent = `冻结 ${L.rule.frozen} · 从 ${L.start} 起记 · 更新 ${L.updated}`;
+  const sec = (lab, X) => {
+    const S = X.summary || {};
+    if (!S.n) return `<p><b>${lab}</b>：还没有新事件（${L.start} 起出现"大涨50%后创一年新高"才记）。</p>`;
+    const a = S.all, c = S.closed_only;
+    const line = (z, t) => z ? `${t} ${z.n} 次：一直持有 ${pc(z.hold)}、卖半 ${pc(z.rule)}、固定94% ${pc(z.fix94)}；卖半比持有 ${pc(z.rule_minus_hold)}，触发过卖半的 ${z.triggered} 次；最大回撤平均 持有 ${pc(z.hold_mdd)} / 卖半 ${pc(z.rule_mdd)}` : "";
+    const rows = X.events.slice().sort((x, y) => (x.d < y.d ? 1 : -1)).slice(0, 12).map((e) => `<tr><td>${esc(e.name)}<small>${e.d} 起 · ${e.closed ? "已满250天" : `第 ${e.days}/250 天`} · ${e.state}${e.pending ? " · " + e.pending : ""}</small></td>
+      <td class="n">${pc(e.hold)}</td><td class="n">${pc(e.rule)}</td><td class="n">${pc(e.fix94)}</td></tr>`).join("");
+    return `<p><b>${lab}</b>：${line(a, "全部（没满250天的按最新收盘算）")}${c ? "<br>" + line(c, "已满250天") : ""}</p>
+      <table class="shadow-t link-t"><thead><tr><th>事件</th><th>持有</th><th>卖半</th><th>固定94%</th></tr></thead><tbody>${rows}</tbody></table>`;
+  };
+  box.innerHTML = `<p class="note">${esc(L.rule.status)}。规则写死不再调：收盘比60日线高40%以上 → 下一个能成交的开盘卖当时股数一半；这一轮不再卖；收盘跌回60日线 → 下一个能成交的开盘买回。开盘在跌停价不能卖、在涨停价不能买，停牌顺延，每笔0.15%。和回测脚本逐笔对过（2592 个事件结果一致）。</p>`
+    + sec("A股科技池（电子/通信/计算机/软件/互联网）", L.a_share) + sec("科技类ETF（15只）", L.etf);
+}
+
 function init() {
+  renderTopLedger();
   if (!$("holdPanel")) return;
   const inp = $("holdCodes");
   inp.value = fmtList(load());
   $("holdSave").addEventListener("click", () => {
-    const v = parse(inp.value);
+    const v = parse(inp.value), old = Object.fromEntries(load().map((x) => [x.c, x]));
+    for (const x of v) if (old[x.c] && old[x.c].s60) { x.s60 = old[x.c].s60; x.s60d = old[x.c].s60d; x.s60p = old[x.c].s60p; }
     if (v.length) { localStorage.setItem(KEY, JSON.stringify(v)); inp.value = fmtList(v); render(); }
+  });
+  $("holdBody").addEventListener("click", (e) => {      // "已卖一半 / 已买回"：记下这一轮的状态
+    const b = e.target.closest(".hd-mk"); if (!b) return;
+    const L = load(), x = L.find((y) => y.c === b.dataset.c); if (!x) return;
+    if (b.dataset.s === "half") { x.s60 = "half"; x.s60d = new Date().toISOString().slice(0, 10); x.s60p = +b.dataset.p || null; }
+    else { delete x.s60; delete x.s60d; delete x.s60p; }
+    localStorage.setItem(KEY, JSON.stringify(L)); render();
   });
   const go = () => { if (!document.getElementById("tab-stock").hidden) render(); };
   document.addEventListener("jsq-tab", go);
