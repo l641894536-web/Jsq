@@ -96,7 +96,12 @@ function judge(h, row, live, isUS, isETF) {
   if (dd > -0.3) {
     o.chips.push(["flat", `离一年高点 ${pc(dd)}`]);
     o.state = "none";
-    o.lines.push(`<b>还不算被套</b>（一年高点 ${fp(hi)}，跌到 <b>${fp(line30)}</b> 才算跌了30%）。这之前加仓回测没测过，别因为"跌了便宜"就加；拿着按平常的规则来。`);
+    const stop = hi * 0.9;
+    if (!row.ru) o.lines.push(`<b>卖在高处</b>：它近一年没有"大涨50%后创新高"，"回落10%卖一半"这条没在这种票上测过，按平常拿着。`);
+    else o.lines.push(dd > -0.1
+      ? `<b>卖在高处</b>：一年最高收盘 ${fp(hi)}，<b>收盘跌到 ${fp(stop)}（比最高低10%）就卖一半</b>，另一半拿着。大涨过的票这样做，最差的10%从亏40%缩到亏24%，代价是平均少赚3~5个点（有些票之后还会翻倍）。`
+      : `<b>卖在高处</b>：已经比最高收盘 ${fp(hi)} 低了 ${pc(-dd).replace("+", "")}，按"回落10%卖一半"这一半该卖了；另一半拿着。`);
+    o.lines.push(`<b>跌了加不加</b>：还不算被套（跌到 <b>${fp(line30)}</b> 才算跌了30%），这之前别因为"跌了便宜"就加。`);
     return o;
   }
   const mktDown = R ? R.down : null, self = rel != null && rel <= -0.2;
@@ -123,11 +128,23 @@ function judge(h, row, live, isUS, isETF) {
   let L = null, bounce = null;
   if (row.bs >= 1 && row.bup != null && isFinite(row.bup)) { L = row.px / (1 + row.bup); if (row.bs === 4 || p < L) L = Math.min(L, p); bounce = L * 1.15; }
   const over = (h.u || 1) - cap;
+  // 反弹还是反转：第一波反弹那天 7 条对上几条（只有A股个股有），以及"涨到低点1.3倍"这条确认线
+  const RS = [[2, "27%", "55%", "26%", "58%"], [3, "35%", "47%", "28%", "57%"], [4, "39%", "44%", "31%", "56%"], [5, "41%", "40%", "32%", "55%"], [7, "54%", "29%", "41%", "47%"]];
+  if (L) {
+    const up = p / L - 1, conf = L * 1.3;
+    let t = `<b>反弹还是反转</b>：现在比这轮低点 ${fp(L)} ${pc(up)}。`;
+    if (row.bs >= 2 && row.rsc != null && row.rsc >= 0) {
+      const b = RS.find((x) => row.rsc <= x[0]);
+      t += `反弹起来那天7条迹象对上 <b>${row.rsc} 条</b>，同样的情况 ${b[1]} 后来涨到低点的1.5倍、${b[2]} 又跌破低点（老数据 ${b[3]} / ${b[4]}）。`;
+    }
+    t += p >= conf ? `已经过了反转确认线 <b>${fp(conf)}</b>（低点×1.3），过线后只有三成左右再破低点。` : `涨过 <b>${fp(conf)}</b>（低点×1.3）才算反转，之前都只是反弹。`;
+    o.lines.push(t);
+  }
   const bTxt = bounce ? (p >= bounce ? `现在已经过了第一波反弹价 ${fp(bounce)}（这轮低点 ${fp(L)} 涨15%）` : `第一波反弹价是 <b>${fp(bounce)}</b>（这轮低点 ${fp(L)} 涨15%）`) : "";
   if (over > 0) {
     o.lines.push(`<b>涨了卖不卖</b>：你有 ${h.u} 份，超过这种状态的上限 ${cap} 份。${bTxt ? bTxt + "，" : ""}${bounce && p >= bounce ? "<b>现在就把多出来的 " + over + " 份卖掉</b>" : "<b>反弹到这里把多出来的 " + over + " 份卖掉</b>"}，剩下的拿着。不是看空它，是把仓位降到扛得住的大小。`);
   } else {
-    o.lines.push(`<b>涨了卖不卖</b>：<b>反弹不卖，拿着</b>。${bTxt ? bTxt + "。" : ""}被套后一反弹就卖一半，之后平均比死扛少赚5~6个点（A股、美股都是这样），这里怕卖飞是对的。`);
+    o.lines.push(`<b>涨了卖不卖</b>：<b>反弹不卖，拿着</b>。${bTxt ? bTxt + "。" : ""}"反弹卖、回落接"试了12种，平均都不比拿着强。`);
   }
   if (S) o.lines.push(`<span class="note">像这样的 ${S.n.toLocaleString()} 次：死扛250天后平均 ${S.hold}，最差10% ${S.w}，${S.f20} 之后又再跌了20%以上；按规则越跌越加平均 ${S.add}，最差10% ${S.aw}（按原来1份算）。${isETF ? "ETF 套用的是个股的规律。" : ""}</span>`);
   else o.lines.push(`<span class="note">美股这种状态（大盘在200日线下、它自己多跌20%以上）近5年不到30次，没有单独的数字，按"不加"处理。</span>`);

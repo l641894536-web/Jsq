@@ -89,6 +89,9 @@ Local pandas has no pyarrow, so storage is CSV + xz, monthly partitions (`<datas
   只在大盘在200日线下（A股全A等权、美股纳指100）且个股60天没比大盘多跌20%时，按一年高点×0.63/×0.56各加1份，最多3份；否则上限1份，超过的在第一波反弹（这轮低点×1.15）卖掉。
   数据：stocks_a.json 新字段 px/m60/v200、顶层 mkt60、`etf` 块（A_MIN_CODES 里的ETF，用5分钟线拼日收盘，拆分按整数比例折算）；stocks_us.json 的 `hold` 块（美股范围约570只 + qqq60）。
   env-page 的 data 稀疏检出加了 /a_share/min5。页面里的回测数字写死在 workbench_hold.js 的 ST 常量。
+  2026-11-14 第二版（用户：只说拿着不算策略、要卖在高处、先做A股）：research/ashare_swing_bt.py（大盘参照7种比较→全A等权最好；反弹vs反转7条迹象，
+  stocks_a 字段 rsc = 第一波反弹那天对上几条，-1 = 没在反弹里）、ashare_swing2_bt.py（被套后12种高抛低吸都不比拿着强）、ashare_top_bt.py（大涨50%后创新高：
+  回落10%卖一半；stocks_a/etf 字段 ru = 近一年有过这种事件）。都有 2016-07→2021-10 复核（WHICH=old）。
 - 美国大数据日研究 research/event_bt.py（CPI/非农/议息日期写死在脚本里，来自美联储和 BLS 官网存档）：结论在 env_static findings，页面"本周大事"提醒还没做。
 - 模拟仓（今天页 `renderPaper`，2026-11-13）：以 ledger.json 为准，页面用实时小时线把没平的单子往前推（`sigEngine` 的 trace 带出场价/原因），
   记账数据之后新出的信号先记成"今天的"；和 ledger.py 逐笔对过（同一时间、同一原因、U 差 <0.6）。ledger.json 另有 `replay30`（最近30天回放，不算验证）。

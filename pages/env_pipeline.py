@@ -324,7 +324,7 @@ except Exception as e:
 # 回测见 research/ashare_pick_bt.py：只用已公告的财报；可选范围 = 正常交易、非ST、上市满约一年、近20日日均成交额 ≥ 3000万
 stocks_note = None
 # 深跌之后是反弹还是反转：每只股票今天在哪一步（回测见 research/bounce_bt.py）
-def bounce_stages(adj):
+def bounce_stages(adj, detail=False):
     """adj: T×N 复权价（停牌为 NaN）。返回每只股票今天所处阶段（口径同 research/bounce_bt.py）：
     0 没有深跌；1 深跌中还没反弹；2 第一波反弹（从低点涨回15%）；3 已二次确认（回踩不破前低、再过反弹高点）；4 反弹后又破前低。
     另返回 L（这轮低点）相对现价的位置 c/L-1、是否站上200日线。"""
@@ -337,6 +337,7 @@ def bounce_stages(adj):
     ma200 = A.rolling(200).mean().to_numpy()
     c = A.to_numpy(); n = W
     stage = np.zeros(N, np.int8); up = np.full(N, np.nan); a200 = np.zeros(N, bool)
+    off = T - W; e1 = np.full(N, -1); tl = np.full(N, -1)
     for s in range(N):
         cs = c[:, s]
         if not np.isfinite(cs[-1]) or not np.isfinite(mx250[-1, s]):
@@ -349,13 +350,14 @@ def bounce_stages(adj):
                 continue
             since = 119 - int(am[i, s]) if np.isfinite(am[i, s]) else 999
             if cs[i] >= L * 1.15 and since <= 40 and L <= 0.7 * mx250[i, s] and L != lastL and not (cs[i - 1] >= L * 1.15):
-                lastL = L; ev = (i, L)
+                lastL = L; ev = (i, L, since)
         if ev is None:
             L = mn120[-1, s]
             if np.isfinite(L) and L <= 0.7 * mx250[-1, s] and cs[-1] < L * 1.15:
                 stage[s] = 1; up[s] = cs[-1] / L - 1
             continue
-        i, L = ev; P = cs[i]; pulled = False; st = 2
+        i, L, since = ev; P = cs[i]; pulled = False; st = 2
+        e1[s] = off + i; tl[s] = off + i - since
         for t in range(i + 1, n):
             if not np.isfinite(cs[t]):
                 continue
@@ -368,6 +370,8 @@ def bounce_stages(adj):
                 elif cs[t] > P:
                     st = 3
         stage[s] = st; up[s] = cs[-1] / L - 1
+    if detail:
+        return stage, up, a200, e1, tl
     return stage, up, a200
 
 
@@ -393,7 +397,32 @@ def _stocks():
     _g_r, _a_r, _m_r = _rank(_gr), _rank(_ac), _rank(_mom120)
     _sb = pd.read_csv(f"{args.data}/a_share/meta/stock_basic.csv", dtype=str).set_index("code").code_name
     _pool = _uni & (_g_r >= 0.7) & (_a_r >= 0.7)
-    _bs, _bup, _a200 = bounce_stages(adj)
+    _bs, _bup, _a200, _be1, _btl = bounce_stages(adj, detail=True)
+    # 这次反弹像不像反转（research/ashare_swing_bt.py）：第一波反弹那天 7 条对上几条
+    #   大盘(全A等权)在200日线下、跌得深(低点不到一年高点55%)、10天内从低点涨15%、情绪温度比前5天平均高、行业从它的低点以来涨5%+、还在60日线下、没放量(5日额<低点时60日额1.5倍)
+    _rsc = np.full(len(codes), -1, int)
+    try:
+        _ewv = s["等权指数"].to_numpy(float); _ewm = s["等权指数"].rolling(200).mean().to_numpy(float)
+        _tv = s["温度"].to_numpy(float); _p5v = _prev5.to_numpy(float)
+        _prr = np.where(ok & (age >= 60), P["pctChg"] / 100.0, np.nan)
+        _iix = {}
+        for _k in set(code_ind[code_ind >= 0].tolist()):
+            _m = code_ind == _k
+            if _m.sum() >= 15:
+                with np.errstate(all="ignore"):
+                    _iix[_k] = np.cumprod(1 + np.nan_to_num(np.nanmean(_prr[:, _m], 1)))
+        _amt = np.where(traded, P["amount"], np.nan).astype("float64")
+        for j in np.where(_bs >= 2)[0]:
+            e, tl_ = int(_be1[j]), int(_btl[j])
+            if e < 0 or tl_ < 250: continue
+            L_ = adj[tl_, j]; ii = _iix.get(code_ind[j], _ewv)
+            with np.errstate(all="ignore"):
+                a60 = np.nanmean(_amt[tl_ - 59:tl_ + 1, j]); a5 = np.nanmean(_amt[e - 4:e + 1, j])
+                f = [_ewv[e] < _ewm[e], L_ / np.nanmax(adj[tl_ - 249:tl_ + 1, j]) - 1 <= -0.45, e - tl_ <= 10, _tv[e] > _p5v[e],
+                     ii[e] / ii[tl_] - 1 >= 0.05, adj[e, j] < np.nanmean(adj[e - 59:e + 1, j]), not (a60 > 0 and a5 / a60 >= 1.5)]
+            _rsc[j] = int(sum(bool(x) for x in f))
+    except Exception as _e:
+        print("bounce score skipped:", repr(_e))
     # 开盘习惯（research/ashare_gap_bt.py）：近250天 高开/低开 2%~7%（开盘涨跌停除外）之后收在开盘上下、比大盘
     with np.errstate(all="ignore"):
         _o = P["open"][-250:].astype("float64"); _c = P["close"][-250:].astype("float64"); _p = P["preclose"][-250:].astype("float64")
@@ -424,6 +453,10 @@ def _stocks():
         _m60 = adj[-1] / adj[-61] - 1
         _v200 = adj[-1] / np.nanmean(adj[-200:], axis=0) - 1
         _px = P["close"][-1].astype("float64")
+        # 近一年有没有"大涨50%后创一年新高"（research/ashare_top_bt.py 的事件）：有的才适用"从最高回落10%卖一半"
+        _Aw = pd.DataFrame(adj[-520:])
+        _ev = (_Aw >= _Aw.rolling(250, min_periods=200).max() - 1e-12) & (_Aw >= 1.5 * _Aw.rolling(120, min_periods=100).min())
+        _ru = _ev.iloc[-250:].any(axis=0).to_numpy()
     _mkt60 = float(s["等权指数"].iloc[-1] / s["等权指数"].iloc[-61] - 1)
     _ix = s["等权指数"].to_numpy(float)[-60:]
     _mb = bool(_ix[-1] / np.nanmin(_ix) - 1 >= 0.05 and int(np.nanargmin(_ix)) >= 20)     # 大盘自己也在反弹
@@ -436,12 +469,12 @@ def _stocks():
                      str(_last.statDate.iloc[i].date()) if pd.notna(_last.statDate.iloc[i]) else "", int(_uni[i]), int(_pool[i]),
                      int(_bs[i]), r(_bup[i], 3), int(_a200[i]), r(float(_a20[i]) / 1e8, 2), r(float(_dd[i]), 3),
                      int(_gu_n[i]), int(_gu_f[i]), r(float(_gu_x[i]), 4), int(_gd_n[i]), int(_gd_f[i]), r(float(_gd_x[i]), 4), int(_vq[i]), int(_ztk[i]),
-                     r(float(_cap[i]), 1), int(_smr[i]), r(float(_px[i]), 3), r(float(_m60[i]), 3), r(float(_v200[i]), 3)])
+                     r(float(_cap[i]), 1), int(_smr[i]), r(float(_px[i]), 3), r(float(_m60[i]), 3), r(float(_v200[i]), 3), int(_rsc[i]), int(_ru[i])])
     _pi = pd.Series([x for x, p in zip(ind_of, _pool) if p and isinstance(x, str) and x]).value_counts().head(8)
     stocks = dict(date=str(dates[-1].date()), regime=a_today["regime"], n_uni=int(_uni.sum()), n_pool=int(_pool.sum()),
                   pool_ind=[[k, int(v)] for k, v in _pi.items()],
                   fields=["code", "name", "ind", "growth", "accel", "g_r", "a_r", "mom120", "m_r", "mom20", "roe", "stat", "uni", "pool", "bs", "bup", "a200", "amt", "dd",
-                          "gu_n", "gu_f", "gu_x", "gd_n", "gd_f", "gd_x", "vq", "ztk", "cap", "sm", "px", "m60", "v200"], rows=rows, mkt60=r(_mkt60, 4),
+                          "gu_n", "gu_f", "gu_x", "gd_n", "gd_f", "gd_x", "vq", "ztk", "cap", "sm", "px", "m60", "v200", "rsc", "ru"], rows=rows, mkt60=r(_mkt60, 4),
                   small=dict(n_uni=int(_smu.sum()), cut30=r(float(_cap[_order[29]]), 1) if len(_order) >= 30 else None), mbounce=_mb,
                   bs_n=[int(x) for x in np.bincount(_bs[elig], minlength=5)])
     # 场内ETF（不在个股表里）：用 5 分钟线拼出日收盘（不复权），口径同上，给"我的正股"用
@@ -465,9 +498,12 @@ def _stocks():
                 _ev2 = _ea[-1] / np.nanmean(_ea[-200:], axis=0) - 1
                 _em6 = _ea[-1] / _ea[-61] - 1
             _enm = {"512760": "半导体ETF(国泰)", "512480": "半导体ETF(国联安)", "588000": "科创50ETF"}
-            stocks["etf"] = dict(fields=["code", "name", "px", "dd", "v200", "m60", "bs", "bup"],
+            _Ew = pd.DataFrame(_ea[-520:])      # ETF 数据短（2026 起），一年新高/120天低点放宽到有多少用多少
+            _eev = (_Ew >= _Ew.rolling(250, min_periods=60).max() - 1e-12) & (_Ew >= 1.5 * _Ew.rolling(120, min_periods=40).min())
+            _eru = _eev.iloc[-250:].any(axis=0).to_numpy()
+            stocks["etf"] = dict(fields=["code", "name", "px", "dd", "v200", "m60", "bs", "bup", "ru"],
                                  rows=[[c[3:], _enm.get(c[3:], c[3:]), r(float(_ea[-1, k]), 3), r(float(_edd[k]), 3), r(float(_ev2[k]), 3), r(float(_em6[k]), 3),
-                                        int(_ebs[k]), r(float(_ebu[k]), 3)] for k, c in enumerate(_dc.columns) if np.isfinite(_ea[-1, k])])
+                                        int(_ebs[k]), r(float(_ebu[k]), 3), int(_eru[k])] for k, c in enumerate(_dc.columns) if np.isfinite(_ea[-1, k])])
     except Exception as e:
         print("etf rows skipped:", repr(e))
     json.dump(stocks, open(os.path.join(os.path.dirname(os.path.abspath(args.out)), "stocks_a.json"), "w"), ensure_ascii=False, separators=(",", ":"), allow_nan=False)
