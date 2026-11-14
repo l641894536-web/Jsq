@@ -420,6 +420,11 @@ def _stocks():
     _smr = np.zeros(len(codes), int); _smr[_order[:60]] = np.arange(1, min(60, len(_order)) + 1)
     with np.errstate(invalid="ignore", divide="ignore"):
         _dd = adj[-1] / np.nanmax(adj[-250:], axis=0) - 1                    # 离一年高点（复权）
+        # 我的正股（research/holder3_bt.py）：60天涨跌、比200日线、收盘价；全A等权60天涨跌 → 页面判断"个股出事 / 跟着大盘跌"
+        _m60 = adj[-1] / adj[-61] - 1
+        _v200 = adj[-1] / np.nanmean(adj[-200:], axis=0) - 1
+        _px = P["close"][-1].astype("float64")
+    _mkt60 = float(s["等权指数"].iloc[-1] / s["等权指数"].iloc[-61] - 1)
     _ix = s["等权指数"].to_numpy(float)[-60:]
     _mb = bool(_ix[-1] / np.nanmin(_ix) - 1 >= 0.05 and int(np.nanargmin(_ix)) >= 20)     # 大盘自己也在反弹
     rows = []
@@ -431,14 +436,40 @@ def _stocks():
                      str(_last.statDate.iloc[i].date()) if pd.notna(_last.statDate.iloc[i]) else "", int(_uni[i]), int(_pool[i]),
                      int(_bs[i]), r(_bup[i], 3), int(_a200[i]), r(float(_a20[i]) / 1e8, 2), r(float(_dd[i]), 3),
                      int(_gu_n[i]), int(_gu_f[i]), r(float(_gu_x[i]), 4), int(_gd_n[i]), int(_gd_f[i]), r(float(_gd_x[i]), 4), int(_vq[i]), int(_ztk[i]),
-                     r(float(_cap[i]), 1), int(_smr[i])])
+                     r(float(_cap[i]), 1), int(_smr[i]), r(float(_px[i]), 3), r(float(_m60[i]), 3), r(float(_v200[i]), 3)])
     _pi = pd.Series([x for x, p in zip(ind_of, _pool) if p and isinstance(x, str) and x]).value_counts().head(8)
     stocks = dict(date=str(dates[-1].date()), regime=a_today["regime"], n_uni=int(_uni.sum()), n_pool=int(_pool.sum()),
                   pool_ind=[[k, int(v)] for k, v in _pi.items()],
                   fields=["code", "name", "ind", "growth", "accel", "g_r", "a_r", "mom120", "m_r", "mom20", "roe", "stat", "uni", "pool", "bs", "bup", "a200", "amt", "dd",
-                          "gu_n", "gu_f", "gu_x", "gd_n", "gd_f", "gd_x", "vq", "ztk", "cap", "sm"], rows=rows,
+                          "gu_n", "gu_f", "gu_x", "gd_n", "gd_f", "gd_x", "vq", "ztk", "cap", "sm", "px", "m60", "v200"], rows=rows, mkt60=r(_mkt60, 4),
                   small=dict(n_uni=int(_smu.sum()), cut30=r(float(_cap[_order[29]]), 1) if len(_order) >= 30 else None), mbounce=_mb,
                   bs_n=[int(x) for x in np.bincount(_bs[elig], minlength=5)])
+    # 场内ETF（不在个股表里）：用 5 分钟线拼出日收盘（不复权），口径同上，给"我的正股"用
+    try:
+        from market_data import config as _cfg
+        _ec = [c for c in _cfg.A_MIN_CODES if c[3] == "5" or c[3:5] == "15"]
+        _mm = load.a_share_min(_ec, start=str((dates[-1] - pd.Timedelta(days=800)).date()))
+        if len(_mm):
+            _dc = _mm.groupby(["date", "code"]).close.last().unstack("code").reindex(dates).ffill(limit=5)
+            _ea = _dc.to_numpy(float).copy()
+            for k in range(_ea.shape[1]):              # 拆分/合并（单日涨跌超过25%，ETF涨跌停最多20%）：之前的价格按整数比例折算到现在的口径
+                x = _ea[:, k]
+                for t in range(1, len(x)):
+                    if np.isfinite(x[t]) and np.isfinite(x[t - 1]) and x[t - 1] > 0:
+                        q = x[t] / x[t - 1]
+                        if q < 0.75: x[:t] /= max(2, round(1 / q))
+                        elif q > 1.33: x[:t] *= max(2, round(q))
+            _ebs, _ebu, _ = bounce_stages(_ea)
+            with np.errstate(invalid="ignore", divide="ignore"):
+                _edd = _ea[-1] / np.nanmax(_ea[-250:], axis=0) - 1
+                _ev2 = _ea[-1] / np.nanmean(_ea[-200:], axis=0) - 1
+                _em6 = _ea[-1] / _ea[-61] - 1
+            _enm = {"512760": "半导体ETF(国泰)", "512480": "半导体ETF(国联安)", "588000": "科创50ETF"}
+            stocks["etf"] = dict(fields=["code", "name", "px", "dd", "v200", "m60", "bs", "bup"],
+                                 rows=[[c[3:], _enm.get(c[3:], c[3:]), r(float(_ea[-1, k]), 3), r(float(_edd[k]), 3), r(float(_ev2[k]), 3), r(float(_em6[k]), 3),
+                                        int(_ebs[k]), r(float(_ebu[k]), 3)] for k, c in enumerate(_dc.columns) if np.isfinite(_ea[-1, k])])
+    except Exception as e:
+        print("etf rows skipped:", repr(e))
     json.dump(stocks, open(os.path.join(os.path.dirname(os.path.abspath(args.out)), "stocks_a.json"), "w"), ensure_ascii=False, separators=(",", ":"), allow_nan=False)
     stocks_note = dict(date=stocks["date"], n_uni=stocks["n_uni"], n_pool=stocks["n_pool"], pool_ind=stocks["pool_ind"])
     print(f"stocks_a.json: {len(rows)} rows, universe {stocks['n_uni']}, pool {stocks['n_pool']}")
@@ -448,7 +479,7 @@ if args.fund and os.path.exists(f"{args.fund}/us/financials.csv.xz"):
     try:
         sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
         import stocks_us as _su
-        stocks_us_note = _su.build(args.fund, os.path.join(os.path.dirname(os.path.abspath(args.out)), "stocks_us.json"), load, us_state)
+        stocks_us_note = _su.build(args.fund, os.path.join(os.path.dirname(os.path.abspath(args.out)), "stocks_us.json"), load, us_state, bounce=bounce_stages)
         print(f"stocks_us.json: pick {stocks_us_note['picks']} watch {len(stocks_us_note['watch'])}")
     except Exception as e:
         print("stocks_us.json skipped:", repr(e))

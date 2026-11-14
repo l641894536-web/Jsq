@@ -61,7 +61,32 @@ def growth_table(fund):
     return pd.DataFrame(recs)
 
 
-def build(fund, out, load, us_state=None):
+def holdings_block(load, bounce):
+    """我的正股（页面"被套了怎么办"用，research/holder3_bt.py）：美股范围里每只股票的收盘、离一年高点、比200日线、
+    60天涨跌、深跌后的反弹阶段（口径同 env_pipeline.bounce_stages）；另给纳指100（QQQ）60天涨跌。"""
+    uni = load.us_universe()
+    tks = sorted(t for t in uni.ticker if "=" not in t and "^" not in t)
+    px = load.us_daily(tks + ["QQQ"], start=str((pd.Timestamp.today() - pd.Timedelta(days=800)).date()))
+    A = px.pivot(index="date", columns="ticker", values="adj_close").sort_index().ffill(limit=5)
+    C = px.pivot(index="date", columns="ticker", values="close").sort_index().ffill(limit=5)
+    q = A["QQQ"]
+    A = A[[t for t in tks if t in A.columns]]; C = C[A.columns]
+    a = A.to_numpy(float)
+    stage, up, _ = bounce(a)
+    with np.errstate(invalid="ignore", divide="ignore"):
+        hi = np.nanmax(a[-252:], axis=0); ma = np.nanmean(a[-200:], axis=0)
+        dd = a[-1] / hi - 1; v200 = a[-1] / ma - 1; m60 = a[-1] / a[-61] - 1
+    f3 = lambda x: None if x is None or not np.isfinite(x) else round(float(x), 3)
+    rows = []
+    for k, t in enumerate(A.columns):
+        if not np.isfinite(a[-1, k]) or not np.isfinite(C.iloc[-1, k]) or np.isnan(a[-60:, k]).sum() > 5:
+            continue
+        rows.append([t, f3(C.iloc[-1, k]), f3(dd[k]), f3(v200[k]), f3(m60[k]), int(stage[k]), f3(up[k])])
+    return dict(date=str(A.index[-1].date()), qqq60=f3(q.iloc[-1] / q.iloc[-61] - 1),
+                fields=["t", "px", "dd", "v200", "m60", "bs", "bup"], rows=rows)
+
+
+def build(fund, out, load, us_state=None, bounce=None):
     g = growth_table(fund)
     tks = sorted(set(g.ticker))
     px = load.us_daily(tks, start=str((pd.Timestamp.today() - pd.Timedelta(days=500)).date()))
@@ -101,6 +126,11 @@ def build(fund, out, load, us_state=None):
              cut=dict(rev=round(float(r.quantile(.7)), 3), ni=round(float(n.quantile(.7)), 3), mom=round(float(mom.quantile(.3)), 3)),
              fields=["t", "name", "sector", "rev", "ni", "rev_r", "ni_r", "mom120", "m_r", "px", "vs50", "vs200", "dd52", "need", "q_end", "filed", "pick"],
              rows=rows)
+    if bounce is not None:
+        try:
+            o["hold"] = holdings_block(load, bounce)
+        except Exception as e:
+            print("stocks_us hold block skipped:", repr(e))
     json.dump(o, open(out, "w"), ensure_ascii=False, separators=(",", ":"), allow_nan=False)
     return dict(date=o["date"], n_uni=o["n_uni"], n_pick=o["n_pick"], picks=[x[0] for x in rows if x[-1] == 2], watch=[x[0] for x in rows if x[-1] == 1])
 

@@ -84,6 +84,11 @@ Local pandas has no pyarrow, so storage is CSV + xz, monthly partitions (`<datas
   存 data 分支 `a_share/min5/`，`load.a_share_min()`；push 到 market_data/** 时只跑 `market_data/push_only.txt` 里的阶段（现在是 a_share_min），定时任务照常全跑。
   研究 research/ashare_intraday_t.py / _t2.py；正股页"我的科技股"（`research/workbench_tech.js`，内联 `<script id="techjs">`）盘中用腾讯分时
   （web.ifzq.gtimg.cn/appstock/app/minute/query?_var=…，没在沙盒里实测过，取不到就只用 qt.gtimg.cn 报价）提示高开等9:45、低开开盘附近做T。
+- 被套了怎么办（2026-11-14，research/holder_bt.py / holder3_bt.py / holder_entry_bt.py，"离一年高点跌30%"后250天）：正股页最上面"我的正股"
+  （`research/workbench_hold.js`，内联 `<script id="holdjs">`，持仓存 localStorage `jsq.mystk` = [{c,cost,u份数}]）。规则：反弹不卖（死扛比反弹卖一半多5~6个点）；
+  只在大盘在200日线下（A股全A等权、美股纳指100）且个股60天没比大盘多跌20%时，按一年高点×0.63/×0.56各加1份，最多3份；否则上限1份，超过的在第一波反弹（这轮低点×1.15）卖掉。
+  数据：stocks_a.json 新字段 px/m60/v200、顶层 mkt60、`etf` 块（A_MIN_CODES 里的ETF，用5分钟线拼日收盘，拆分按整数比例折算）；stocks_us.json 的 `hold` 块（美股范围约570只 + qqq60）。
+  env-page 的 data 稀疏检出加了 /a_share/min5。页面里的回测数字写死在 workbench_hold.js 的 ST 常量。
 - 美国大数据日研究 research/event_bt.py（CPI/非农/议息日期写死在脚本里，来自美联储和 BLS 官网存档）：结论在 env_static findings，页面"本周大事"提醒还没做。
 - 模拟仓（今天页 `renderPaper`，2026-11-13）：以 ledger.json 为准，页面用实时小时线把没平的单子往前推（`sigEngine` 的 trace 带出场价/原因），
   记账数据之后新出的信号先记成"今天的"；和 ledger.py 逐笔对过（同一时间、同一原因、U 差 <0.6）。ledger.json 另有 `replay30`（最近30天回放，不算验证）。
