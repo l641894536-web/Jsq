@@ -100,6 +100,10 @@ Local pandas has no pyarrow, so storage is CSV + xz, monthly partitions (`<datas
   页面持仓 h.s60="half"/s60d/s60p 记这一轮已卖半（"已卖一半/已买回"按钮）。前向记账 pages/top_ledger.py（env-page 里跑，写 gh-pages top_ledger.json，
   验证页"候选规则前向记账" #tledPanel）：规则冻结 2026-11-14，只记 2026-11-16 起的新事件，每天从事件当天重算；和 top6 逐笔对过（2592 个事件一致，
   只差起始头4个月——记账把起始日之前的事件也算进60天冷却）。不要改 top_ledger 的规则参数；要改就另起一个版本。
+- 科技股入场/退出拆开检验（2026-11-15，用户定的口径）：research/ashare_entry_bt.py（跌30%后 立即买 vs 第一波反弹/低点×1.3/回踩确认/站上60日线/60日新高，
+  H=20/60/120 同一终点、没入场记现金0、次日可成交开盘、四段按起点分、每段末尾 H+5 天的起点剔除；STATIC=1 对照"立即买固定同比例"；WHICH=etf 跑15只ETF）、
+  research/ashare_exit_bt.py（月初手里拿着，4种下降结构离场 vs 一直拿着；STATIC=1 对照"起点就只拿同样比例"）。结论：确认入场和趋势离场的风险下降都来自仓位小，
+  和固定同比例比都更差。数据都反复看过，不称样本外。
 - 美国大数据日研究 research/event_bt.py（CPI/非农/议息日期写死在脚本里，来自美联储和 BLS 官网存档）：结论在 env_static findings，页面"本周大事"提醒还没做。
 - 模拟仓（今天页 `renderPaper`，2026-11-13）：以 ledger.json 为准，页面用实时小时线把没平的单子往前推（`sigEngine` 的 trace 带出场价/原因），
   记账数据之后新出的信号先记成"今天的"；和 ledger.py 逐笔对过（同一时间、同一原因、U 差 <0.6）。ledger.json 另有 `replay30`（最近30天回放，不算验证）。
