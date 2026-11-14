@@ -1,4 +1,5 @@
-"""'涨过头卖一半'（比60日线高40%卖一半、回到60日线买回）该不该分情况：在第一次触发那天看
+"""【已被 ashare_top5_bt.py 取代：本脚本原先卖半时把股数写死为0.5（已修正），且按当天收盘成交；结论以 top5 为准】
+'涨过头卖一半'（比60日线高40%卖一半、回到60日线买回）该不该分情况：在第一次触发那天看
   ①位置：现价 ÷ 之前2.5年（不含最近120天）最高价——回到老高附近(≤1.2倍) / 冲出一些(1.2~1.5) / 冲出很远(>1.5)，没有2.5年历史的算"次新"
   ②业绩：最近已公告的归母净利润同比（YOYPNI）——≥30% / 0~30% / 下滑；以及是否比上一期加速
   ③速度：从120天低点涨了多少
@@ -31,7 +32,7 @@ def run(W, R, lab):
             x = c[t]
             if not np.isfinite(x): continue
             if full and x >= 1.4 * ma60[t, j]:
-                cash = 0.5 * x * (1 - COST); u = 0.5; full = False; t1 = t1 if t1 is not None else t
+                q = u / 2; cash = q * x * (1 - COST); u -= q; full = False; t1 = t1 if t1 is not None else t   # 2026-11-14 修正：原来写死 u = 0.5，买回后股数≠1 时记错
             elif not full and x <= ma60[t, j]:
                 u += cash / x * (1 - COST); cash = 0; full = True
         hold = c[end] / c[i] - 1; rule = (u * c[end] + cash) / c[i] - 1

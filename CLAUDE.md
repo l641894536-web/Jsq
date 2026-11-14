@@ -93,6 +93,7 @@ Local pandas has no pyarrow, so storage is CSV + xz, monthly partitions (`<datas
   stocks_a 字段 rsc = 第一波反弹那天对上几条，-1 = 没在反弹里）、ashare_swing2_bt.py（被套后12种高抛低吸都不比拿着强）、ashare_top_bt.py（大涨50%后创新高：
   回落10%卖一半；stocks_a/etf 字段 ru = 近一年有过这种事件）。都有 2016-07→2021-10 复核（WHICH=old）。
   同日第三版：按当时视角重测（ashare_top2_bt.py 反复'回落卖一半/创新高买回'、ashare_top3_bt.py'比60日线高40%卖一半/回到60日线买回'），页面改用后者，字段 v60（A股/ETF/美股 hold 块）。
+  同日修正（用户核对）：top3/top4 卖半时股数写死0.5（已改，结论作废）；以 research/ashare_top5_bt.py 为准——完整记账（实际股数、收盘信号次日开盘成交、一字板顺延、每笔0.15%、每日净值回撤、持股比例、按月分块自助法区间），只比三组：一直持有 / 偏离60日线40%卖半 / 结构破坏后减仓。不要再靠'多数时候更好'或'分组不稳定'下结论。
 - 美国大数据日研究 research/event_bt.py（CPI/非农/议息日期写死在脚本里，来自美联储和 BLS 官网存档）：结论在 env_static findings，页面"本周大事"提醒还没做。
 - 模拟仓（今天页 `renderPaper`，2026-11-13）：以 ledger.json 为准，页面用实时小时线把没平的单子往前推（`sigEngine` 的 trace 带出场价/原因），
   记账数据之后新出的信号先记成"今天的"；和 ledger.py 逐笔对过（同一时间、同一原因、U 差 <0.6）。ledger.json 另有 `replay30`（最近30天回放，不算验证）。

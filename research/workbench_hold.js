@@ -85,13 +85,13 @@ function regime(isUS) {           // 大盘在200日线下？A股 = 全A等权�
   return { down: E.us.today.ndx_vs < 0, vs: E.us.today.ndx_vs, name: "纳指100", live: false };
 }
 
-// 卖在高处（research/ashare_top3_bt.py）：比60日线高40%以上卖一半，跌回60日线买回；近5年和2016~2021平均都比一直拿着多0.5个点左右
+// 卖在高处（research/ashare_top5_bt.py，完整记账、收盘确认第二天开盘成交）：比60日线高40%以上卖当时股数的一半，收盘跌回60日线第二天开盘买回；近5年+2.6个点、2016~2021+2.0个点（比一直持有）
 function sellHigh(row, k) {
   if (row.v60 == null || !isFinite(row.v60)) return `<b>卖在高处</b>：没有60日线数据。`;
   const ma = row.px / (1 + row.v60), p = row.px * k, v = p / ma - 1, tgt = ma * 1.4;
   return v >= 0.4
-    ? `<b>卖在高处</b>：现在比60日线（${fp(ma)}）高 ${pc(v)}，<b>涨过头了，卖一半</b>；之后跌回60日线附近再买回。`
-    : `<b>卖在高处</b>：涨到比60日线高40%（现在约 <b>${fp(tgt)}</b>，60日线 ${fp(ma)} 每天在变）就卖一半，跌回60日线再买回。现在比60日线 ${pc(v)}。`;
+    ? `<b>卖在高处</b>：现在比60日线（${fp(ma)}）高 ${pc(v)}，<b>收盘还在这上面，第二天开盘卖一半</b>；以后收盘跌回60日线，第二天开盘买回。`
+    : `<b>卖在高处</b>：收盘比60日线高40%（现在约 <b>${fp(tgt)}</b>，60日线 ${fp(ma)} 每天在变）就第二天开盘卖一半，收盘跌回60日线再买回。现在比60日线 ${pc(v)}。`;
 }
 
 function judge(h, row, live, isUS, isETF) {

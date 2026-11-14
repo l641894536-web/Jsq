@@ -1,4 +1,5 @@
-"""在高位"涨过头时卖一半、回落后买回"（卖在上涨途中，不是等回落）：只用当天能知道的数。
+"""【已被 ashare_top5_bt.py 取代：本脚本原先卖半时把股数写死为0.5（已修正），且按当天收盘成交；结论以 top5 为准】
+在高位"涨过头时卖一半、回落后买回"（卖在上涨途中，不是等回落）：只用当天能知道的数。
 事件同 ashare_top_bt.py；满仓时 收盘/60日线 ≥ k → 卖一半；半仓时 收盘/60日线 ≤ b → 买回。k = 1.3/1.4/1.5，b = 1.10/1.0。
 另：大盘情绪温度≥80 卖一半、≤50 买回。
 """
@@ -15,7 +16,7 @@ def sim(c, sellf, buyf, i):
         x = c[t]
         if not np.isfinite(x): continue
         if full and sellf(t, x):
-            cash = 0.5 * x * (1 - COST); u = 0.5; full = False; n += 1
+            q = u / 2; cash = q * x * (1 - COST); u -= q; full = False; n += 1   # 2026-11-14 修正：原来写死 u = 0.5，买回后股数≠1 时记错
         elif not full and buyf(t, x):
             u += cash / x * (1 - COST); cash = 0; full = True
     return (u * c[i + H] + cash) / p0 - 1, n
