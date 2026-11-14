@@ -36,7 +36,10 @@ US_EXTRA_STOCKS = ["MSTR", "COIN", "HOOD", "CRCL", "TSM", "ASML", "BABA", "PDD",
                    # underlyings of the Asian stock perps, their indices and FX (for after-close deviation research)
                    "005930.KS", "000660.KS", "0700.HK", "^KS11", "^HSI", "^N225", "KRW=X", "HKD=X", "EWY",
                    # 国泰半导体ETF（baostock 没有 ETF 时用 Yahoo 的日线/小时线）
-                   "512760.SS"]
+                   "512760.SS",
+                   # A股科技类ETF（research/ashare_top6_bt.py 单独检验"高于60日线40%卖半"用；上市较早的）
+                   "512480.SS", "588000.SS", "159995.SZ", "159801.SZ", "515050.SS", "515880.SS", "512720.SS",
+                   "515000.SS", "159939.SZ", "515980.SS", "159819.SZ", "512330.SS", "159807.SZ", "512980.SS"]
 # Long daily history (back to 1985 or listing) for indices, index ETFs, metals and a few stocks,
 # so environment research covers 2000-02 and 2008. Everything else starts at US_START.
 US_LONG_START = "1985-01-01"
