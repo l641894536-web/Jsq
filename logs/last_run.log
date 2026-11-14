@@ -1,0 +1,4 @@
+<frozen site>:107: RuntimeWarning: Unexpected value in sys.prefix, expected /home/runner/work/Jsq/Jsq/venv, got /home/runner/work/Jsq/Jsq/code/../venv
+<frozen site>:107: RuntimeWarning: Unexpected value in sys.exec_prefix, expected /home/runner/work/Jsq/Jsq/venv, got /home/runner/work/Jsq/Jsq/code/../venv
+[us] 07:41:32 daily ok 686/686, +26046 rows
+{"us_universe": [true, 0], "binance": [true, 0], "us": [true, 0], "a_share": [true, 0], "dukascopy": [false, 33], "binance_extra": [true, 0], "a_share_min": [true, 0]}
