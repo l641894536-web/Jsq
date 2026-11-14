@@ -85,13 +85,21 @@ function regime(isUS) {           // 大盘在200日线下？A股 = 全A等权�
   return { down: E.us.today.ndx_vs < 0, vs: E.us.today.ndx_vs, name: "纳指100", live: false };
 }
 
-// 卖在高处（research/ashare_top5_bt.py，完整记账、收盘确认第二天开盘成交）：比60日线高40%以上卖当时股数的一半，收盘跌回60日线第二天开盘买回；近5年+2.6个点、2016~2021+2.0个点（比一直持有）
-function sellHigh(row, k) {
-  if (row.v60 == null || !isFinite(row.v60)) return `<b>卖在高处</b>：没有60日线数据。`;
-  const ma = row.px / (1 + row.v60), p = row.px * k, v = p / ma - 1, tgt = ma * 1.4;
-  return v >= 0.4
-    ? `<b>卖在高处</b>：现在比60日线（${fp(ma)}）高 ${pc(v)}，<b>收盘还在这上面，第二天开盘卖一半</b>；以后收盘跌回60日线，第二天开盘买回。`
-    : `<b>卖在高处</b>：收盘比60日线高40%（现在约 <b>${fp(tgt)}</b>，60日线 ${fp(ma)} 每天在变）就第二天开盘卖一半，收盘跌回60日线再买回。现在比60日线 ${pc(v)}。`;
+// 卖在高处【候选，未验证到科技股】（research/ashare_top5_bt.py / ashare_top6_bt.py，完整记账、收盘确认第二天开盘成交）：
+// 满仓时收盘比60日线高40%以上 → 第二天开盘卖当时股数的一半；这一轮卖过以后不再卖，等收盘跌回60日线 → 第二天开盘买回，回到满仓。
+// 状态存在持仓里：h.s60 = "half" 表示这一轮已经卖过一半（h.s60d 日期、h.s60p 价格）；和回测的"满仓 → 卖半 → 等买回"一致。
+function sellHigh(h, row, k, dataDate) {
+  if (row.v60 == null || !isFinite(row.v60)) return `<b>卖在高处（候选）</b>：没有60日线数据。`;
+  const ma = row.px / (1 + row.v60), p = row.px * k, v = p / ma - 1, tgt = ma * 1.4, vc = row.v60;
+  const tag = `<b>卖在高处（候选，没验证到科技股）</b>：`;
+  if (h.s60 === "half") {
+    const done = `这一轮 ${h.s60d || ""} 已经卖过一半${h.s60p ? `（${fp(h.s60p)}）` : ""}，之后不再卖。`;
+    if (vc <= 0) return tag + done + `${dataDate} 收盘已经跌回60日线（${fp(ma)}）以下：<b>今天开盘买回</b>（用卖出的钱全部买回）。<button type="button" class="btn hd-mk" data-c="${h.c}" data-s="full">已买回</button>`;
+    return tag + done + `等收盘跌回60日线（现在约 ${fp(ma)}）再在第二天开盘买回。现在比60日线 ${pc(v)}。`;
+  }
+  if (vc >= 0.4) return tag + `${dataDate} 收盘比60日线（${fp(ma)}）高 ${pc(vc)}：<b>今天开盘卖掉当时股数的一半</b>，卖完点一下，这一轮就不再提示卖。<button type="button" class="btn hd-mk" data-c="${h.c}" data-s="half" data-p="${p.toFixed(3)}">已卖一半</button>`;
+  if (v >= 0.4) return tag + `盘中比60日线高 ${pc(v)}；<b>今天收盘还在 ${fp(tgt)} 以上</b>，明天开盘卖一半（收盘才算数）。`;
+  return tag + `收盘比60日线高40%（现在约 <b>${fp(tgt)}</b>，60日线 ${fp(ma)} 每天在变）就第二天开盘卖一半；跌回60日线再买回。现在比60日线 ${pc(v)}。`;
 }
 
 function judge(h, row, live, isUS, isETF) {
@@ -105,7 +113,7 @@ function judge(h, row, live, isUS, isETF) {
   if (dd > -0.3) {
     o.chips.push(["flat", `离一年高点 ${pc(dd)}`]);
     o.state = "none";
-    o.lines.push(sellHigh(row, k));
+    o.lines.push(sellHigh(h, row, k, isUS ? U.date : A.date));
     o.lines.push(`<b>跌了加不加</b>：还不算被套（跌到 <b>${fp(line30)}</b> 才算跌了30%），这之前别因为"跌了便宜"就加。`);
     return o;
   }
@@ -151,7 +159,7 @@ function judge(h, row, live, isUS, isETF) {
   } else {
     o.lines.push(`<b>涨了卖不卖</b>：<b>反弹不卖，拿着</b>。${bTxt ? bTxt + "。" : ""}"反弹卖、回落接"试了12种，平均都不比拿着强。`);
   }
-  if (row.v60 != null) o.lines.push(sellHigh(row, k));
+  if (row.v60 != null) o.lines.push(sellHigh(h, row, k, isUS ? U.date : A.date));
   if (S) o.lines.push(`<span class="note">像这样的 ${S.n.toLocaleString()} 次：死扛250天后平均 ${S.hold}，最差10% ${S.w}，${S.f20} 之后又再跌了20%以上；按规则越跌越加平均 ${S.add}，最差10% ${S.aw}（按原来1份算）。${isETF ? "ETF 套用的是个股的规律。" : ""}</span>`);
   else o.lines.push(`<span class="note">美股这种状态（大盘在200日线下、它自己多跌20%以上）近5年不到30次，没有单独的数字，按"不加"处理。</span>`);
   return o;
@@ -187,13 +195,42 @@ async function render() {
   $("holdNote").textContent = `收盘数据 A股 ${ad || "—"}、美股 ${ud || "—"}；现价来自腾讯行情，取不到就用收盘价。`;
 }
 
+// 验证页：候选规则前向记账（pages/top_ledger.py，冻结 2026-11-14，只记 2026-11-16 起的新事件）
+async function renderTopLedger() {
+  const box = $("tledBox"); if (!box) return;
+  const L = await getJ("top_ledger.json");
+  if (!L) { box.innerHTML = `<p class="note">记账文件还没生成，每天收盘数据更新后自动跑。</p>`; return; }
+  $("tledSub").textContent = `冻结 ${L.rule.frozen} · 从 ${L.start} 起记 · 更新 ${L.updated}`;
+  const sec = (lab, X) => {
+    const S = X.summary || {};
+    if (!S.n) return `<p><b>${lab}</b>：还没有新事件（${L.start} 起出现"大涨50%后创一年新高"才记）。</p>`;
+    const a = S.all, c = S.closed_only;
+    const line = (z, t) => z ? `${t} ${z.n} 次：一直持有 ${pc(z.hold)}、卖半 ${pc(z.rule)}、固定94% ${pc(z.fix94)}；卖半比持有 ${pc(z.rule_minus_hold)}，触发过卖半的 ${z.triggered} 次；最大回撤平均 持有 ${pc(z.hold_mdd)} / 卖半 ${pc(z.rule_mdd)}` : "";
+    const rows = X.events.slice().sort((x, y) => (x.d < y.d ? 1 : -1)).slice(0, 12).map((e) => `<tr><td>${esc(e.name)}<small>${e.d} 起 · ${e.closed ? "已满250天" : `第 ${e.days}/250 天`} · ${e.state}${e.pending ? " · " + e.pending : ""}</small></td>
+      <td class="n">${pc(e.hold)}</td><td class="n">${pc(e.rule)}</td><td class="n">${pc(e.fix94)}</td></tr>`).join("");
+    return `<p><b>${lab}</b>：${line(a, "全部（没满250天的按最新收盘算）")}${c ? "<br>" + line(c, "已满250天") : ""}</p>
+      <table class="shadow-t link-t"><thead><tr><th>事件</th><th>持有</th><th>卖半</th><th>固定94%</th></tr></thead><tbody>${rows}</tbody></table>`;
+  };
+  box.innerHTML = `<p class="note">${esc(L.rule.status)}。规则写死不再调：收盘比60日线高40%以上 → 下一个能成交的开盘卖当时股数一半；这一轮不再卖；收盘跌回60日线 → 下一个能成交的开盘买回。开盘在跌停价不能卖、在涨停价不能买，停牌顺延，每笔0.15%。和回测脚本逐笔对过（2592 个事件结果一致）。</p>`
+    + sec("A股科技池（电子/通信/计算机/软件/互联网）", L.a_share) + sec("科技类ETF（15只）", L.etf);
+}
+
 function init() {
+  renderTopLedger();
   if (!$("holdPanel")) return;
   const inp = $("holdCodes");
   inp.value = fmtList(load());
   $("holdSave").addEventListener("click", () => {
-    const v = parse(inp.value);
+    const v = parse(inp.value), old = Object.fromEntries(load().map((x) => [x.c, x]));
+    for (const x of v) if (old[x.c] && old[x.c].s60) { x.s60 = old[x.c].s60; x.s60d = old[x.c].s60d; x.s60p = old[x.c].s60p; }
     if (v.length) { localStorage.setItem(KEY, JSON.stringify(v)); inp.value = fmtList(v); render(); }
+  });
+  $("holdBody").addEventListener("click", (e) => {      // "已卖一半 / 已买回"：记下这一轮的状态
+    const b = e.target.closest(".hd-mk"); if (!b) return;
+    const L = load(), x = L.find((y) => y.c === b.dataset.c); if (!x) return;
+    if (b.dataset.s === "half") { x.s60 = "half"; x.s60d = new Date().toISOString().slice(0, 10); x.s60p = +b.dataset.p || null; }
+    else { delete x.s60; delete x.s60d; delete x.s60p; }
+    localStorage.setItem(KEY, JSON.stringify(L)); render();
   });
   const go = () => { if (!document.getElementById("tab-stock").hidden) render(); };
   document.addEventListener("jsq-tab", go);

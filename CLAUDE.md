@@ -81,7 +81,7 @@ Local pandas has no pyarrow, so storage is CSV + xz, monthly partitions (`<datas
 - A股交易做法体检（2026-11-14，research/ashare_trader_bt.py：打板/接力/回马枪/回踩/超跌/断层/二八/行业轮动/隔夜/节前）；结果常量 TRD/TRD2 写死在 workbench_picks.js。
   小市值"刹车"（research/ashare_brake_small.py）：全A等权跌破20日线清仓；env_pipeline 写 `a.today.ew_vs_ma20`、`live.a.ew_sum19`，页面 JSQ_LIVE_A.ew_vs20 盘中估算。
 - A股5分钟线（2026-11-14）：`market_data/a_share_min.py`（baostock，6进程，config.A_MIN_CODES = 用户持仓 沪电/工业富联/国泰半导体ETF + 同类科技股，2021起），
-  存 data 分支 `a_share/min5/`，`load.a_share_min()`；push 到 market_data/** 时只跑 `market_data/push_only.txt` 里的阶段（现在是 a_share_min），定时任务照常全跑。
+  存 data 分支 `a_share/min5/`，`load.a_share_min()`；push 到 market_data/** 时只跑 `market_data/push_only.txt` 里的阶段（现在是 us，2026-11-14 加了15只科技类ETF 的 Yahoo 日线），定时任务照常全跑。
   研究 research/ashare_intraday_t.py / _t2.py；正股页"我的科技股"（`research/workbench_tech.js`，内联 `<script id="techjs">`）盘中用腾讯分时
   （web.ifzq.gtimg.cn/appstock/app/minute/query?_var=…，没在沙盒里实测过，取不到就只用 qt.gtimg.cn 报价）提示高开等9:45、低开开盘附近做T。
 - 被套了怎么办（2026-11-14，research/holder_bt.py / holder3_bt.py / holder_entry_bt.py，"离一年高点跌30%"后250天）：正股页最上面"我的正股"
@@ -94,6 +94,12 @@ Local pandas has no pyarrow, so storage is CSV + xz, monthly partitions (`<datas
   回落10%卖一半；stocks_a/etf 字段 ru = 近一年有过这种事件）。都有 2016-07→2021-10 复核（WHICH=old）。
   同日第三版：按当时视角重测（ashare_top2_bt.py 反复'回落卖一半/创新高买回'、ashare_top3_bt.py'比60日线高40%卖一半/回到60日线买回'），页面改用后者，字段 v60（A股/ETF/美股 hold 块）。
   同日修正（用户核对）：top3/top4 卖半时股数写死0.5（已改，结论作废）；以 research/ashare_top5_bt.py 为准——完整记账（实际股数、收盘信号次日开盘成交、一字板顺延、每笔0.15%、每日净值回撤、持股比例、按月分块自助法区间），只比三组：一直持有 / 偏离60日线40%卖半 / 结构破坏后减仓。不要再靠'多数时候更好'或'分组不稳定'下结论。
+  第二次修正（用户核对）：research/ashare_top6_bt.py——固定科技池（证监会 C39/I63/I64/I65）、ETF 单独（Yahoo 日线，clean_etf 处理拆分/单日错价）、
+  开盘成交按涨跌停价判断（前收先 round 到分，r2 带 1e-6 容差；apanel 是 float32）、对照"固定94%股票"（不要按事件自己的平均持股配，有后视偏差）、
+  区间=月度序列 Newey-West(12) 和 12个月块自助取宽。结论：全A显著、科技池/C39 两段都不显著、ETF 样本太少 → 页面标"候选"。
+  页面持仓 h.s60="half"/s60d/s60p 记这一轮已卖半（"已卖一半/已买回"按钮）。前向记账 pages/top_ledger.py（env-page 里跑，写 gh-pages top_ledger.json，
+  验证页"候选规则前向记账" #tledPanel）：规则冻结 2026-11-14，只记 2026-11-16 起的新事件，每天从事件当天重算；和 top6 逐笔对过（2592 个事件一致，
+  只差起始头4个月——记账把起始日之前的事件也算进60天冷却）。不要改 top_ledger 的规则参数；要改就另起一个版本。
 - 美国大数据日研究 research/event_bt.py（CPI/非农/议息日期写死在脚本里，来自美联储和 BLS 官网存档）：结论在 env_static findings，页面"本周大事"提醒还没做。
 - 模拟仓（今天页 `renderPaper`，2026-11-13）：以 ledger.json 为准，页面用实时小时线把没平的单子往前推（`sigEngine` 的 trace 带出场价/原因），
   记账数据之后新出的信号先记成"今天的"；和 ledger.py 逐笔对过（同一时间、同一原因、U 差 <0.6）。ledger.json 另有 `replay30`（最近30天回放，不算验证）。

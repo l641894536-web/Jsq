@@ -76,6 +76,11 @@ jobs:
         run: |
           venv/bin/python -u code/pages/stock_ledger.py --data data --jsq code --site site
 
+      - name: Candidate rule forward ledger (高于60日线40%卖半，冻结 2026-11-14)
+        continue-on-error: true
+        run: |
+          venv/bin/python -u code/pages/top_ledger.py --data data --jsq code --site site
+
       - name: Publish to gh-pages
         working-directory: site
         run: |
@@ -85,6 +90,7 @@ jobs:
           if [ -f stocks_a.json ]; then git add stocks_a.json; fi
           if [ -f stocks_us.json ]; then git add stocks_us.json; fi
           if [ -f stock_ledger.json ]; then git add stock_ledger.json; fi
+          if [ -f top_ledger.json ]; then git add top_ledger.json; fi
           if [ -f ledger.json ]; then git add ledger.json; fi
           if git diff --cached --quiet; then echo "env.json unchanged"; exit 0; fi
           git commit -q -m "env: $(head -2 ../build.log | tail -1)"
