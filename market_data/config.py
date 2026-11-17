@@ -39,7 +39,9 @@ US_EXTRA_STOCKS = ["MSTR", "COIN", "HOOD", "CRCL", "TSM", "ASML", "BABA", "PDD",
                    "512760.SS",
                    # A股科技类ETF（research/ashare_top6_bt.py 单独检验"高于60日线40%卖半"用；上市较早的）
                    "512480.SS", "588000.SS", "159995.SZ", "159801.SZ", "515050.SS", "515880.SS", "512720.SS",
-                   "515000.SS", "159939.SZ", "515980.SS", "159819.SZ", "512330.SS", "159807.SZ", "512980.SS"]
+                   "515000.SS", "159939.SZ", "515980.SS", "159819.SZ", "512330.SS", "159807.SZ", "512980.SS",
+                   # 黄金的宏观对照（research/gold_macro_bt.py）：TIP=通胀保值债ETF（实际利率的代理，涨=实际利率降）、美元指数
+                   "TIP", "DX-Y.NYB"]
 # Long daily history (back to 1985 or listing) for indices, index ETFs, metals and a few stocks,
 # so environment research covers 2000-02 and 2008. Everything else starts at US_START.
 US_LONG_START = "1985-01-01"
