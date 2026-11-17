@@ -1,91 +1,67 @@
-"""黄金白银：加上美元和利率会不会更好？
-一、现行规则（1小时突破，出场F，2021-11~2026-10，exit_trades.csv 里 v=F 的金银单子，多空都有）按"美元/利率"分组看成绩。
-二、拉长到2006年（日线，COMEX期货 GC=F / SI=F），把2013-2015年的黄金熊市也算进来：
-    日线突破20天高点做多 / 跌破20天低点做空，止损2倍ATR，收盘跌破10天低点（做空=涨破10天高点）或40天走；
-    按"自身200日线 / 美元（美元指数在50日线上下）/ 利率（10年期美债收益率在50日线上下）"分组。
-美元、利率、均线都用前一天收盘，不偷看。成本往返0.1%。单位：100U开5倍每次赚亏多少U（1小时那部分用R：1R=一个止损的钱）。
+"""黄金 × 美元 × 美债利率：美元/利率的强弱能不能当黄金的买卖依据？（2026-11-17 定稿后才跑；只测黄金，不混别的品种）
+数据：GC=F（纽约金期货日线）、UUP（美元ETF）、^TNX（10年美债利率）、有的话加 TIP（通胀保值债ETF，涨=实际利率降）和 DX-Y.NYB（美元指数）。
+状态（收盘时能知道）：某项收盘在自己50日均线 上/下。"顺风" = 美元在50日线下、利率在50日线下、（TIP在50日线上）。
+A. 状态 → 之后 20/60 个交易日黄金涨跌（每10天取一次样；前后两段分开：2020-09→2023-09、2023-10→现在）。
+B. 做法对比（收盘出信号 → 第二天开盘成交，按开盘到开盘算收益；每次进出各扣0.1%）：
+   S0 一直拿着；S1 金在自己50日线上才拿（交易台黄金规则的日线近似）；S2 = S1 且美元顺风；S3 = S1 且利率顺风；S4 = S1 且两个都顺风；S5 只看两个都顺风（不看金自己）。
+   每个做法另和"一直拿着但只拿同样比例"比（风险少是因为拿得少，还是因为挑对了时候）。
 """
-import sys
+import os, sys
 import numpy as np, pandas as pd
-sys.path.insert(0, "/home/claude/jsq")
+os.environ.setdefault("MARKET_DATA", "/home/claude/market-data"); sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 from market_data import load
 
-U = load.us_daily(["GC=F", "SI=F", "DX-Y.NYB", "^TNX"], start="2004-01-01")
-C = U.pivot(index="date", columns="ticker", values="close").sort_index().ffill()
-lag = lambda s, n: (s > s.rolling(n).mean()).shift(1)
-REG = pd.DataFrame({"usd_up": lag(C["DX-Y.NYB"], 50), "yld_up": lag(C["^TNX"], 50)})
-REG["usd20"] = (C["DX-Y.NYB"] / C["DX-Y.NYB"].shift(20) - 1).shift(1)
-REG["yld20"] = (C["^TNX"] - C["^TNX"].shift(20)).shift(1)
+pct = lambda v: "—" if v is None or not np.isfinite(v) else f"{v*100:+.1f}%"
+COST = 0.001
+d = load.us_daily(["GC=F", "UUP", "^TNX", "TIP", "DX-Y.NYB"], start="2020-01-01")
+C = d.pivot(index="date", columns="ticker", values="adj_close").sort_index(); O = d.pivot(index="date", columns="ticker", values="open").sort_index()
+C = C[C["GC=F"].notna()].ffill(limit=3); O = O.reindex(C.index)
+usd = "DX-Y.NYB" if "DX-Y.NYB" in C and C["DX-Y.NYB"].notna().sum() > 800 else "UUP"
+has_tip = "TIP" in C and C["TIP"].notna().sum() > 800
+print(f"数据 {C.index[0].date()} → {C.index[-1].date()}；美元用 {usd}；实际利率代理 TIP：{'有' if has_tip else '没有'}")
+ma = lambda s: s.rolling(50).mean()
+g = C["GC=F"]; S = pd.DataFrame(index=C.index)
+S["gold_up"] = g > ma(g); S["usd_dn"] = C[usd] < ma(C[usd]); S["rate_dn"] = C["^TNX"] < ma(C["^TNX"])
+if has_tip: S["real_dn"] = C["TIP"] > ma(C["TIP"])
+S = S[ma(g).notna() & ma(C[usd]).notna() & ma(C["^TNX"]).notna()]
+S["tail"] = S.usd_dn.astype(int) + S.rate_dn.astype(int)
+for H in (20, 60): S[f"f{H}"] = g.shift(-H) / g - 1
+S["half"] = np.where(S.index < "2023-10-01", "前半", "后半")
 
+print("\n== A. 当天状态 → 之后黄金涨跌（每10天取样）")
+X = S.iloc[::10]; X = X[X.f20.notna()]
+print(f"全部 {len(X)} 次：20天 {pct(X.f20.mean())}，60天 {pct(X.f60.mean())}")
+def tab(col, names):
+    rows = []
+    for k, x in X.groupby(col):
+        r = {"状态": names.get(k, k), "次数": len(x), "20天": pct(x.f20.mean()), "60天": pct(x.f60.mean()), "60天上涨": f"{(x.f60 > 0).mean():.0%}"}
+        for h in ("前半", "后半"):
+            y = x[x.half == h]; r[h + " 60天(n)"] = f"{pct(y.f60.mean())}({len(y)})"
+        rows.append(r)
+    print(pd.DataFrame(rows).to_string(index=False))
+tab("usd_dn", {True: "美元在50日线下(顺风)", False: "美元在50日线上(逆风)"})
+tab("rate_dn", {True: "利率在50日线下(顺风)", False: "利率在50日线上(逆风)"})
+if has_tip: tab("real_dn", {True: "实际利率降(TIP在线上,顺风)", False: "实际利率升(逆风)"})
+tab("tail", {0: "两个都逆风", 1: "一顺一逆", 2: "两个都顺风"})
+tab("gold_up", {True: "金在自己50日线上", False: "金在自己50日线下"})
 
-def macro_lbl(r):
-    if pd.isna(r.usd_up) or pd.isna(r.yld_up): return None
-    return ("美元涨" if r.usd_up else "美元跌") + "·" + ("利率升" if r.yld_up else "利率降")
-
-
-REG["m"] = REG.apply(macro_lbl, axis=1)
-pd.set_option("display.width", 220); pd.set_option("display.max_rows", 200)
-
-# ---------------- 一、现行1小时规则按宏观分组
-E = pd.read_csv("exit_trades.csv")
-E = E[(E.v == "F") & E.grp.isin(["黄金", "白银"])].copy()
-E["d"] = pd.to_datetime(E.ts, utc=True).dt.tz_localize(None).dt.normalize()
-E = E.join(REG[["m", "usd_up", "yld_up"]], on="d")
-
-
-def s1(g):
-    return pd.Series({"笔": len(g), "平均R": round(g.r.mean(), 2), "胜%": round((g.r > 0).mean() * 100), "前段": round(g[g.half == "h1"].r.mean(), 2), "后段": round(g[g.half == "h2"].r.mean(), 2)})
-
-
-print("== 一、现行1小时突破规则（2021-11~2026-10），按自身200日线牛熊 × 美元/利率 ==")
-print(E.groupby(["grp", "env", "dir", "m"]).apply(s1).to_string())
-print("\n只按美元分："); print(E.groupby(["grp", "dir", "usd_up"]).apply(s1).to_string())
-
-# ---------------- 二、日线长历史
-def atr(h, l, c, n=20):
-    pc = c.shift(1); tr = pd.concat([h - l, (h - pc).abs(), (l - pc).abs()], axis=1).max(axis=1); return tr.rolling(n).mean()
-
-
-rows = []
-for tk, nm in (("GC=F", "黄金"), ("SI=F", "白银")):
-    d = U[U.ticker == tk].set_index("date")[["open", "high", "low", "close"]].sort_index().dropna()
-    o, h, l, c = (d[k].to_numpy() for k in ("open", "high", "low", "close"))
-    a = atr(d.high, d.low, d.close).to_numpy()
-    hi20, lo20 = d.high.rolling(20).max().shift(1).to_numpy(), d.low.rolling(20).min().shift(1).to_numpy()
-    hi10, lo10 = d.low.rolling(10).min().to_numpy(), d.high.rolling(10).max().to_numpy()
-    own200 = lag(d.close, 200).to_numpy(); own50 = lag(d.close, 50).to_numpy()
-    idx = d.index
-    for side in (1, -1):
-        sig = (c > hi20) if side == 1 else (c < lo20)
-        busy = -1
-        for i in np.flatnonzero(sig):
-            if i <= busy or i < 210 or not np.isfinite(a[i]): continue
-            stop = c[i] - side * 2 * a[i]; j_end, px = None, None
-            for j in range(i + 1, min(len(c), i + 41)):
-                if (side == 1 and l[j] <= stop) or (side == -1 and h[j] >= stop):
-                    px = o[j] if (side == 1 and o[j] < stop) or (side == -1 and o[j] > stop) else stop; j_end = j; break
-                if (side == 1 and c[j] < hi10[j - 1]) or (side == -1 and c[j] > lo10[j - 1]):
-                    px = c[j]; j_end = j; break
-            if j_end is None: j_end = min(len(c) - 1, i + 40); px = c[j_end]
-            busy = j_end
-            ret = side * (px / c[i] - 1) - 0.001
-            r = REG.reindex([idx[i]]).iloc[0]
-            rows.append((nm, "多" if side == 1 else "空", idx[i], bool(own200[i]), bool(own50[i]), r.m, ret * 500, ret / (2 * a[i] / c[i])))
-T = pd.DataFrame(rows, columns=["品种", "方向", "d", "自身200日线上", "自身50日线上", "宏观", "u", "r"]).dropna(subset=["宏观"])
-T.to_csv("gold_macro_trades.csv", index=False)
-era = lambda x: "2006-12" if x.year <= 2012 else "2013-19" if x.year <= 2019 else "2020-26"
-T["段"] = T.d.map(era)
-
-
-def s2(g):
-    out = {"笔": len(g), "每次U": round(g.u.mean(), 1), "平均R": round(g.r.mean(), 2), "胜%": round((g.u > 0).mean() * 100)}
-    for e in ("2006-12", "2013-19", "2020-26"):
-        x = g[g.段 == e]; out[e] = round(x.r.mean(), 2) if len(x) >= 5 else np.nan
-    return pd.Series(out)
-
-
-print("\n== 二、日线突破（2006~2026，COMEX期货），按自身200日线 ==")
-print(T.groupby(["品种", "方向", "自身200日线上"]).apply(s2).to_string())
-print("\n按美元/利率（不看自身均线）"); print(T.groupby(["品种", "方向", "宏观"]).apply(s2).to_string())
-print("\n自身200日线 × 美元/利率"); print(T.groupby(["品种", "方向", "自身200日线上", "宏观"]).apply(s2).to_string())
-print("\n按自身50日线（更快的牛熊）"); print(T.groupby(["品种", "方向", "自身50日线上"]).apply(s2).to_string())
+print("\n== B. 做法对比（次日开盘成交，进出各0.1%）")
+o = O["GC=F"].reindex(S.index); r = (o.shift(-2) / o.shift(-1) - 1)        # t 收盘决定 → t+1 开盘进 → t+2 开盘的收益
+rules = {"S0 一直拿着": pd.Series(True, index=S.index), "S1 金在50日线上": S.gold_up, "S2 S1+美元顺风": S.gold_up & S.usd_dn, "S3 S1+利率顺风": S.gold_up & S.rate_dn,
+         "S4 S1+两个都顺风": S.gold_up & S.usd_dn & S.rate_dn, "S5 只看两个都顺风": S.usd_dn & S.rate_dn}
+if has_tip: rules["S6 S1+实际利率降"] = S.gold_up & S.real_dn
+def stats(pos, rr):
+    p = pos.astype(float); sw = p.diff().abs().fillna(p.iloc[0]); net = p * rr - sw * COST; net = net.dropna()
+    eq = (1 + net).cumprod(); yrs = len(net) / 252
+    return eq.iloc[-1] - 1, eq.iloc[-1] ** (1 / yrs) - 1, (eq / eq.cummax() - 1).min(), p.mean(), sw.sum() / 2
+def static(w, rr):
+    net = (w * rr).dropna(); eq = (1 + net).cumprod(); yrs = len(net) / 252
+    return eq.iloc[-1] ** (1 / yrs) - 1, (eq / eq.cummax() - 1).min()
+for lab, m in [("全部", S.index == S.index), ("前半 2020-09→2023-09", S.half == "前半"), ("后半 2023-10→现在", S.half == "后半")]:
+    rr = r[m]; rows = []
+    for nm, pos in rules.items():
+        tot, ann, mdd, w, n = stats(pos[m], rr); sa, sm = static(w, rr)
+        rows.append({"做法": nm, "总收益": pct(tot), "年化": pct(ann), "最大回撤": pct(mdd), "持仓时间": f"{w:.0%}", "进出次数": f"{n:.0f}",
+                     "同比例一直拿:年化": pct(sa), "同比例:回撤": pct(sm), "年化差": pct(ann - sa)})
+    print(f"\n{lab}"); print(pd.DataFrame(rows).to_string(index=False))
+L = S.iloc[-1]; print(f"\n现在（{S.index[-1].date()}）：金在50日线{'上' if L.gold_up else '下'}，美元{'顺风' if L.usd_dn else '逆风'}，利率{'顺风' if L.rate_dn else '逆风'}" + (f"，实际利率{'顺风' if L.real_dn else '逆风'}" if has_tip else ""))
