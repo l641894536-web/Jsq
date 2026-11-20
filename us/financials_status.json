@@ -1,6 +1,6 @@
 {
- "time": "2026-11-19 21:00:39",
- "ok": 164,
+ "time": "2026-11-20 20:45:46",
+ "ok": 166,
  "failed": [
   "SPY: HTTP Error 404: Not Found"
  ],
@@ -31,6 +31,7 @@
   "SNXX",
   "SOXL",
   "SOXS",
+  "SOXX",
   "SQQQ",
   "TBT",
   "TMF",
@@ -41,5 +42,5 @@
   "XBI",
   "XLE"
  ],
- "rows": 56639
+ "rows": 57006
 }
