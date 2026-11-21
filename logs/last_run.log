@@ -1,0 +1,39 @@
+<frozen site>:107: RuntimeWarning: Unexpected value in sys.prefix, expected /home/runner/work/Jsq/Jsq/venv, got /home/runner/work/Jsq/Jsq/code/../venv
+<frozen site>:107: RuntimeWarning: Unexpected value in sys.exec_prefix, expected /home/runner/work/Jsq/Jsq/venv, got /home/runner/work/Jsq/Jsq/code/../venv
+[binance] 08:02:18 1089 USD-M symbols in archive
+[binance] 08:02:43 stock perps: ['AAOIUSDT', 'AAPLUSDT', 'ABBVUSDT', 'ACNUSDT', 'ADBEUSDT', 'AGPUUSDT', 'AKAMUSDT', 'ALABUSDT', 'AMATUSDT', 'AMCUSDT', 'AMDUSDT', 'AMGNUSDT', 'AMZNUSDT', 'ANETUSDT', 'APLDUSDT', 'APPUSDT', 'ARMUSDT', 'ASMLUSDT', 'ASTSUSDT', 'AVGOUSDT', 'AXTIUSDT', 'BABAUSDT', 'BACUSDT', 'BEUSDT', 'BITOUSDT', 'BMNRUSDT', 'BNCUSDT', 'BOTUSDT', 'BSPUSDT', 'BWETUSDT', 'BXUSDT', 'CATUSDT', 'CBRSUSDT', 'CEGUSDT', 'CIENUSDT', 'COHRUSDT', 'COINUSDT', 'COSTUSDT', 'CRCLUSDT', 'CRDOUSDT', 'CRMLUSDT', 'CRMUSDT', 'CRWDUSDT', 'CRWVUSDT', 'CSCOUSDT', 'CVNAUSDT', 'CYPHUSDT', 'DDOGUSDT', 'DELLUSDT', 'DISUSDT', 'DJTUSDT', 'DKNGUSDT', 'DRAMUSDT', 'EBAYUSDT', 'EIDOUSDT', 'EQTUSDT', 'ETNUSDT', 'EWJUSDT', 'EWTUSDT', 'EWYUSDT', 'EWZSUSDT', 'EWZUSDT', 'FLEXUSDT', 'FLNCUSDT', 'FWDIUSDT', 'GDXUSDT', 'GEVUSDT', 'GLWUSDT', 'GMEUSDT', 'GOOGLUSDT', 'GPROUSDT', 'GSUSDT', 'GTLBUSDT', 'HDUSDT', 'HIMSUSDT', 'HOODUSDT', 'HPEUSDT', 'HUTUSDT', 'IBITUSDT', 'IBKRUSDT', 'IBMUSDT', 'INTCUSDT', 'INTWUSDT', 'IONQUSDT', 'IRENUSDT', 'IWMUSDT', 'JPMUSDT', 'KLACUSDT', 'KORUUSDT', 'KOUSDT', 'KSTRUSDT', 'LITEUSDT', 'LLYUSDT', 'LRCXUSDT', 'LYTEUSDT', 'MARAUSDT', 'MCDUSDT', 'MDBUSDT', 'MELIUSDT', 'METAUSDT', 'MPUSDT', 'MRKUSDT', 'MRNAUSDT', 'MRVLUSDT', 'MSFTUSDT', 'MSTRUSDT', 'MSTUUSDT', 'MUUSDT', 'MUUUSDT', 'MVLLUSDT', 'NBISUSDT', 'NETUSDT', 'NFLXUSDT', 'NKEUSDT', 'NOKUSDT', 'NOWUSDT', 'NVDAUSDT', 'NVDLUSDT', 'NVOUSDT', 'OKLOUSDT', 'ONDSUSDT', 'ORCLUSDT', 'OXYUSDT', 'PANWUSDT', 'PATHUSDT', 'PAYPUSDT', 'PDDUSDT', 'PENGUSDT', 'PFEUSDT', 'PLTRUSDT', 'PYPLUSDT', 'QCOMUSDT', 'QQQUSDT', 'RAMUSDT', 'RDDTUSDT', 'RDWUSDT', 'RIVNUSDT', 'RKLBUSDT', 'RUMUSDT', 'SECZUSDT', 'SHAZUSDT', 'SHOPUSDT', 'SKDDUSDT', 'SKHYUSDT', 'SKUUUSDT', 'SMCIUSDT', 'SMHUSDT', 'SMRUSDT', 'SNDKUSDT', 'SNOWUSDT', 'SNPSUSDT', 'SNXXUSDT', 'SOFIUSDT', 'SONYUSDT', 'SOXLUSDT', 'SOXSUSDT', 'SOXXUSDT', 'SPCXUSDT', 'SPYUSDT', 'SQQQUSDT', 'STMUSDT', 'STRCUSDT', 'TBTUSDT', 'TEAMUSDT', 'TEMUSDT', 'TERUSDT', 'TMFUSDT', 'TQQQUSDT', 'TSLAUSDT', 'TSLLUSDT', 'TSMUSDT', 'TTWOUSDT', 'TWSTUSDT', 'TXNUSDT', 'TZAUSDT', 'UBERUSDT', 'UNHUSDT', 'URNMUSDT', 'USARUSDT', 'UVXYUSDT', 'VKTXUSDT', 'VRTUSDT', 'VSTUSDT', 'VUSDT', 'WDCUSDT', 'WENUSDT', 'WMTUSDT', 'XBIUSDT', 'XLEUSDT', 'XOMUSDT', 'ZCSHUSDT', 'ZMUSDT', 'ZSUSDT']
+[binance] 08:02:43 planning 1378 symbol/interval jobs
+[binance] 08:02:54 3 archive files to download
+[binance] 08:02:54 1d: +0 rows
+[binance_extra] 08:02:55 archive monthly: ['aggTrades', 'bookTicker', 'fundingRate', 'indexPriceKlines', 'klines', 'markPriceKlines', 'premiumIndexKlines', 'trades'] daily: ['aggTrades', 'bookDepth', 'bookTicker', 'indexPriceKlines', 'klines', 'markPriceKlines', 'metrics', 'premiumIndexKlines', 'trades']
+[binance_extra] 08:02:58 funding: 0 monthly files listed to fetch
+[binance_extra] 08:03:20 metrics: 7 daily files listed to fetch, e.g. data/futures/um/daily/metrics/BTCUSDT/BTCUSDT-metrics-2026-11-20.zip
+[dukascopy] 08:06:10 28 symbol-months to fetch, probing 0 new symbols, skipping 34 absent symbols / 1047 absent months
+[dukascopy] ERROR ANETUSUSD 2025-12: 503 Server Error: Service Unavailable for url: https://datafeed.dukascopy.com/datafeed/ANETUSUSD/2025/11/BID_candles_hour_1.bi5
+[dukascopy] ERROR ANETUSUSD 2026-01: 503 Server Error: Service Unavailable for url: https://datafeed.dukascopy.com/datafeed/ANETUSUSD/2026/00/BID_candles_hour_1.bi5
+[dukascopy] ERROR ANETUSUSD 2026-03: HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Read timed out. (read timeout=10)
+[dukascopy] ERROR ANETUSUSD 2026-04: HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Max retries exceeded with url: /datafeed/ANETUSUSD/2026/03/BID_candles_hour_1.bi5 (Caused by ConnectTimeoutError(<HTTPSConnection(host='datafeed.dukascopy.com', port=443) at 0x7ad300d856d0>, 'Connection to datafeed.dukascopy.com timed out. (connect timeout=10)'))
+[dukascopy] ERROR ANETUSUSD 2026-05: HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Read timed out. (read timeout=10)
+[dukascopy] ERROR ANETUSUSD 2026-06: HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Read timed out. (read timeout=10)
+[dukascopy] ERROR CVNAUSUSD 2026-07: HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Read timed out. (read timeout=10)
+[dukascopy] 08:23:19 1h: +0 rows from 0 files
+[dukascopy] 08:23:29 5m: 28 symbol-months to fetch
+[dukascopy] ERROR 5m DELLUSUSD 2020-01: 01: HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Read timed out. (read timeout=20); 02: HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Max retries exceeded with url: /datafeed/DELLUSUSD/2020/00; 03: HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Max retries exceeded with url: /datafeed/DELLUSUSD/2020/00
+[dukascopy] ERROR 5m DELLUSUSD 2020-02: 02: 503 Server Error: Service Unavailable for url: https://datafeed.dukascopy.com/datafeed/DELLUSUSD/2020/01/02/BID_candles_; 03: 503 Server Error: Service Unavailable for url: https://datafeed.dukascopy.com/datafeed/DELLUSUSD/2020/01/03/BID_candles_; 04: HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Read timed out. (read timeout=10)
+[dukascopy] ERROR 5m DELLUSUSD 2020-03: 01: HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Read timed out. (read timeout=20); 02: HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Read timed out. (read timeout=10); 03: HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Read timed out. (read timeout=10)
+[dukascopy] ERROR 5m DELLUSUSD 2020-04: 01: HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Read timed out. (read timeout=20); 06: HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Max retries exceeded with url: /datafeed/DELLUSUSD/2020/03; 07: HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Read timed out. (read timeout=10)
+[dukascopy] ERROR 5m DELLUSUSD 2020-06: 01: 503 Server Error: Service Unavailable for url: https://datafeed.dukascopy.com/datafeed/DELLUSUSD/2020/05/01/BID_candles_; 03: HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Read timed out. (read timeout=10); 04: HTTPSConnectionPool(host='datafeed.dukascopy.com', port=443): Read timed out. (read timeout=10)
+[dukascopy] 08:48:41 5m: +0 rows from 0 months, 28 months still missing
+[us] 08:49:19 daily ok 687/687, +0 rows
+[a_share] 08:50:10 target end date 2026-11-20
+[a_share] 09:00:42 1375 stocks to fetch (5541 in universe)
+[a_share] 09:01:06 bars 250/1375  0.10s/stock
+[a_share] 09:01:29 bars 500/1375  0.09s/stock
+[a_share] 09:01:52 bars 750/1375  0.09s/stock
+[a_share] 09:02:14 bars 1000/1375  0.09s/stock
+[a_share] 09:02:37 bars 1250/1375  0.09s/stock
+[a_share] 09:02:53 writing 9,625 bar rows
+[a_share_min] 09:03:01 20 chunks for 20 codes, through 2026-11-20
+[a_share_min] 09:03:11 20/20 chunks, 4,800 rows, 0.5s/chunk
+[a_share_min] 09:03:11 writing 4,800 rows
+{"us_universe": [true, 0], "binance": [true, 0], "us": [true, 0], "a_share": [true, 0], "dukascopy": [false, 12], "binance_extra": [true, 0], "a_share_min": [true, 0]}
